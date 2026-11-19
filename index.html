@@ -6418,7 +6418,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  // Never expose performance to operator; UI-only in offline edition, backend security still needed.
  document.body.dataset.sriVersion='interface-consolidada-2026-11-19';
 })();
-</script><div id="sri-stage2-warning" hidden style="position:fixed;bottom:10px;left:10px;z-index:7000;background:#fff4d6;color:#74520e;border:1px solid #dbbf7f;border-radius:8px;padding:7px 11px;font:600 11px Segoe UI,Arial,sans-serif;max-width:370px">Etapa 3.2: login e importações SAC + ATIVO conectados ao Supabase; gráficos, distribuição e fechamentos ainda não sincronizados. Não inserir dados reais antes da homologação.</div><script id="sri-cloud-import-integrated">
+</script><div id="sri-stage2-warning" hidden style="position:fixed;bottom:10px;left:10px;z-index:7000;background:#fff4d6;color:#74520e;border:1px solid #dbbf7f;border-radius:8px;padding:7px 11px;font:600 11px Segoe UI,Arial,sans-serif;max-width:370px">Etapa 3.2: importações permitem alertas e guardam divergências para revisão; dados não conflitantes podem ser sincronizados. Gráficos e fechamentos ainda não centralizados. Não inserir dados reais antes da homologação.</div><script id="sri-cloud-import-integrated">
 /* SAC Retorno Intelligence 2.0 — Etapa 3.2 (piloto de persistência).
  * A carteira SQL e a apuração local permanecem distintas nesta etapa.
  * Nenhum dado real deve ser importado antes da homologação integrada.
@@ -6442,7 +6442,7 @@ function apiError(error,context){const msg=String(error?.message||error||'');if(
 function root(){return byId('import');}
 function installPanel(){if(!root()||byId('sri-cloud-panel'))return;
 root().insertAdjacentHTML('beforeend',`<section id="sri-cloud-panel" class="v20-panel" style="margin:20px 0;border:2px solid #b8d4f4;border-radius:12px;padding:18px;max-width:100%;">
-<div class="v20-between"><div><h3>Salvar importação no Supabase</h3><p class="v20-muted">Etapa 3.2 — gravação centralizada de protocolos. Faça a apuração dos dois CSVs e confira os resultados antes de enviar.</p></div><span style="background:#e6f1ff;color:#124888;padding:5px 9px;border-radius:9px;font-size:12px;font-weight:700">INTEGRAÇÃO EM TESTES</span></div>
+<div class="v20-between"><div><h3>Salvar importação no Supabase</h3><p class="v20-muted">Gravação centralizada: divergências são registradas para revisão sem bloquear a rodada. Protocolos ambíguos não são alterados automaticamente.</p></div><span style="background:#e6f1ff;color:#124888;padding:5px 9px;border-radius:9px;font-size:12px;font-weight:700">INTEGRAÇÃO EM TESTES</span></div>
 <p style="font-size:13px;color:#80531a">Teste inicialmente com dados fictícios. Os gráficos e as tratativas do HTML ainda usam o processamento local; este painel registra e consulta a carteira persistida no banco.</p>
 <div class="v20-row" style="gap:10px;display:flex;flex-wrap:wrap;margin:12px 0">
 <label class="v20-field">Operação<select id="sri-cloud-operation" aria-label="Operação"></select></label>
@@ -6472,23 +6472,68 @@ async function loadMetadata(){const {client,profile}=await clientAndProfile();if
 function renderTeams(){const e=byId('sri-cloud-team');if(!e)return;const current=e.value;const o=byId('sri-cloud-operation').value;const teams=state.teams.filter(t=>t.operation_id===o);e.innerHTML=opt(teams,'id','name');if(teams.some(x=>x.id===current))e.value=current;}
 async function createTeam(){const {client,profile}=await clientAndProfile();if(!['admin','manager'].includes(profile.role))throw Error('Somente Gestor/Administrador pode criar equipe.');const operation=byId('sri-cloud-operation').value,name=byId('sri-cloud-team-name').value.trim();if(!operation||name.length<2)throw Error('Selecione a operação e informe o nome da equipe.');const {error}=await client.rpc('create_import_team',{p_operation:operation,p_name:name});if(error)throw apiError(error,'Cadastro de equipe');await loadMetadata();setStatus('Equipe criada no Supabase e pronta para seleção.','success');}
 function cleanStr(s){const x=String(s??'').trim();return x||null;}
-async function preparePair(){if(!ui?.files?.sac||!ui?.files?.ativo||!ui.live)throw Error('Selecione SAC + ATIVO e clique primeiro em Processar arquivos na seção de importação.');const [sac,ativo]=[ui.files.sac,ui.files.ativo];if(sac.size>25*1024*1024||ativo.size>25*1024*1024)throw Error('Arquivo acima de 25 MB: este piloto exige processamento em servidor. Não envie arquivos grandes pelo navegador nesta etapa.');const [sacText,ativoText]=await Promise.all([decoded(sac),decoded(ativo)]);const a=parseAtivo(ativoText),s=parseSac(sacText,a.map);const stage=v113Stage(sacText,a.map);
-// Nomes de operadores diferentes para o mesmo protocolo na ATIVO são conflitos reais,
-// mesmo quando o agente de origem (RETORNO/WHATSSAC) permanece idêntico.
-const operatorNamesByProtocol=new Map();
-for(const line of ativoText.split(/\r?\n|\r/).slice(1)){
- const parts=line.split(';'),id=String(parts[0]||'').trim(),name=String(parts[5]||'').trim().toUpperCase();
- if(!/^\d{8,}$/.test(id)||!name)continue;
- if(!operatorNamesByProtocol.has(id))operatorNamesByProtocol.set(id,new Set());
- operatorNamesByProtocol.get(id).add(name);
+async function preparePair(){
+ if(!ui?.files?.sac||!ui?.files?.ativo||!ui.live)throw Error('Selecione SAC + ATIVO e clique primeiro em Processar arquivos na seção de importação.');
+ const [sac,ativo]=[ui.files.sac,ui.files.ativo];
+ if(sac.size>25*1024*1024||ativo.size>25*1024*1024)throw Error('Arquivo acima de 25 MB: este envio exige processamento em servidor.');
+ const [sacText,ativoText]=await Promise.all([decoded(sac),decoded(ativo)]);
+ const a=parseAtivo(ativoText),s=parseSac(sacText,a.map),stage=v113Stage(sacText,a.map);
+ // Diferenças não interrompem a rodada inteira. Protocolos ambíguos entram como pendências,
+ // mas seus campos não são aplicados à carteira sem revisão humana.
+ const warnings=new Map(),operatorNamesByProtocol=new Map(),statusVariants=new Map();
+ const flag=(id,kind,details)=>{if(!id)return;warnings.set(id+'|'+kind,{protocol_number:id,conflict_type:kind,details});};
+ for(const line of sacText.split(/\r?\n|\r/).slice(1)){
+   if(!line.trim())continue;
+   const parts=line.split(';'),id=String(parts[0]||'').trim();
+   if(!/^\d{8,}$/.test(id))continue;
+   if(!statusVariants.has(id))statusVariants.set(id,new Set());
+   const v=String(parts[11]||'').trim();if(v)statusVariants.get(id).add(v);
+ }
+ for(const line of ativoText.split(/\r?\n|\r/).slice(1)){
+   if(!line.trim())continue;
+   const parts=line.split(';'),id=String(parts[0]||'').trim(),name=String(parts[5]||'').trim().toUpperCase();
+   if(!/^\d{8,}$/.test(id)||!name)continue;
+   if(!operatorNamesByProtocol.has(id))operatorNamesByProtocol.set(id,new Set());
+   operatorNamesByProtocol.get(id).add(name);
+ }
+ for(const [id,status]of stage.statuses){
+   if(status==='CONFLITO')flag(id,'status_divergence', {source:'SAC',values:[...(statusVariants.get(id)||[])].slice(0,12)});
+ }
+ for(const d of a.duplicates){
+   if(d.conflict)flag(d.id,'agent_divergence',{source:'ATIVO',values:(d.agents||[]).slice(0,12)});
+ }
+ for(const [id,names]of operatorNamesByProtocol){
+   if(names.size>1)flag(id,'operator_divergence',{source:'ATIVO',values:[...names].slice(0,12)});
+ }
+ if(stage.invalid||s.bad||a.bad)throw Error(`Foram detectadas ${count(stage.invalid+s.bad+a.bad)} linhas estruturalmente inválidas. Verifique a integridade dos arquivos antes de sincronizar para evitar perdas ou falsas finalizações.`);
+ if(stage.statuses.size===0||a.map.size===0)throw Error('As duas bases precisam conter protocolos válidos.');
+ const rowsSac=[...stage.statuses].map(([id,status])=>({
+   protocol_number:id,
+   status_code:status==='CONFLITO'?null:cleanStr(status),
+   operator_name:operatorNamesByProtocol.get(id)?.size===1?[...operatorNamesByProtocol.get(id)][0]:null,
+   criticality:null
+ }));
+ const rowsAtivo=[...a.map].map(([id,info])=>({
+   protocol_number:id,
+   status_code:null,
+   operator_name:operatorNamesByProtocol.get(id)?.size===1?[...operatorNamesByProtocol.get(id)][0]:null,
+   criticality:null
+ }));
+ if(rowsSac.length+rowsAtivo.length>maxStagedRows)throw Error(`Mais de ${count(maxStagedRows)} protocolos na rodada. Utilize processamento em servidor, ainda não habilitado.`);
+ return {rowsSac,rowsAtivo,sac,ativo,hash:await fingerprint(sac,ativo),warnings:[...warnings.values()],warningProtocols:new Set([...warnings.values()].map(w=>w.protocol_number)).size,duplicatesSac:s.repeated,duplicatesAtivo:a.repeated};
 }
-const operatorConflicts=[...operatorNamesByProtocol].filter(([,names])=>names.size>1);
-const conflicts=[...stage.statuses].filter(([,status])=>status==='CONFLITO').map(([id])=>id);if(a.conflictingAgents||conflicts.length||operatorConflicts.length)throw Error(`Existem divergências reais de status/agente/operador em ${count(a.conflictingAgents+conflicts.length+operatorConflicts.length)} ocorrência(s). Corrija as bases antes de sincronizar. Nenhum dado foi enviado.`);if(stage.invalid||s.bad||a.bad)throw Error(`Foram detectadas ${count(stage.invalid+s.bad+a.bad)} linhas potencialmente inválidas. Corrija as bases para evitar falsas finalizações.`);if(stage.statuses.size===0||a.map.size===0)throw Error('As duas bases precisam conter protocolos válidos.');const rowsSac=[...stage.statuses].map(([id,status])=>({protocol_number:id,status_code:cleanStr(status),operator_name:cleanStr(a.map.get(id)?.operadorOrigem),criticality:null}));const rowsAtivo=[...a.map].map(([id,info])=>({protocol_number:id,status_code:null,operator_name:cleanStr(info.operadorOrigem),criticality:null}));if(rowsSac.length+rowsAtivo.length>maxStagedRows)throw Error(`Mais de ${count(maxStagedRows)} protocolos na rodada. Utilize a importação por servidor, ainda não habilitada.`);return {rowsSac,rowsAtivo,sac,ativo,hash:await fingerprint(sac,ativo),duplicatesSac:s.repeated,duplicatesAtivo:a.repeated};}
 async function insertRows(client,fileId,rows,displayLabel){for(let n=0;n<rows.length;n+=chunkSize){const piece=rows.slice(n,n+chunkSize).map(x=>({...x,file_id:fileId}));const {error}=await client.from('import_rows').insert(piece);if(error)throw apiError(error,'Gravação de '+displayLabel);setStatus(`${displayLabel}: ${count(Math.min(rows.length,n+piece.length))} de ${count(rows.length)} registros enviados...`);}}
-async function uploadPair(){const {client,user,profile}=await clientAndProfile();if(!managerRoles.has(profile.role))throw Error('Somente supervisores e gestores podem realizar importações.');const team=byId('sri-cloud-team').value,day=byId('sri-cloud-day').value,shift=byId('sri-cloud-shift').value.trim();if(!team||!state.teams.some(t=>t.id===team))throw Error('Selecione uma equipe autorizada.');if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||shift.length<2)throw Error('Informe data operacional e turno válidos.');setStatus('Validando arquivos SAC + ATIVO antes do envio...');const pack=await preparePair();if(!confirm(`Confirma o envio para o Supabase?\nEquipe: ${state.teams.find(t=>t.id===team)?.name}\nData: ${day}\nTurno: ${shift}\nSAC: ${pack.rowsSac.length} protocolos\nATIVO: ${pack.rowsAtivo.length} protocolos\nÚltima importação: ${byId('sri-cloud-final').checked?'SIM':'NÃO'}\n\nDados fictícios apenas nesta fase. O fechamento NÃO será automático.`))return;setStatus('Criando lote no Supabase...');let batchId=null,wasCommitted=false;try{
+async function uploadPair(){const {client,user,profile}=await clientAndProfile();if(!managerRoles.has(profile.role))throw Error('Somente supervisores e gestores podem realizar importações.');const team=byId('sri-cloud-team').value,day=byId('sri-cloud-day').value,shift=byId('sri-cloud-shift').value.trim();if(!team||!state.teams.some(t=>t.id===team))throw Error('Selecione uma equipe autorizada.');if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||shift.length<2)throw Error('Informe data operacional e turno válidos.');setStatus('Validando arquivos SAC + ATIVO antes do envio...');const pack=await preparePair();if(!confirm(`Confirma o envio para o Supabase?\nEquipe: ${state.teams.find(t=>t.id===team)?.name}\nData: ${day}\nTurno: ${shift}\nSAC: ${pack.rowsSac.length} protocolos\nATIVO: ${pack.rowsAtivo.length} protocolos\nProtocolos com divergência: ${pack.warningProtocols} (${pack.warnings.length} apontamentos)\nOs protocolos conflitantes ficarão pendentes, sem atualização automática. Finalizações automáticas ficarão suspensas nesta rodada.\nÚltima importação: ${byId('sri-cloud-final').checked?'SIM':'NÃO'}\n\nDados fictícios apenas nesta fase. O fechamento NÃO será automático.`))return;setStatus('Criando lote no Supabase...');let batchId=null,wasCommitted=false;try{
 const {data:batch,error:be}=await client.from('import_batches').insert({team_id:team,operational_day:day,shift_label:shift,final_import:byId('sri-cloud-final').checked,imported_by:user.id,state:'uploading',pair_sha256:pack.hash}).select('id').single();if(be)throw apiError(be,'Criação do lote');batchId=batch.id;
 for(const [src,rows,file] of [['SAC',pack.rowsSac,pack.sac],['ATIVO',pack.rowsAtivo,pack.ativo]]){const {data:f,error:fe}=await client.from('import_files').insert({batch_id:batchId,source:src,original_filename:file.name,total_rows:rows.length}).select('id').single();if(fe)throw apiError(fe,'Arquivo '+src);await insertRows(client,f.id,rows,src);}
-setStatus('Conferindo conflitos e aplicando a carteira no banco...');const {data:result,error:done}=await client.rpc('complete_import',{p_batch:batchId});if(done)throw apiError(done,'Conferência da rodada');wasCommitted=true;state.activeBatch=batchId;if(result?.state!=='ready'){setStatus('O Supabase bloqueou esta rodada devido a divergências reais: '+count(result?.conflicts||0)+'. Revise a base, sem alterar a carteira.','error');return;}setStatus(`Rodada gravada no Supabase com sucesso. ${count(pack.rowsSac.length)} SAC + ${count(pack.rowsAtivo.length)} ATIVO. A carteira centralizada foi atualizada. Turno ainda aberto.`,'success');await readWallet(false);}catch(err){if(batchId&&!wasCommitted){const {error:cleanupError}=await client.rpc('discard_upload',{p_batch:batchId});if(cleanupError)err.message+=' O lote parcial precisa de revisão administrativa: '+batchId;}throw err;}}
+for(let n=0;n<pack.warnings.length;n+=chunkSize){
+ const piece=pack.warnings.slice(n,n+chunkSize).map(w=>({...w,batch_id:batchId}));
+ const {error:we}=await client.from('import_conflicts').insert(piece);
+ if(we)throw apiError(we,'Registro das divergências');
+}
+setStatus('Aplicando protocolos sem divergência e registrando pendências no Supabase...');const {data:result,error:done}=await client.rpc('complete_import',{p_batch:batchId});if(done)throw apiError(done,'Conferência da rodada');wasCommitted=true;state.activeBatch=batchId;if(result?.state!=='ready'){setStatus('O Supabase não validou esta rodada: '+String(result?.state||'estado desconhecido')+'. Confira a apuração antes de reenviar.','error');return;}
+const conflictsNumber=Number(result?.conflicts||0);
+setStatus(`Rodada gravada no Supabase. SAC: ${count(pack.rowsSac.length)}; ATIVO: ${count(pack.rowsAtivo.length)}. ${conflictsNumber?count(conflictsNumber)+' protocolo(s) divergente(s) registrado(s) para revisão, sem aplicação automática. Finalizações automáticas suspensas nesta rodada.':'Nenhuma divergência pendente.'} Turno ainda aberto.`,'success');await readWallet(false);}catch(err){if(batchId&&!wasCommitted){const {error:cleanupError}=await client.rpc('discard_upload',{p_batch:batchId});if(cleanupError)err.message+=' O lote parcial precisa de revisão administrativa: '+batchId;}throw err;}}
 async function readWallet(operator){const {client,profile}=await clientAndProfile();let q=client.from('protocol_current').select('team_id,protocol_number,last_status_code,operator_name,criticality,lifecycle,last_seen_at').order('last_seen_at',{ascending:false}).limit(80);if(!operator&&byId('sri-cloud-team')?.value)q=q.eq('team_id',byId('sri-cloud-team').value);const {data,error}=await q;if(error)throw apiError(error,'Consulta da carteira');const target=byId(operator?'sri-cloud-mine-results':'sri-cloud-results');if(!target)return;target.innerHTML=`<p style="font-size:13px;margin:12px 0">${count(data.length)} protocolo(s) retornado(s) pela consulta (máximo 80 nesta visualização). Permissões RLS aplicadas.</p>`+(data.length?`<table class="v20-table" style="min-width:640px;width:100%"><thead><tr><th>Protocolo</th><th>CD_STATUS</th><th>Operador</th><th>Criticidade</th><th>Situação</th></tr></thead><tbody>${data.map(x=>`<tr><td>${esc(x.protocol_number)}</td><td>${esc(x.last_status_code||'—')}</td><td>${esc(x.operator_name||'—')}</td><td>${esc(x.criticality||'—')}</td><td>${esc(x.lifecycle)}</td></tr>`).join('')}</tbody></table>`:'<p>Não há protocolos visíveis para seu perfil nesta consulta.</p>');setStatus('Carteira consultada diretamente no Supabase.','success');}
 function init(){installPanel();installOperatorPanel();}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
