@@ -4,9 +4,9 @@
  */
 (function () {
 'use strict';
-var state={all:[],visible:[],loaded:false,authorized:false,client:null,role:null,fetching:false};
+var state={all:[],visible:[],loaded:false,authorized:false,client:null,role:null,fetching:false,generation:0};
 var lastIdentity=null;
-function hideSensitive(){state.all=[];state.visible=[];state.loaded=false;state.authorized=false;state.role=null;['sri-prd-analytics','sri-prd-reports'].forEach(function(id){var p=document.getElementById(id);if(p)p.style.display='none'});['sri-prd-kpis','sri-prd-bars','sri-prd-preview','sri-prd-print'].forEach(function(id){var p=document.getElementById(id);if(p)p.replaceChildren()})}
+function hideSensitive(){state.generation++;state.all=[];state.visible=[];state.loaded=false;state.authorized=false;state.role=null;['sri-prd-analytics','sri-prd-reports'].forEach(function(id){var p=document.getElementById(id);if(p)p.style.display='none'});['sri-prd-kpis','sri-prd-bars','sri-prd-preview','sri-prd-print'].forEach(function(id){var p=document.getElementById(id);if(p)p.replaceChildren()})}
 
 function byId(x){return document.getElementById(x)}
 function el(tag,cls,text){var x=document.createElement(tag);if(cls)x.className=cls;if(text!==undefined)x.textContent=String(text);return x}
@@ -94,9 +94,10 @@ async function load(){
  if(state.fetching||!state.authorized||!state.client)return;
  var start=byId('sri-prd-from').value,end=byId('sri-prd-to').value;
  if(!start||!end||start>end){status('Informe um intervalo válido.',true);return}
- state.fetching=true;status('Consultando apurações consolidadas...',false);
+ var generation=state.generation;state.fetching=true;status('Consultando apurações consolidadas...',false);
  try{
  var response=await state.client.from('sri_v_daily_operational_metrics').select('*').gte('operational_day',start).lte('operational_day',end).order('operational_day',{ascending:false}).limit(1500);
+ if(generation!==state.generation||!state.authorized)return;
  if(response.error)throw response.error;
  state.all=response.data||[];state.loaded=true;
  options('sri-prd-team',uniqueItems(state.all,'team_id','team_name'),'Todas as equipes');
