@@ -45,7 +45,7 @@ function initialize(){
  '@media print{@page{size:A4 portrait;margin:13mm}body.sri-prd-print-mode>*:not(#sri-prd-print){display:none!important}body.sri-prd-print-mode #sri-prd-print{display:block!important;position:static!important;width:100%;background:white;color:black;font:10pt Arial,sans-serif}body.sri-prd-print-mode #sri-prd-print h1{font-size:16pt;color:#0b45b7}body.sri-prd-print-mode #sri-prd-print table{width:100%;border-collapse:collapse;font-size:9pt;table-layout:fixed}body.sri-prd-print-mode #sri-prd-print th,body.sri-prd-print-mode #sri-prd-print td{border:1px solid #ccc;padding:5px;overflow-wrap:anywhere}body.sri-prd-print-mode #sri-prd-print tr{break-inside:avoid}body.sri-prd-print-mode #sri-prd-print thead{display:table-header-group}body.sri-prd-print-mode #sri-prd-print .sri-prd-print-meta{color:#555;margin-bottom:10px}}'
  ].join('');document.head.append(css);
  var a=panel('Indicadores centralizados · Supabase','Gráficos e totais calculados a partir da apuração mais recente por equipe/data/turno. Dados sujeitos às permissões de acesso.');
- a.id='sri-prd-analytics';
+ a.id='sri-prd-analytics';a.style.display='none';
  var filters=el('div','sri-prd-filters');filters.append(fieldDate('sri-prd-from','De',today(-7)),fieldDate('sri-prd-to','Até',today()),selectNode('sri-prd-team','Equipe',[['','Todas as equipes']]),selectNode('sri-prd-shift','Turno',[['','Todos os turnos']]),button('Atualizar',load),button('Limpar filtros',reset,true));
  a.append(filters);
  var k=el('div','sri-prd-kpis');k.id='sri-prd-kpis';a.append(k);
@@ -53,7 +53,7 @@ function initialize(){
  var msg=el('p','sri-prd-summary','Faça login como Supervisor/Gestor e clique em Atualizar.');msg.id='sri-prd-message';msg.setAttribute('role','status');a.append(msg);
  byId('intelligence').insertBefore(a,byId('intelligence').firstChild);
  var r=panel('Relatórios operacionais A4 · Dados sincronizados','Selecione a finalidade, confira a prévia e imprima em A4 (Salvar como PDF no navegador). Não há formato 16:9.');
- r.id='sri-prd-reports';
+ r.id='sri-prd-reports';r.style.display='none';
  var controls=el('div','sri-prd-filters');
  controls.append(selectNode('sri-prd-report-type','Finalidade',[['executivo','Executivo'],['equipe','Operação por equipe'],['divergencias','Conferência e divergências'],['fechamento','Fechamento operacional']]),
  button('Gerar prévia',preview),button('Imprimir / PDF A4',printReport));
