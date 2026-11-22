@@ -115,6 +115,10 @@ if(process.env.SRI_RENDER_PDF_FIXTURES==='1'){
   const extracted=execFileSync('pdftotext',[pdfPath,'-'],{encoding:'utf8',timeout:20000});
   assert.match(extracted,/SAC Retorno Intelligence 2\.0/);
   assert.match(extracted,/Equipe Leste/);
+  const ids=[...extracted.matchAll(/Turno\s+(\d{3})/g)].map(x=>x[1]);
+  assert.equal(ids.length,225,'A paginação não pode duplicar linhas');
+  assert.equal(new Set(ids).size,225,'A paginação não pode perder turnos');
+  assert.equal(extracted.split('TOTAL').length-1,type==='fechamento'?0:1,'A linha TOTAL deve aparecer apenas uma vez');
   if(type!=='fechamento')assert.match(extracted,/TOTAL/);
   console.log('PASS PDF A4 '+type+': '+pageMatch[1]+' páginas, '+fs.statSync(pdfPath).size+' bytes.');
  }
