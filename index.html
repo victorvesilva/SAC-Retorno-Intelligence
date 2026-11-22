@@ -2033,7 +2033,7 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
 <section class="tab-content fade-in v20-tab" id="v20-closure"><div class="v20-between"><div><div class="eyebrow">ACOMPANHAMENTO E RESULTADOS</div><h2 class="v20-hero-title">Fechamento Operacional</h2><p class="v20-muted">Prévias por extração e consolidado diário gerado sob demanda.</p></div><div class="v20-steps"><span>1 · Prévia horária</span><span>2 · Consolidado diário</span></div></div><div class="v20-panel"><div class="v20-controls"><label class="v20-field">Data de referência<input id="v20-cl-date" type="date"/></label><label class="v20-field">Visualização<select id="v20-cl-mode"><option value="hour">Prévia por horário</option><option value="day">Consolidado diário</option></select></label><label class="v20-field">Equipe<select id="v20-cl-team"></select></label><button class="v20-button secondary" data-v20="closingRefresh">Aplicar filtros</button></div><div class="v20-notice" style="margin-top:12px">A primeira rodada SAC + ATIVO do dia é a referência. Cada rodada seguinte compara a anterior; sem importação, não são criadas comparações fictícias.</div></div><div id="v20-cl-body"></div></section>
 <section class="tab-content fade-in v20-tab" id="v20-pending"><div class="eyebrow">OPERAÇÃO DIÁRIA</div><h2 class="v20-hero-title">Pendências e Ações</h2><p class="v20-muted">Atalhos para ocorrências existentes, sem criar uma segunda base de registros.</p><div id="v20-pending-body"></div></section>
 <section class="tab-content fade-in v20-tab" id="v20-alerts"><div class="eyebrow">BASE E QUALIDADE</div><h2 class="v20-hero-title">Conciliação e Alertas</h2><p class="v20-muted">Análise das divergências após as extrações e validação presencial das tratativas.</p><div id="v20-alert-body"></div></section>
-<section class="tab-content fade-in v20-tab" id="v20-settings"><div class="eyebrow">ADMINISTRAÇÃO</div><h2 class="v20-hero-title">Configurações</h2><div class="v20-row" style="margin:14px 0"><button class="v20-button secondary" data-v20="settingsUsers">Usuários e operadores</button><button class="v20-button secondary" data-v20="settingsTeams">Equipes</button><button class="v20-button secondary" data-v20="settingsAccess">Gestão de acessos</button><button class="v20-button secondary" data-v20="settingsImport">Responsáveis por importação</button><button class="v20-button secondary" data-v20="settingsBulk">Importar cadastros</button><button class="v20-button secondary" data-v20="settingsLegacy">Vincular legados</button><button class="v20-button secondary" data-v20="settingsGoals">Metas e Indicadores</button></div><div id="v20-settings-body"></div></section>
+<section class="tab-content fade-in v20-tab" id="v20-settings"><div class="eyebrow">ADMINISTRAÇÃO</div><h2 class="v20-hero-title">Configurações</h2><div class="v20-row" style="margin:14px 0"><button class="v20-button secondary" data-v20="settingsUsers">Gestão de Usuários</button><button class="v20-button secondary" data-v20="settingsGoals">Metas e Indicadores</button></div><div id="v20-settings-body"></div></section>
 <section class="tab-content fade-in v20-tab" id="v20-account"><div class="eyebrow">CONTA</div><h2 class="v20-hero-title">Minha Conta</h2><div id="v20-account-body"></div></section>
 <section class="tab-content fade-in v20-tab" id="v20-catalog"><div class="eyebrow">ACOMPANHAMENTO E RESULTADOS</div><h2 class="v20-hero-title">Consultas e Exportações</h2><p class="v20-muted">Consultas e exportações da mesma base, complementando os relatórios especializados sem novos cadastros ou cálculos paralelos.</p><div id="v20-catalog-body"></div></section>
 <div aria-labelledby="v20-dialog-title" aria-modal="true" class="v20-modal" id="v20-modal" role="dialog"><div class="v20-dialog"><div class="v20-between"><h2 id="v20-dialog-title" style="margin:0;color:#124179">Detalhes</h2><button class="v20-button secondary" data-v20="closeModal">Fechar</button></div><div id="v20-dialog-body" style="margin-top:16px"></div><div class="v20-modal-foot" id="v20-dialog-foot"></div></div></div>
@@ -2674,6 +2674,28 @@ function distNormalize(s){return String(s||'').trim().replace(/\s+/g,' ').normal
 function distUniqueId(){return 'op'+Date.now().toString(36)+Math.random().toString(36).slice(2,9)}
 function distOperator(id){return distRoster.find(o=>o.id===id)}
 window.sriGetDistributionRoster = () => (distRoster||[]).map(o=>({id:o.id,name:o.name,situation:o.situation}));
+window.sriSyncCloudRoster = function(profiles,memberships,teams){
+  const eligible=new Set(),now=new Set(),teamMap=new Map();let changed=false;
+  const teamsById=new Map((teams||[]).map(x=>[x.id,x]));
+  const members=new Map();for(const m of memberships||[])if(!members.has(m.user_id))members.set(m.user_id,teamsById.get(m.team_id));
+  const supNames=new Map((profiles||[]).map(x=>[x.id,x.full_name]));
+  for(const profile of profiles||[]){if(profile.role!=='operator')continue;
+    const team=members.get(profile.id);if(!team)continue;
+    const id='acct:'+profile.id,status=profile.operational_status||'Ativo';
+    const active=['Ativo','Promovido'].includes(status);
+    now.add(id);teamMap.set(id,team.id);if(active)eligible.add(id);
+    const name=String(profile.full_name||'Operador sem nome');
+    const supervisor=supNames.get(profile.supervisor_id)||team.name||'Sem supervisor';
+    let op=distRoster.find(x=>x.id===id);
+    if(!op){distRoster.push({id,name,supervisor,situation:status,active});changed=true;}
+    else if(op.name!==name||op.supervisor!==supervisor||op.situation!==status||op.active!==active){Object.assign(op,{name,supervisor,situation:status,active});changed=true;}
+  }
+  for(const op of distRoster.filter(x=>x.id.startsWith('acct:'))){if(!now.has(op.id)&&op.active){op.active=false;op.situation='Desligado';changed=true;}}
+  window.sriUnifiedCloudEligibleIds=eligible;window.sriUnifiedCloudRosterTeams=teamMap;
+  if(changed){try{distTargetOptions();distBuildFilterOptions();distRenderRoster();distRefreshStats();distApplyFilters();}catch(e){console.warn('[Gestão unificada] Atualização visual da distribuição:',e)}}
+};
+window.sriRefreshCloudDistributionOptions=()=>{try{distTargetOptions();distBuildFilterOptions();distRenderRoster();distApplyFilters();}catch(e){console.warn('[Gestão unificada] Atualização de opções:',e)}};
+
 window.sriGetDistributionDetails = () => {
   const details={}; const assigned=distAssignments||{};
   for(const r of (ui.apured||[])){
@@ -5509,7 +5531,7 @@ switchTab=function(tab){
 };
 function visibleNavigation(){buildNav();
  $('v20-user-name').textContent=`${current.name} · ${role()==='admin'?'Gestor/ADM':role()==='supervisor'?'Supervisor/Assistente':'Operador'}`;
- const h=document.querySelector('.hero-copy p');if(h)h.textContent='Login via Supabase. Importações, tratativas e relatórios ainda são locais e não sincronizados.';
+ const h=document.querySelector('.hero-copy p');if(h)h.textContent='Acesso pelo Supabase · apuração e carteiras sincronizadas conforme módulos integrados.';
 }
 let sriAuthClientPromise=null;
 let sriRegisterMode=false;
@@ -5551,7 +5573,7 @@ async function sriAuthorizeUser(authUser){
    team:'Não vinculada',active:true,importAuthorized:false,supervisorId:null,rosterId:null};
  $('v20-login').hidden=true;document.body.classList.remove('v20-not-logged');document.body.classList.add('v20-active');
  visibleNavigation();switchTab(uiRole==='operator'?'v20-mine':'overview');
- const warn=document.getElementById('sri-stage2-warning');if(warn)warn.hidden=false;queueMicrotask(()=>{window.sriSnapshotAfterAuth?.();window.sriOperatorAfterAuth?.();});
+ const warn=document.getElementById('sri-stage2-warning');if(warn)warn.hidden=false;queueMicrotask(()=>{window.sriSnapshotAfterAuth?.();window.sriOperatorAfterAuth?.();window.sriUnifiedAfterAuth?.();});
 }
 async function doLogin(email,password){
  const client=await sriClient();
@@ -5585,7 +5607,7 @@ async function logout(){try{const client=await sriClient();await client.auth.sig
  document.body.classList.add('v20-not-logged');document.body.classList.remove('v20-active');
  closeModal();$('v20-login-error').textContent='';
 }
-function syncRoster(){// Todos os operadores vinculados à mesma base cadastral; manter IDs antigos quando possível.
+function syncRoster(){if(window.sriGetSupabaseClient)return;// Todos os operadores vinculados à mesma base cadastral; manter IDs antigos quando possível.
  let changed=false;
  for(const u of data.users.filter(x=>x.role==='operator')){
   let found=u.rosterId?distRoster.find(r=>r.id===u.rosterId):null;
@@ -5746,7 +5768,7 @@ function exportData(rows,filename){csvDownload(rows,filename)}
 function exportHourly(){const d=$('v20-cl-date').value,team=$('v20-cl-team').value,s=closingSummary(d,team);exportData([['De','Até','CD 12 anterior','Finalizados','Mudanças CD_STATUS','Novos CD 12'],...s.rounds.map(r=>[r.fromLabel,r.toLabel,r.totals?.old12,r.totals?.finalized,r.totals?.statusChanges,r.totals?.new12])],`SAC_Evolucao_Horaria_${d}.csv`)}
 function exportDaily(){const d=$('v20-cl-date').value,team=$('v20-cl-team').value,s=closingSummary(d,team);exportData([['Dia','Equipe','Rodadas','Finalizados únicos','Mudanças CD_STATUS','Novos CD 12','Protocolos tratados','Tratativas concluídas'],[d,team,s.rounds.length,s.finalized,s.changes,s.new12,s.treated,s.complete]],`SAC_Fechamento_Diario_${d}.csv`)}
 // Cadastro único e Gestão de acessos.
-function renderSettings(){requireRole(true);if(settingsPage==='users')renderUsers();if(settingsPage==='teams')renderTeams();if(settingsPage==='access')renderAccess();if(settingsPage==='import')renderImportRights();if(settingsPage==='goals')v20RenderGoalSettings()}
+function renderSettings(){requireRole(true);if(settingsPage==='users'){if(window.sriUnifiedUsersRender)window.sriUnifiedUsersRender($('v20-settings-body'));else $('v20-settings-body').textContent='Gestão de usuários: módulo Supabase indisponível. Atualize a página.';return;}if(settingsPage==='goals')v20RenderGoalSettings()}
 function renderUsers(){const list=data.users.filter(scopedUser);$('v20-settings-body').innerHTML=`<div class="v20-panel"><div class="v20-between"><div><h3>Gestão de Usuários e Operadores</h3><p class="v20-muted">Cadastro único. Não é necessário importar operadores para distribuição.</p></div>${action('Novo usuário','newUser')}</div>${note('No HTML de homologação, utilize somente dados fictícios. CPF e credenciais reais exigem o servidor, proteção criptográfica e aprovação corporativa.')}
  ${table(['Usuário / e-mail','Perfil','Equipe','CPF (mascarado)','Situação','Operação'],list.map(u=>`<tr><td><b>${esc(u.name)}</b><div class="v20-muted">${esc(u.email)}</div></td><td>${badge(u.role)}</td><td>${esc(u.team)}</td><td>${esc(u.cpfMask||'—')}</td><td>${badge(u.active?'Ativo':'Inativo',u.active?'ok':'warn')}</td><td>${action('Editar','editUser_'+u.id,true)}</td></tr>`))}</div>`}
 function cpfCheck(c){const v=String(c||'').replace(/\D/g,'');if(v.length!==11||/^(\d)\1+$/.test(v))return false;for(let t=9;t<11;t++){let s=0;for(let i=0;i<t;i++)s+=Number(v[i])*(t+1-i);let digit=(s*10)%11;if(digit===10)digit=0;if(digit!==Number(v[t]))return false}return true}
@@ -5974,8 +5996,8 @@ function v20EligibleUser(u){return u?.role==='operator'&&u.active&&['Ativo','Pro
 // Cadastros da homologação são a fonte oficial dos elegíveis. Registros legados não vinculados
 // permanecem para consulta e migração, porém não recebem novas atribuições.
 const v20LegacyEligible=distEligible;
-distEligible=function(r){const u=ownerLink(r?.id);return !!(u&&v20EligibleUser(u)&&v20LegacyEligible(r))};
-function syncRoster(){
+distEligible=function(r){if(String(r?.id||'').startsWith('acct:')){const teamId=document.getElementById('sri-daily-team')?.value;return !!(teamId&&window.sriUnifiedCloudRosterTeams?.get(r.id)===teamId&&window.sriUnifiedCloudEligibleIds?.has(r.id)&&v20LegacyEligible(r));}return false;};
+function syncRoster(){if(window.sriGetSupabaseClient)return;
  let changed=false;
  for(const u of data.users.filter(x=>x.role==='operator')){
   let found=u.rosterId?distRoster.find(r=>r.id===u.rosterId):null;
@@ -5987,7 +6009,7 @@ function syncRoster(){
  }
  if(changed){distPersist();save();try{distRosterChange()}catch(e){console.warn('Atualização de operadores',e)}}
 }
-function renderSettings(){requireRole(true);if(settingsPage==='users')renderUsers();else if(settingsPage==='teams')renderTeams();else if(settingsPage==='access')renderAccess();else if(settingsPage==='import')renderImportRights();else if(settingsPage==='bulk')v20RenderBulk();else if(settingsPage==='legacy')v20RenderLegacy();else if(settingsPage==='goals')v20RenderGoalSettings();}
+function renderSettings(){requireRole(true);if(settingsPage==='users'){if(window.sriUnifiedUsersRender)window.sriUnifiedUsersRender($('v20-settings-body'));else $('v20-settings-body').textContent='Gestão de usuários: módulo Supabase indisponível. Atualize a página.';return;}if(settingsPage==='goals')v20RenderGoalSettings()}
 function renderUsers(){const list=data.users.filter(scopedUser),orphans=v20LegacyPending();
  $('v20-settings-body').innerHTML=`<div class="v20-panel"><div class="v20-between"><div><h3>Gestão de Usuários e Operadores</h3><p class="v20-muted">Cadastro único para login, equipe, situação e elegibilidade na distribuição.</p></div>${action('Novo cadastro','newUser')}</div>
  <div class="v20-grid">${stat('Cadastros visíveis',list.length)}${stat('Operadores habilitados',list.filter(v20EligibleUser).length)}${stat('Operadores legados sem vínculo',role()==='admin'?orphans.length:orphans.filter(x=>x.supervisor===current.name||x.supervisor===current.team).length)}${stat('Cadastros pendentes',list.filter(x=>!x.active).length)}</div>
@@ -6616,7 +6638,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       if(t){$('sri-daily-operation').value=t.operation_id;setTeams();$('sri-daily-team').value=t.id;}
       $('sri-daily-day').value=data.operational_day;$('sri-daily-shift').value=data.shift_label;
       $('sri-daily-result').innerHTML=`<p><strong>Apuração recuperada do Supabase.</strong> ${Number(data.indicators?.protocolos_consolidados)||0} protocolos consolidados. Equipe: ${esc(t?.name||'Equipe autorizada')}. Data ${esc(data.operational_day)} · ${esc(data.shift_label)}. Alertas informativos: ${Number(data.warnings?.divergencias_informativas)||0}.</p>`;
-      status('Indicadores e carteira de distribuição carregados do Supabase. Os arquivos SAC/ATIVO não são necessários neste navegador.','success');
+      status('Indicadores e carteira de distribuição carregados do Supabase. Os arquivos SAC/ATIVO não são necessários neste navegador.','success');window.sriUnifiedAfterSnapshot?.();
     }finally{ctx.restoring=false;}
   }
   async function loadLast(){const client=await auth();
@@ -6769,7 +6791,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     stateMsg('sri33-link-status',info+(data?.unlinked_names?.length?' Operadores pendentes: '+data.unlinked_names.join(', '):''),data?.unlinked?'warning':'success');
     return data;
   }
-  window.sriSyncOperatorTasks=publishTasks;
+  window.sriSyncOperatorTasks=publishTasks;window.sri33LegacyRefresh=refreshLinks;
 
   function operatorPanel(){
     if($('sri33-mine'))return;
@@ -6860,6 +6882,148 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   };
   const init=()=>{adminBox();progressPanel();operatorPanel();};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+
+</script>
+<style id="sri-unified-users-styles">
+#sri33-links{display:none!important}
+#sri-unified-legacy-wrap[open] #sri33-links{display:block!important}
+.sri-unified-users [data-state="error"]{color:#b42318}
+.sri-unified-users [data-state="success"]{color:#137139}
+.sri-unified-users .v20-field{min-width:165px}
+@media(max-width:600px){.sri-unified-users .v20-row>*{min-width:100%!important}}
+</style>
+<script id="sri-unified-users">
+/* SAC Retorno Intelligence 2.0 — Gestao UNICA de usuarios (Supabase)
+ * O perfil e um atributo da conta, a equipe e uma atribuicao gerencial.
+ * Operadores novos entram como operator SEM carteira, ate vinculo de equipe.
+ */
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const roles={operator:'Operador',supervisor:'Supervisor',manager:'Gestor',admin:'Administrador',viewer:'Consulta'};
+const avail=['Ativo','Promovido','Férias','Afastamento','Desligado'];
+const state={rows:[],teams:[],operations:[],memberships:[],user:null,role:null,client:null,filter:'',viewRole:'all',viewTeam:'all',editing:null,loading:false};
+const defaultTeamOf=id=>state.memberships.filter(m=>m.user_id===id).map(m=>state.teams.find(t=>t.id===m.team_id)).filter(Boolean)[0]||null;
+const teamName=id=>state.teams.find(t=>t.id===id)?.name||'Sem equipe';
+const supervisorName=id=>state.rows.find(u=>u.id===id)?.full_name||'—';
+const msg=(message,kind='')=>{const el=$('sri-unified-message');if(el){el.textContent=message;el.dataset.state=kind}};
+async function session(){
+ const client=await window.sriGetSupabaseClient?.();if(!client)throw Error('Conexão Supabase indisponível.');
+ const {data,error}=await client.auth.getUser();if(error||!data?.user)throw Error('Entre no sistema para acessar esta área.');
+ const {data:profile,error:pe}=await client.from('profiles').select('id,role').eq('id',data.user.id).single();
+ if(pe||!['admin','manager'].includes(profile?.role))throw Error('Gestão de usuários é exclusiva da gestão.');
+ state.client=client;state.user=data.user;state.role=profile.role;return client;
+}
+async function all(client,table,columns){
+ const out=[];for(let offset=0;offset<10000;offset+=800){const {data,error}=await client.from(table).select(columns).range(offset,offset+799);if(error)throw Error(table+': '+error.message);out.push(...(data||[]));if((data||[]).length<800)return out;}
+ throw Error('Diretório acima de 10.000 registros. É necessário paginar a gestão de usuários.');
+}
+async function refresh(){
+ const client=await session();const [p,t,op,m]=await Promise.all([
+ all(client,'profiles','id,full_name,contact_email,role,operational_status,supervisor_id'),
+ all(client,'teams','id,name,operation_id,active'),
+ all(client,'operations','id,name,active'),
+ all(client,'team_memberships','user_id,team_id')
+ ]);
+ state.rows=p;state.teams=t;state.operations=op;state.memberships=m;
+ if(typeof window.sriSyncCloudRoster==='function')window.sriSyncCloudRoster(state.rows,state.memberships,state.teams);
+ return state;
+}
+function selectUsers(){return state.rows.filter(u=>{
+ const term=state.filter.trim().toLocaleLowerCase('pt-BR');
+ const match=(!term||[u.full_name,u.contact_email,u.id,teamName(defaultTeamOf(u.id)?.id)].some(x=>String(x||'').toLocaleLowerCase('pt-BR').includes(term)));
+ return match&&(state.viewRole==='all'||u.role===state.viewRole)&&(state.viewTeam==='all'||(state.viewTeam==='none'?!defaultTeamOf(u.id):defaultTeamOf(u.id)?.id===state.viewTeam));
+ });}
+function stats(){const ops=state.rows.filter(u=>u.role==='operator');return `<div class="v20-grid">
+ <div class="v20-stat"><span>Contas no Supabase</span><b>${state.rows.length}</b></div>
+ <div class="v20-stat"><span>Operadores ativos</span><b>${ops.filter(u=>['Ativo','Promovido'].includes(u.operational_status||'Ativo')).length}</b></div>
+ <div class="v20-stat"><span>Operadores sem equipe</span><b>${ops.filter(u=>!defaultTeamOf(u.id)).length}</b></div>
+ </div>`;}
+function table(){const data=selectUsers().sort((a,b)=>String(a.full_name).localeCompare(String(b.full_name),'pt-BR'));
+ return `<div style="overflow-x:auto"><table class="v20-table" style="min-width:670px;width:100%"><thead><tr><th>Usuário</th><th>Perfil de acesso</th><th>Equipe</th><th>Situação operacional</th><th>Ação</th></tr></thead><tbody>${data.map(u=>{
+ const team=defaultTeamOf(u.id),status=u.operational_status||'Ativo';
+ return `<tr><td><strong>${esc(u.full_name||'Sem nome')}</strong><div class="v20-muted">${esc(u.contact_email||'ID '+u.id.slice(0,8))}</div></td><td>${esc(roles[u.role]||u.role)}</td><td>${esc(team?.name||'Aguardando definição')}</td><td>${esc(status)}</td><td><button type="button" class="v20-button secondary sri-user-edit" data-id="${esc(u.id)}">Gerenciar</button></td></tr>`;}).join('')||'<tr><td colspan="5">Nenhum cadastro corresponde aos filtros.</td></tr>'}</tbody></table></div>`;
+}
+function form(u){const team=defaultTeamOf(u.id),status=u.operational_status||'Ativo';const supervisors=state.rows.filter(x=>['supervisor','manager','admin'].includes(x.role)&&(x.role!=='supervisor'||(team&&state.memberships.some(m=>m.user_id===x.id&&m.team_id===team.id))));
+ return `<section id="sri-unified-editor" class="v20-panel" style="margin-top:14px;border:1px solid #b9cae6;padding:16px;border-radius:12px" aria-label="Editar usuário">
+ <div class="v20-between"><h3 style="margin:0">Gerenciar ${esc(u.full_name)}</h3><button type="button" class="v20-button secondary" id="sri-unified-cancel">Fechar</button></div>
+ <p class="v20-muted">Conta criada no Supabase. Perfil inicial: Operador. Nenhum cadastro paralelo será criado.</p>
+ <div class="v20-row" style="display:flex;flex-wrap:wrap;gap:12px;margin:12px 0">
+ <label class="v20-field">Equipe<select id="sri-user-team" ${['operator','supervisor'].includes(u.role)?'':'disabled'}><option value="">Sem equipe</option>${state.teams.filter(t=>t.active||t.id===team?.id).map(t=>`<option value="${esc(t.id)}" ${t.id===team?.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select></label>
+ <label class="v20-field">Situação operacional<select id="sri-user-status" ${['operator','supervisor'].includes(u.role)?'':'disabled'}>${avail.map(v=>`<option value="${esc(v)}" ${v===status?'selected':''}>${esc(v)}</option>`).join('')}</select></label>
+ <label class="v20-field">Supervisor responsável<select id="sri-user-supervisor" ${u.role==='operator'?'':'disabled'}><option value="">Não definido</option>${supervisors.map(x=>`<option value="${esc(x.id)}" ${x.id===u.supervisor_id?'selected':''}>${esc(x.full_name)}</option>`).join('')}</select></label>
+ </div>
+ ${['operator','supervisor'].includes(u.role)?'<button class="v20-button" type="button" id="sri-user-save">Salvar equipe e situação</button>':'<p class="v20-muted">Gestor e Administrador não dependem de vínculo operacional.</p>'}
+ ${state.role==='admin'?`<div style="margin-top:16px;padding-top:12px;border-top:1px solid #d9e4f5"><label class="v20-field">Perfil de acesso<select id="sri-user-role" ${u.id===state.user?.id?'disabled':''}>${Object.entries(roles).map(([key,label])=>`<option value="${key}" ${key===u.role?'selected':''}>${label}</option>`).join('')}</select></label><button type="button" class="v20-button secondary" style="margin-top:8px" id="sri-user-change-role" ${u.id===state.user?.id?'disabled':''}>Alterar perfil (Administrador)</button><p class="v20-muted">A mudança de perfil é independente da equipe e exige permissão administrativa.</p></div>`:''}
+ </section>`;}
+function setTable(){const node=$('sri-unified-table');if(node){node.innerHTML=table();node.querySelectorAll('.sri-user-edit').forEach(b=>b.addEventListener('click',()=>openEditor(b.dataset.id)));}}
+function openEditor(id){const u=state.rows.find(x=>x.id===id);if(!u)return;state.editing=id;const root=$('sri-unified-detail');if(!root)return;root.innerHTML=form(u);$('sri-unified-cancel').addEventListener('click',()=>{root.innerHTML='';state.editing=null});
+ $('sri-user-team')?.addEventListener('change',()=>{const sup=$('sri-user-supervisor');if(!sup)return;const selected=$('sri-user-team').value;sup.innerHTML='<option value="">Não definido</option>'+state.rows.filter(x=>['supervisor','manager','admin'].includes(x.role)&&(x.role!=='supervisor'||state.memberships.some(m=>m.user_id===x.id&&m.team_id===selected))).map(x=>`<option value="${esc(x.id)}">${esc(x.full_name)}</option>`).join('');});
+ $('sri-user-save')?.addEventListener('click',()=>saveTeam(id));$('sri-user-change-role')?.addEventListener('click',()=>changeRole(id));
+}
+async function saveTeam(id){const u=state.rows.find(x=>x.id===id);if(!u)return;const team=$('sri-user-team')?.value||null,status=$('sri-user-status')?.value,supervisor=$('sri-user-supervisor')?.value||null;
+ if(status==='Desligado'&&!confirm('Marcar o usuário como Desligado? A publicação de novas tarefas será impedida, e carteiras ativas precisam ser redistribuídas antes.'))return;
+ msg('Atualizando equipe e situação no Supabase...');try{const client=await session();const {error}=await client.rpc('sri_set_user_team',{p_user:id,p_team:team,p_status:status,p_supervisor:supervisor});if(error)throw Error(error.message);await refresh();setTable();openEditor(id);msg('Equipe e situação atualizadas. O cadastro de login permanece único.','success');}catch(e){msg('Não foi possível salvar: '+e.message,'error');}}
+async function changeRole(id){const u=state.rows.find(x=>x.id===id);const role=$('sri-user-role')?.value;if(!u||!role||u.role===role)return;if(!confirm(`Alterar o perfil de ${u.full_name} de ${roles[u.role]||u.role} para ${roles[role]||role}?\n\nEsta ação modifica permissões reais no Supabase.`))return;
+ msg('Atualizando perfil de acesso...');try{const client=await session();if(state.role!=='admin')throw Error('Somente o Administrador pode promover perfis.');const {error}=await client.rpc('admin_change_user_role',{p_user_id:id,p_new_role:role});if(error)throw Error(error.message);await refresh();setTable();openEditor(id);msg('Perfil atualizado no banco. O usuário deve entrar novamente para atualizar a interface.','success');}catch(e){msg('Não foi possível alterar o perfil: '+e.message,'error');}}
+async function createTeam(){const op=$('sri-new-team-operation')?.value;const name=$('sri-new-team-name')?.value?.trim();if(!op||!name||name.length<2){msg('Selecione uma operação e informe o nome da equipe.','error');return;}msg('Criando equipe...');try{const client=await session();const {error}=await client.rpc('create_import_team',{p_operation:op,p_name:name});if(error)throw Error(error.message);await refresh();render($('v20-settings-body'));msg('Equipe criada no banco. Agora atribua os operadores.','success');}catch(e){msg('Não foi possível criar a equipe: '+e.message,'error');}}
+function render(root){if(!root)return;root.innerHTML=`<div class="v20-panel sri-unified-users" style="padding:18px"><div class="v20-between"><div><h3>Gestão de Usuários</h3><p class="v20-muted">Um cadastro por pessoa. Perfil automático Operador; equipe e carteira definidas pela gestão.</p></div><button type="button" class="v20-button secondary" id="sri-unified-refresh">Atualizar</button></div>
+ <div id="sri-unified-stats"></div>
+ <div class="v20-row" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:14px 0"><label class="v20-field">Pesquisar<input id="sri-unified-search" type="search" placeholder="Nome ou e-mail" value="${esc(state.filter)}"></label><label class="v20-field">Perfil<select id="sri-unified-role"><option value="all">Todos</option>${Object.entries(roles).map(([key,label])=>`<option value="${key}" ${state.viewRole===key?'selected':''}>${label}</option>`).join('')}</select></label><label class="v20-field">Equipe<select id="sri-unified-team"><option value="all">Todas</option><option value="none">Sem equipe</option>${state.teams.map(t=>`<option value="${esc(t.id)}" ${state.viewTeam===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select></label></div>
+ <p id="sri-unified-message" role="status" aria-live="polite" class="v20-muted"></p>
+ <div id="sri-unified-table"></div><div id="sri-unified-detail"></div>
+ <details style="margin-top:16px"><summary>Criar equipe</summary><div class="v20-row" style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0"><label class="v20-field">Operação<select id="sri-new-team-operation">${state.operations.filter(x=>x.active).map(o=>`<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('')}</select></label><label class="v20-field">Nome da equipe<input id="sri-new-team-name" maxlength="80" placeholder="Ex.: Equipe manhã"></label><button class="v20-button secondary" type="button" id="sri-create-team">Criar equipe</button></div></details>
+ <details id="sri-unified-legacy-wrap" style="margin-top:14px"><summary>Conciliação de registros antigos (somente quando necessário)</summary><p class="v20-muted">Use apenas para históricos com nomes sem ID Supabase. Novas contas e distribuições não precisam desta vinculação.</p><div id="sri-unified-legacy-target"></div></details>
+ </div>`;
+ $('sri-unified-stats').innerHTML=stats();setTable();
+ $('sri-unified-refresh').addEventListener('click',()=>reload(root));
+ $('sri-unified-search').addEventListener('input',e=>{state.filter=e.target.value;setTable()});
+ $('sri-unified-role').addEventListener('change',e=>{state.viewRole=e.target.value;setTable()});
+ $('sri-unified-team').addEventListener('change',e=>{state.viewTeam=e.target.value;setTable()});
+ $('sri-create-team').addEventListener('click',createTeam);
+ const linkPanel=$('sri33-links'),legacyTarget=$('sri-unified-legacy-target');if(linkPanel&&legacyTarget){legacyTarget.appendChild(linkPanel);}
+ $('sri-unified-legacy-wrap').addEventListener('toggle',e=>{if(e.target.open){document.body.classList.add('sri-unified-legacy-visible');window.sri33LegacyRefresh?.();}else document.body.classList.remove('sri-unified-legacy-visible')});
+}
+async function reload(root){if(state.loading)return;state.loading=true;try{await refresh();render(root);msg('Diretório atualizado diretamente do Supabase.','success')}catch(e){if(root)root.innerHTML='<div class="v20-panel" style="padding:18px"><h3>Gestão de Usuários</h3><p role="alert">Não foi possível carregar o diretório do Supabase: '+esc(e.message)+'</p><button id="sri-unified-retry" class="v20-button secondary" type="button">Tentar novamente</button></div>';$('sri-unified-retry')?.addEventListener('click',()=>reload(root));}finally{state.loading=false;}}
+window.sriUnifiedUsersRender=el=>{el.innerHTML='<div class="v20-panel" style="padding:18px"><h3>Gestão de Usuários</h3><p>Carregando contas do Supabase...</p></div>';reload(el)};
+window.sriUnifiedAfterAuth=async()=>{try{
+ const c=await window.sriGetSupabaseClient?.();if(!c)return;const {data}=await c.auth.getUser();if(!data?.user)return;
+ const {data:p}=await c.from('profiles').select('role').eq('id',data.user.id).single();
+ if(['manager','admin'].includes(p?.role)){await refresh();return;}
+ if(p?.role==='supervisor'){
+   const [profiles,teams,memberships]=await Promise.all([
+     all(c,'profiles','id,full_name,role,operational_status,supervisor_id'),
+     all(c,'teams','id,name,operation_id,active'),
+     all(c,'team_memberships','user_id,team_id')
+   ]);
+   window.sriSyncCloudRoster?.(profiles,memberships,teams);
+ }
+}catch(e){console.warn('[Gestão unificada] Não foi possível atualizar a lista de operadores:',e.message)}};
+window.sriUnifiedAfterSnapshot=()=>window.sriUnifiedAfterAuth?.();
+function installPublishButton(){
+ const after=$('sri-daily-distribution');if(!after||$('sri-unified-publish'))return;
+ after.insertAdjacentHTML('afterend','<button type="button" class="v20-button secondary" id="sri-unified-publish">Publicar carteiras dos operadores</button>');
+ const status=document.createElement('p');status.id='sri-unified-publish-status';status.setAttribute('role','status');
+ after.parentElement?.insertAdjacentElement('afterend',status);
+ $('sri-unified-publish').addEventListener('click',async()=>{
+  const label=$('sri-unified-publish-status');
+  try{
+    const ctx=window.sriGetSavedDistributionContext?.();
+    if(!ctx?.snapshotId||!ctx?.revision)throw Error('Carregue e salve a distribuição antes de publicar.');
+    if(!confirm('Publicar a distribuição salva nas carteiras das contas Supabase? Operadores sem equipe ou com registros legados não conciliados ficarão pendentes.'))return;
+    label.textContent='Publicando carteiras no Supabase...';
+    const result=await window.sriSyncOperatorTasks?.(ctx.snapshotId,ctx.revision);
+    if(!result)throw Error('Módulo de distribuição não disponível.');
+    label.textContent=`Carteiras publicadas: ${Number(result.published)||0} protocolos. Pendentes de conciliação: ${Number(result.unlinked)||0}.`;
+  }catch(e){label.textContent='Falha na publicação: '+(e?.message||String(e));}
+ });
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installPublishButton);
+else installPublishButton();
+
+document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.target?.id==='sri-daily-operation')window.sriRefreshCloudDistributionOptions?.();});
 })();
 
 </script>
