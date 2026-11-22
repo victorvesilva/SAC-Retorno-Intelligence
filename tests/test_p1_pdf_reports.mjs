@@ -80,3 +80,42 @@ elements['sri-prd-report-type'].value='executivo';
 api.preview();assert.equal(elements['sri-prd-preview'].children[1].children[1].children.length,200,'prévia mostra apenas 200');
 api.printReport();assert.equal(elements['sri-prd-print'].children.find(x=>x.tag==='table').children[1].children.length,226,'PDF contém todos os 225 registros + 1 linha de total');
 console.log('PASS: 4 modelos, filtros, somas, status, limite de consulta e não emissão de PDF desatualizado (dados sintéticos).');
+
+
+if(process.env.SRI_RENDER_PDF_FIXTURES==='1'){
+ const {execFileSync}=await import('node:child_process');
+ const path=await import('node:path');
+ const outDir=new URL('../.tmp/p1-pdf/',import.meta.url);
+ fs.mkdirSync(outDir,{recursive:true});
+ const c=/\'(@media print\{@page\{size:A4 portrait;margin:13mm\}[^']*)\'/.exec(js);
+ assert.ok(c,'CSS de impressão original não encontrado');
+ const css=c[1];
+ const escaped=v=>String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+ function htmlNode(node){
+  const cl=node.className?' class="'+escaped(node.className)+'"':'';
+  const id=node.tag==='article'?' id="sri-prd-print"':'';
+  return '<'+node.tag+id+cl+'>'+escaped(node._text)+node.children.map(htmlNode).join('')+'</'+node.tag+'>';
+ }
+ const chrome=process.env.CHROME_BIN||['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find(x=>fs.existsSync(x));
+ assert.ok(chrome,'Chrome/Chromium ausente do runner');
+ state.visible=lots;state.all=lots;state.limitReached=false;state.fetching=false;
+ for(const type of ['executivo','equipe','divergencias','fechamento']){
+  elements['sri-prd-report-type'].value=type;
+  api.printReport();
+  const article=elements['sri-prd-print'];
+  const fixtureHtml='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Teste A4 '+type+'</title><style>#sri-prd-print{display:none}'+css+'</style></head><body class="sri-prd-print-mode">'+htmlNode(article)+'</body></html>';
+  const htmlPath=path.resolve(new URL(type+'.html',outDir).pathname);
+  const pdfPath=path.resolve(new URL(type+'.pdf',outDir).pathname);
+  fs.writeFileSync(htmlPath,fixtureHtml,'utf8');
+  execFileSync(chrome,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--no-first-run','--no-default-browser-check','--no-pdf-header-footer','--disable-background-networking','--user-data-dir=/tmp/sri-pdf-'+type,'--print-to-pdf='+pdfPath,'file://'+htmlPath],{encoding:'utf8',timeout:60000,stdio:['ignore','pipe','pipe']});
+  assert.ok(fs.statSync(pdfPath).size>3000,type+' PDF está vazio');
+  const info=execFileSync('pdfinfo',[pdfPath],{encoding:'utf8',timeout:20000});
+  assert.match(info,/\(A4\)/,type+' não tem tamanho A4');
+  const pageMatch=info.match(/^Pages:\s+(\d+)/m);assert.ok(pageMatch&&Number(pageMatch[1])>1,'Deve paginar 225 registros');
+  const extracted=execFileSync('pdftotext',[pdfPath,'-'],{encoding:'utf8',timeout:20000});
+  assert.match(extracted,/SAC Retorno Intelligence 2\.0/);
+  assert.match(extracted,/Equipe Leste/);
+  if(type!=='fechamento')assert.match(extracted,/TOTAL/);
+  console.log('PASS PDF A4 '+type+': '+pageMatch[1]+' páginas, '+fs.statSync(pdfPath).size+' bytes.');
+ }
+}
