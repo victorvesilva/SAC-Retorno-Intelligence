@@ -26,7 +26,7 @@ assert.match(html,/rpc\('publish_daily_operator_tasks'/);
 assert.match(html,/rpc\('record_daily_operator_treatment'/);
 
 const publishSql=fs.readFileSync(new URL('../sql/2026-11-22_sri_p1_publish_closure_guard.sql',import.meta.url),'utf8');
-assert.match(publishSql,/CREATE OR REPLACE FUNCTION public\\.publish_daily_operator_tasks/);
+assert.match(publishSql,/CREATE OR REPLACE FUNCTION public\.publish_daily_operator_tasks/);
 assert.match(publishSql,/pg_advisory_xact_lock/);
 assert.match(publishSql,/sri-result-day:/);
 assert.match(publishSql,/sri_result_shift_closures/);
@@ -35,6 +35,6 @@ assert.match(publishSql,/closed_with_pending/);
 assert.match(publishSql,/reabertura autorizada/);
 assert.match(publishSql,/v_revision<>p_revision/);
 assert.match(publishSql,/v_latest IS DISTINCT FROM p_snapshot/);
-assert.doesNotMatch(publishSql,/\\bDELETE FROM\\b|TRUNCATE\\b|DROP TABLE\\b/i);
+assert.doesNotMatch(publishSql,/\bDELETE FROM\b|TRUNCATE\b|DROP TABLE\b/i);
 
 console.log('PASS: autorização ativa, vínculos obrigatórios, auditoria e atualização otimista preservadas. Teste de código: não substitui teste multiusuário.');
