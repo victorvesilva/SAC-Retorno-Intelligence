@@ -4,9 +4,9 @@
  */
 (function () {
 'use strict';
-var state={all:[],visible:[],loaded:false,authorized:false,client:null,role:null,fetching:false,generation:0};
+var state={all:[],visible:[],loaded:false,authorized:false,client:null,role:null,fetching:false,generation:0,loadedFrom:null,loadedTo:null,limitReached:false};
 var lastIdentity=null;
-function hideSensitive(){state.generation++;state.all=[];state.visible=[];state.loaded=false;state.authorized=false;state.role=null;['sri-prd-analytics','sri-prd-reports'].forEach(function(id){var p=document.getElementById(id);if(p)p.style.display='none'});['sri-prd-kpis','sri-prd-bars','sri-prd-preview','sri-prd-print'].forEach(function(id){var p=document.getElementById(id);if(p)p.replaceChildren()})}
+function hideSensitive(){state.generation++;state.all=[];state.visible=[];state.loaded=false;state.loadedFrom=null;state.loadedTo=null;state.limitReached=false;state.authorized=false;state.role=null;['sri-prd-analytics','sri-prd-reports'].forEach(function(id){var p=document.getElementById(id);if(p)p.style.display='none'});['sri-prd-kpis','sri-prd-bars','sri-prd-preview','sri-prd-print'].forEach(function(id){var p=document.getElementById(id);if(p)p.replaceChildren()})}
 
 function byId(x){return document.getElementById(x)}
 function el(tag,cls,text){var x=document.createElement(tag);if(cls)x.className=cls;if(text!==undefined)x.textContent=String(text);return x}
@@ -45,7 +45,7 @@ function initialize(){
  '.sri-prd-table th{color:#0b45b7;background:#edf4ff}',
  '#sri-prd-message[data-error=true],#sri-prd-report-message[data-error=true]{color:#b42318}',
  '#sri-prd-print{display:none}',
- '@media print{@page{size:A4 portrait;margin:13mm}body.sri-prd-print-mode>*:not(#sri-prd-print){display:none!important}body.sri-prd-print-mode #sri-prd-print{display:block!important;position:static!important;width:100%;background:white;color:black;font:10pt Arial,sans-serif}body.sri-prd-print-mode #sri-prd-print h1{font-size:16pt;color:#0b45b7}body.sri-prd-print-mode #sri-prd-print table{width:100%;border-collapse:collapse;font-size:9pt;table-layout:fixed}body.sri-prd-print-mode #sri-prd-print th,body.sri-prd-print-mode #sri-prd-print td{border:1px solid #ccc;padding:5px;overflow-wrap:anywhere}body.sri-prd-print-mode #sri-prd-print tr{break-inside:avoid}body.sri-prd-print-mode #sri-prd-print thead{display:table-header-group}body.sri-prd-print-mode #sri-prd-print .sri-prd-print-meta{color:#555;margin-bottom:10px}}'
+ '@media print{@page{size:A4 portrait;margin:13mm}body.sri-prd-print-mode>*:not(#sri-prd-print){display:none!important}body.sri-prd-print-mode #sri-prd-print{display:block!important;position:static!important;width:100%;background:white;color:black;font:10pt Arial,sans-serif}body.sri-prd-print-mode #sri-prd-print h1{font-size:16pt;color:#0b45b7}body.sri-prd-print-mode #sri-prd-print table{width:100%;border-collapse:collapse;font-size:9pt;table-layout:fixed}body.sri-prd-print-mode #sri-prd-print th,body.sri-prd-print-mode #sri-prd-print td{border:1px solid #ccc;padding:5px;overflow-wrap:anywhere}body.sri-prd-print-mode #sri-prd-print tr{break-inside:avoid}body.sri-prd-print-mode #sri-prd-print .sri-prd-total-row{font-weight:700;background:#edf4ff}body.sri-prd-print-mode #sri-prd-print thead{display:table-header-group}body.sri-prd-print-mode #sri-prd-print .sri-prd-print-meta{color:#555;margin-bottom:10px}}'
  ].join('');document.head.append(css);
  var a=panel('Indicadores centralizados · Supabase','Gráficos e totais calculados a partir da apuração mais recente por equipe/data/turno. Dados sujeitos às permissões de acesso.');
  a.id='sri-prd-analytics';a.style.display='none';
@@ -99,7 +99,7 @@ async function load(){
  var response=await state.client.from('sri_v_daily_operational_metrics').select('*').gte('operational_day',start).lte('operational_day',end).order('operational_day',{ascending:false}).limit(1500);
  if(generation!==state.generation||!state.authorized)return;
  if(response.error)throw response.error;
- state.all=response.data||[];state.loaded=true;
+ state.all=response.data||[];state.loaded=true;state.loadedFrom=start;state.loadedTo=end;state.limitReached=state.all.length>=1500;
  options('sri-prd-team',uniqueItems(state.all,'team_id','team_name'),'Todas as equipes');
  options('sri-prd-shift',uniqueItems(state.all,'shift_label','shift_label'),'Todos os turnos');
  render();status(state.all.length===1500?'Limite de 1.500 apurações atingido; reduza o intervalo para um relatório completo.':'Consulta concluída. Nenhum arquivo SAC/ATIVO foi transferido.',false);
@@ -129,30 +129,70 @@ function render(){
  var small=el('p','sri-prd-summary','Valores exibidos integralmente e acessíveis por mouse, teclado ou toque. Os totais somam apurações por turno e NÃO representam protocolos únicos do dia.');bars.append(small);
  preview();
 }
-function reportRows(){return state.visible.slice().sort(function(a,b){return a.operational_day===b.operational_day?a.team_name.localeCompare(b.team_name,'pt-BR'):b.operational_day.localeCompare(a.operational_day)})}
+function reportRows(){return state.visible.slice().sort(function(a,b){if(a.operational_day!==b.operational_day)return b.operational_day.localeCompare(a.operational_day);var byTeam=String(a.team_name||'').localeCompare(String(b.team_name||''),'pt-BR');return byTeam||String(a.shift_label||'').localeCompare(String(b.shift_label||''),'pt-BR')})}
 function reportConfig(type){
  if(type==='equipe')return {title:'Operação por equipe',columns:[['operational_day','Data'],['team_name','Equipe'],['shift_label','Turno'],['protocolos_monitorados','Monitorados'],['tarefas_publicadas','Tarefas'],['tratativas_concluidas','Tratativas']]};
  if(type==='divergencias')return {title:'Conferência e divergências',columns:[['operational_day','Data'],['team_name','Equipe'],['shift_label','Turno'],['protocolos_consolidados','Consolidados'],['divergencias_informativas','Alertas'],['protocolos_sinalizados','Sinalizados']]};
  if(type==='fechamento')return {title:'Fechamento operacional',columns:[['operational_day','Data'],['team_name','Equipe'],['shift_label','Turno'],['revisao_distribuicao','Revisão'],['status_turno','Turno'],['status_dia','Dia']]};
  return {title:'Resumo executivo',columns:[['operational_day','Data'],['team_name','Equipe'],['shift_label','Turno'],['protocolos_consolidados','Consolidados'],['protocolos_monitorados','Monitorados'],['backlog','Backlog']]};
 }
-function readable(key,value){if(key==='operational_day'){var v=String(value||'');return v.length===10?v.slice(8,10)+'/'+v.slice(5,7)+'/'+v.slice(0,4):v}if(typeof value==='number')return fmt(value);if(value===null||value===undefined)return '—';return String(value)}
-function buildTable(rows,conf,limit){var table=el('table','sri-prd-table');var head=el('thead'),hr=el('tr');conf.columns.forEach(function(c){hr.append(el('th','',c[1]))});head.append(hr);table.append(head);var body=el('tbody');rows.slice(0,limit).forEach(function(r){var tr=el('tr');conf.columns.forEach(function(c){tr.append(el('td','',readable(c[0],r[c[0]])))});body.append(tr)});table.append(body);return table}
+function readable(key,value){
+ if(key==='operational_day'){var v=String(value||'');return v.length===10?v.slice(8,10)+'/'+v.slice(5,7)+'/'+v.slice(0,4):v}
+ if(key==='status_turno'||key==='status_dia'){
+  var translations={open:'Aberto',closed:'Fechado',closed_with_pending:'Fechado com pendências',reopened:'Reaberto'};
+  return translations[String(value||'')]||String(value||'Não informado');
+ }
+ if(typeof value==='number')return fmt(value);
+ if(value===null||value===undefined)return '—';
+ return String(value);
+}
+function freshRange(){return state.loaded&&state.loadedFrom===byId('sri-prd-from').value&&state.loadedTo===byId('sri-prd-to').value}
+function numericReportField(key){return ['protocolos_monitorados','tarefas_publicadas','tratativas_concluidas','protocolos_consolidados','divergencias_informativas','protocolos_sinalizados','backlog'].includes(key)}
+function reportSummary(type,rows){
+ if(type==='fechamento'){
+  var shifts=rows.filter(function(r){return r.status_turno==='closed'}).length;
+  var days=new Set(rows.filter(function(r){return ['closed','closed_with_pending'].includes(r.status_dia)}).map(function(r){return r.operational_day})).size;
+  return 'Turnos fechados: '+fmt(shifts)+' de '+fmt(rows.length)+' · Dias com fechamento: '+fmt(days);
+ }
+ var columns=reportConfig(type).columns.filter(function(c){return numericReportField(c[0])});
+ return columns.map(function(c){return c[1]+': '+fmt(total(rows,c[0]))}).join(' · ');
+}
+function buildTable(rows,conf,limit,includeTotals){
+ var table=el('table','sri-prd-table'),head=el('thead'),hr=el('tr');
+ conf.columns.forEach(function(c){hr.append(el('th','',c[1]))});head.append(hr);table.append(head);
+ var body=el('tbody');
+ rows.slice(0,limit).forEach(function(r){
+  var tr=el('tr');conf.columns.forEach(function(c){tr.append(el('td','',readable(c[0],r[c[0]])))});body.append(tr)
+ });
+ if(includeTotals&&conf.columns.some(function(c){return numericReportField(c[0])})){
+  var sumRow=el('tr','sri-prd-total-row');
+  conf.columns.forEach(function(c,i){sumRow.append(el('td','',numericReportField(c[0])?fmt(total(rows,c[0])):(i===0?'TOTAL':'')))});
+  body.append(sumRow);
+ }
+ table.append(body);return table;
+}
 function preview(){
  if(!state.loaded)return;
  var conf=reportConfig(byId('sri-prd-report-type').value),rows=reportRows(),area=byId('sri-prd-preview');area.replaceChildren();
+ if(!freshRange()){
+  area.append(el('p','sri-prd-summary','O período foi alterado: clique em Atualizar antes de visualizar ou imprimir o relatório.'));
+  return;
+ }
  area.append(el('p','sri-prd-summary',conf.title+' · '+fmt(rows.length)+' apuração(ões) filtrada(s). Prévia das primeiras 200. PDF inclui todas as apurações carregadas.'));
- area.append(buildTable(rows,conf,200));
+ area.append(buildTable(rows,conf,200,false));
+ area.append(el('p','sri-prd-summary','Totais da seleção: '+reportSummary(byId('sri-prd-report-type').value,rows)));
 }
 function printReport(){
- if(!state.authorized||!state.loaded){status('Consulte primeiro os dados do Supabase.',true);return}
+ if(!state.authorized||!state.loaded||state.fetching){status('Conclua primeiro a consulta do Supabase.',true);return}
+ if(!freshRange()){status('As datas foram alteradas: clique em Atualizar para sincronizar o período antes de imprimir.',true);return}
  var rows=reportRows();if(!rows.length){status('Não há apurações nos filtros escolhidos.',true);return}
- if(state.all.length>=1500){status('Reduza o intervalo antes de gerar PDF completo: há mais de 1.500 apurações.',true);return}
+ if(state.limitReached){status('Reduza o intervalo antes de gerar PDF completo: limite de 1.500 apurações atingido.',true);return}
  var type=byId('sri-prd-report-type').value,conf=reportConfig(type),article=byId('sri-prd-print');article.replaceChildren();
  article.append(el('h1','', 'SAC Retorno Intelligence 2.0 · '+conf.title));
- article.append(el('p','sri-prd-print-meta','Gerado em '+new Date().toLocaleString('pt-BR')+' · '+byId('sri-prd-from').value+' a '+byId('sri-prd-to').value+' · Equipe: '+(byId('sri-prd-team').selectedOptions[0]?.textContent||'Todas')+' · Turno: '+(byId('sri-prd-shift').selectedOptions[0]?.textContent||'Todos')));
- article.append(el('p','sri-prd-print-meta','Apurações: '+fmt(rows.length)+' · Monitorados (soma de turnos): '+fmt(total(rows,'protocolos_monitorados'))+' · Divergências: '+fmt(total(rows,'divergencias_informativas'))+'. Soma por turno, não protocolos únicos do dia.'));
- article.append(buildTable(rows,conf,rows.length));article.append(el('p','sri-prd-print-meta','Fonte: Supabase · visao de indicadores com RLS. Este relatório não substitui encerramento do protocolo no SIGO.'));
+ article.append(el('p','sri-prd-print-meta','Gerado em '+new Date().toLocaleString('pt-BR')+' · '+state.loadedFrom+' a '+state.loadedTo+' · Equipe: '+(byId('sri-prd-team').selectedOptions[0]?.textContent||'Todas')+' · Turno: '+(byId('sri-prd-shift').selectedOptions[0]?.textContent||'Todos')));
+ article.append(el('p','sri-prd-print-meta','Apurações: '+fmt(rows.length)+' · '+reportSummary(type,rows)+'. Os totais somam apurações por turno; não representam protocolos únicos do dia.'));
+ article.append(buildTable(rows,conf,rows.length,true));
+ article.append(el('p','sri-prd-print-meta','Fonte: Supabase · visão de indicadores com RLS. Este relatório não substitui encerramento do protocolo no SIGO.'));
  document.body.classList.add('sri-prd-print-mode');window.print();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialize);else initialize();

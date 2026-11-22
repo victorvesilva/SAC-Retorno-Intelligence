@@ -11,4 +11,18 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Validar JavaScript, HTML e SQL nao destrutivo
-        run: node tests/test_prd_static.mjs
+        run: node tests/test_prd_static.mjs && node tests/test_p1_pdf_reports.mjs
+
+      - name: Preparar verificadores PDF
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
+      - name: Renderizar PDFs A4 com Chrome - dados sintéticos
+        env:
+          SRI_RENDER_PDF_FIXTURES: '1'
+        run: node tests/test_p1_pdf_reports.mjs
+      - name: Disponibilizar amostras de homologação
+        uses: actions/upload-artifact@v4
+        with:
+          name: p1-relatorios-a4-sinteticos
+          path: .tmp/p1-pdf/*.pdf
+          if-no-files-found: error
+          retention-days: 7
