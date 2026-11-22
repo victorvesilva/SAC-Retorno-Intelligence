@@ -13,6 +13,8 @@ jobs:
       - name: Validar JavaScript, HTML e SQL nao destrutivo
         run: node tests/test_prd_static.mjs && node tests/test_p1_pdf_reports.mjs
 
+      - name: Preparar verificadores PDF
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
       - name: Renderizar PDFs A4 com Chrome - dados sintéticos
         env:
           SRI_RENDER_PDF_FIXTURES: '1'
