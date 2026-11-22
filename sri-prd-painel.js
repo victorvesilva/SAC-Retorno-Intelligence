@@ -5,6 +5,9 @@
 (function () {
 'use strict';
 var state={all:[],visible:[],loaded:false,authorized:false,client:null,role:null,fetching:false};
+var lastIdentity=null;
+function hideSensitive(){state.all=[];state.visible=[];state.loaded=false;state.authorized=false;state.role=null;['sri-prd-analytics','sri-prd-reports'].forEach(function(id){var p=document.getElementById(id);if(p)p.style.display='none'});['sri-prd-kpis','sri-prd-bars','sri-prd-preview','sri-prd-print'].forEach(function(id){var p=document.getElementById(id);if(p)p.replaceChildren()})}
+
 function byId(x){return document.getElementById(x)}
 function el(tag,cls,text){var x=document.createElement(tag);if(cls)x.className=cls;if(text!==undefined)x.textContent=String(text);return x}
 function fmt(v){return new Intl.NumberFormat('pt-BR').format(Number(v)||0)}
@@ -67,15 +70,18 @@ function initialize(){
  window.addEventListener('afterprint',function(){document.body.classList.remove('sri-prd-print-mode')});
  document.addEventListener('click',function(e){if(e.target.closest('[data-tab="intelligence"],[data-tab="reports"]'))setTimeout(checkRole,30)});
  checkRole();
+ if(window.sriGetSupabaseClient)window.sriGetSupabaseClient().then(function(c){c.auth.onAuthStateChange(function(ev,session){var next=session?.user?.id||null;if(next!==lastIdentity||ev==='SIGNED_OUT'){lastIdentity=next;hideSensitive()}if(next&&ev!=='SIGNED_OUT')setTimeout(checkRole,0)})}).catch(function(){hideSensitive()});
+ window.addEventListener('focus',checkRole);
 }
 async function checkRole(){
  if(!window.sriGetSupabaseClient)return;
  try{
  var client=await window.sriGetSupabaseClient(),a=await client.auth.getUser();
- if(a.error||!a.data?.user)return;
+ if(a.error||!a.data?.user){hideSensitive();return}
  var p=await client.from('profiles').select('role').eq('id',a.data.user.id).single();
- if(p.error||!p.data)return;
+ if(p.error||!p.data){hideSensitive();return}
  var allowed=['admin','manager','supervisor'].includes(p.data.role);
+ if(!allowed){hideSensitive();return}
  state.client=client;state.role=p.data.role;state.authorized=allowed;
  [byId('sri-prd-analytics'),byId('sri-prd-reports')].forEach(function(node){if(node)node.style.display=allowed?'':'none'});
  if(allowed&&!state.loaded&&!state.fetching)await load();
