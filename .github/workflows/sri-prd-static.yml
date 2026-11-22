@@ -1,0 +1,14 @@
+name: SAC PRD - testes estaticos
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Validar JavaScript, HTML e SQL nao destrutivo
+        run: node tests/test_prd_static.mjs
