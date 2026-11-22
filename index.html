@@ -5573,7 +5573,7 @@ async function sriAuthorizeUser(authUser){
    team:'Não vinculada',active:true,importAuthorized:false,supervisorId:null,rosterId:null};
  $('v20-login').hidden=true;document.body.classList.remove('v20-not-logged');document.body.classList.add('v20-active');
  visibleNavigation();switchTab(uiRole==='operator'?'v20-mine':'overview');
- const warn=document.getElementById('sri-stage2-warning');if(warn)warn.hidden=false;queueMicrotask(()=>{window.sriSnapshotAfterAuth?.();window.sriOperatorAfterAuth?.();window.sriUnifiedAfterAuth?.();});
+ const warn=document.getElementById('sri-stage2-warning');if(warn)warn.hidden=false;queueMicrotask(()=>{window.sriSnapshotAfterAuth?.();window.sriOperatorAfterAuth?.();window.sriUnifiedAfterAuth?.();window.sriClosureAfterAuth?.();});
 }
 async function doLogin(email,password){
  const client=await sriClient();
@@ -5757,7 +5757,7 @@ function renderClosing(){requireRole(true);const days=availableDays();const date
  <div class="v20-panel"><h3>Movimentações do dia</h3>${table(['Protocolo','Horário','Tipo','Antes','Depois','Operador'],s.moves.slice(0,120).map(m=>`<tr><td>${esc(m.id)}</td><td>${esc(m.fromLabel)} → ${esc(m.toLabel)}</td><td>${badge(v113MovementLabel(m.type),m.type==='finalizado'?'ok':'')}</td><td>${esc(m.beforeStatus)}</td><td>${esc(m.afterStatus||'Ausente SAC + ATIVO')}</td><td>${esc(m.operator)}</td></tr>`))}</div>`;
  } else {
  const closures=data.closures.filter(x=>x.day===selectedDay&&(team.value==='all'||x.team===team.value));body.innerHTML=`<div class="v20-grid">${stat('Finalizados únicos',s.finalized)}${stat('Protocolos tratados',s.treated)}${stat('Tratativas concluídas',s.complete)}${stat('Comparações horárias',s.rounds.length)}</div>
- <div class="v20-panel"><div class="v20-between"><h3>Consolidado do expediente</h3>${action('Gerar fechamento diário','generateClosure')} </div>${note('<b>Regra:</b> FINALIZADOS = apenas protocolo antes em CD_STATUS 12, ausente em SAC e ATIVO da extração seguinte. 12 → 11 ou 12 → 10 conta como mudança de status, não como finalização.')}
+ <div class="v20-panel"><div class="v20-between"><h3>Consolidado do expediente</h3>${action('Gerar relatório local','generateClosure')} </div>${note('<b>Regra:</b> FINALIZADOS = apenas protocolo antes em CD_STATUS 12, ausente em SAC e ATIVO da extração seguinte. 12 → 11 ou 12 → 10 conta como mudança de status, não como finalização.')}
  <p class="v20-muted">O fechamento é gerado sob demanda e registra horário, usuário, equipe e rodadas utilizadas. Protocolos únicos não são somados repetidamente entre horários.</p><div class="v20-row">${action('Exportar consolidado CSV','exportDaily',true)} ${action('Ver rodadas horárias','switchHourly',true)}</div>
  <h3 style="margin-top:20px">Fechamentos já gerados</h3>${table(['Gerado em','Supervisor','Equipe','Rodadas','Finalizados','Tratados'],closures.map(c=>`<tr><td>${pretty(c.at)}</td><td>${esc(userName(c.user))}</td><td>${esc(c.team)}</td><td>${BR(c.rounds)}</td><td>${BR(c.finalized)}</td><td>${BR(c.treated)}</td></tr>`))}</div>`;
  }
@@ -6139,7 +6139,7 @@ function renderClosing(){requireRole(true);const days=availableDays(),date=$('v2
  <div class="v20-panel"><h3>Movimentações do dia</h3>${table(['Protocolo','Horário','Tipo','Antes','Depois','Operador'],s.moves.slice(0,120).map(m=>`<tr><td>${esc(m.id)}</td><td>${esc(m.fromLabel)} → ${esc(m.toLabel)}</td><td>${badge(v113MovementLabel(m.type),m.type==='finalizado'?'ok':'')}</td><td>${esc(m.beforeStatus)}</td><td>${esc(m.afterStatus||'Ausente SAC + ATIVO')}</td><td>${esc(m.operator)}</td></tr>`))}</div>`;
  }else{
  const closures=data.closures.filter(x=>x.day===day&&(team.value==='all'||x.teamId===v20FindTeam(team.value)?.id||x.team===team.value));body.innerHTML=`<div class="v20-grid">${stat('Finalizados únicos',s.finalized)}${stat('Protocolos tratados',s.treated)}${stat('Tratativas concluídas',s.complete)}${stat('Comparações horárias',s.rounds.length)}</div>
- <div class="v20-panel"><div class="v20-between"><h3>Consolidado do expediente</h3>${action('Gerar fechamento diário','generateClosure')}</div>${note('FINALIZADO = anteriormente CD_STATUS 12, ausente em SAC e ATIVO na extração seguinte. 12 → 11 ou 12 → 10 é mudança, nunca finalização.')}
+ <div class="v20-panel"><div class="v20-between"><h3>Consolidado do expediente</h3>${action('Gerar relatório local','generateClosure')}</div>${note('FINALIZADO = anteriormente CD_STATUS 12, ausente em SAC e ATIVO na extração seguinte. 12 → 11 ou 12 → 10 é mudança, nunca finalização.')}
  <p class="v20-muted">A consolidação considera protocolos únicos e registra as rodadas usadas. Gerar novamente sem novos dados não cria duplicata.</p><div class="v20-row">${action('Exportar consolidado CSV','exportDaily',true)} ${action('Ver rodadas horárias','switchHourly',true)}</div>
  <h3 style="margin-top:20px">Fechamentos já gerados</h3>${table(['Gerado em','Supervisor','Equipe','Rodadas','Finalizados','Tratados','Versão','Revisão'],closures.map(c=>`<tr><td>${pretty(c.at)}</td><td>${esc(userName(c.user))}</td><td>${esc(c.team)}</td><td>${BR(c.rounds)}</td><td>${BR(c.finalized)}</td><td>${BR(c.treated)}</td><td>${BR(c.version||1)}</td><td>${c.needsReview?badge('Revalidar','warn'):badge('Conforme','ok')}</td></tr>`))}</div>`;
  }
@@ -6366,7 +6366,7 @@ function v57ConfirmReopen(){requireRole(false,true);const day=$('v20-cl-date').v
 }
 const v57OriginalRenderClosing=renderClosing;
 renderClosing=function(...args){v57OriginalRenderClosing.apply(this,args);const day=$('v20-cl-date')?.value||dayKey(),root=$('v20-cl-body');if(!root)return;const all=v57GeneralClosed(day),team=v57Teams(),rows=team.map(t=>{const x=v57TeamClosed(day,t);return `<tr><td>${esc(t)}</td><td>${x?badge('Fechado','ok'):badge('Aberto / pendente','warn')}</td><td>${x?esc(userName(x.supervisor)):'—'}</td><td>${x?esc(pretty(x.importAt)):'—'}</td></tr>`});
- const panel=document.createElement('section');panel.className='v57-panel';panel.innerHTML=`<div class="v20-between"><div><h3>Controle de fechamento híbrido</h3><p>Fechamento por supervisor após a última importação e consolidação geral pelo gestor, com ressalvas quando necessário.</p></div>${all?'<span class="v57-status closed">Dia fechado</span>':'<span class="v57-status pending">Dia aberto</span>'}</div>${table(['Equipe','Situação','Supervisor','Última importação'],rows)}<div class="v20-row" style="margin-top:12px">${role()==='admin'&&!all?action('Conferir fechamento geral','previewGeneralClose'):''}${role()==='admin'&&(all||team.some(t=>v57TeamClosed(day,t)))?action('Reabrir dia (gestor)','previewReopenDay',true):''}</div>${all?note(`Fechado em ${esc(pretty(all.at))} por ${esc(userName(all.manager))}. ${all.withPending?'Com pendências: '+all.pendingTeams.map(esc).join(', '):'Sem pendências de equipe.'}`):note('O turno é fechado na importação com a opção “Esta é a última importação do meu turno”. O fechamento geral não é automático.')}`;
+ const panel=document.createElement('section');panel.className='v57-panel';panel.innerHTML=`<div class="v20-between"><div><h3>Controle de fechamento híbrido</h3><p>Fechamento por supervisor após a última importação e consolidação geral pelo gestor, com ressalvas quando necessário.</p></div>${all?'<span class="v57-status closed">Dia fechado</span>':'<span class="v57-status pending">Dia aberto</span>'}</div>${table(['Equipe','Situação','Supervisor','Última importação'],rows)}<div class="v20-row" style="margin-top:12px"></div>${all?note(`Fechado em ${esc(pretty(all.at))} por ${esc(userName(all.manager))}. ${all.withPending?'Com pendências: '+all.pendingTeams.map(esc).join(', '):'Sem pendências de equipe.'}`):note('O turno é fechado na importação com a opção “Esta é a última importação do meu turno”. O fechamento geral não é automático.')}`;
  root.prepend(panel);
 };
 // Compatibilidade: o botão antigo não pode gerar um fechamento definitivo contornando a confirmação híbrida.
@@ -7001,7 +7001,7 @@ window.sriUnifiedAfterAuth=async()=>{try{
    window.sriSyncCloudRoster?.(profiles,memberships,teams);
  }
 }catch(e){console.warn('[Gestão unificada] Não foi possível atualizar a lista de operadores:',e.message)}};
-window.sriUnifiedAfterSnapshot=()=>window.sriUnifiedAfterAuth?.();
+window.sriUnifiedAfterSnapshot=()=>window.sriUnifiedAfterAuth?.();window.sriClosureAfterAuth?.();
 function installPublishButton(){
  const after=$('sri-daily-distribution');if(!after||$('sri-unified-publish'))return;
  after.insertAdjacentHTML('afterend','<button type="button" class="v20-button secondary" id="sri-unified-publish">Publicar carteiras dos operadores</button>');
@@ -7024,6 +7024,199 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 else installPublishButton();
 
 document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.target?.id==='sri-daily-operation')window.sriRefreshCloudDistributionOptions?.();});
+})();
+
+</script>
+<script id="sri-central-closing-stage34">
+/* SAC Retorno Intelligence 2.0 — Etapa 3.4 · Fechamento híbrido centralizado
+ * Somente o resultado consolidado e a revisão da distribuição são usados.
+ * Não finaliza protocolos no SIGO; não manipula os arquivos SAC/ATIVO.
+ */
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, k => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[k]));
+  const fmt = n => Number(n || 0).toLocaleString('pt-BR');
+  const today = () => new Intl.DateTimeFormat('en-CA', {timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const state = {client:null,profile:null,overview:null,prepared:null,busy:false,availableTeams:[]};
+  const canManage = role => ['admin','manager'].includes(role);
+  const isSupervisor = role => ['admin','manager','supervisor'].includes(role);
+  function message(s,kind='normal') {const el=$('sri34-status'); if(el){el.textContent=s;el.dataset.state=kind;}}
+  function resetPreview() {state.prepared=null;const e=$('sri34-preview');if(e)e.innerHTML='Confira uma equipe e turno antes de confirmar o encerramento.';const b=$('sri34-confirm-shift');if(b)b.disabled=true;}
+  function makePanel(){
+    const root=$('v20-closure');if(!root||$('sri34-panel'))return;
+    const panel=document.createElement('section');panel.id='sri34-panel';panel.className='v20-panel';
+    panel.style.cssText='margin:16px 0 24px;padding:20px;border:2px solid #b6d4ed;border-radius:14px';
+    panel.innerHTML=`
+      <div class="v20-between"><div><h3 style="margin:0;color:#08418e">Fechamento de turno e dia · Supabase</h3>
+       <p class="v20-muted">Fechamento oficial por equipe e data, utilizando a última apuração consolidada salva e a distribuição sincronizada.</p></div>
+       <span style="font-size:12px;background:#e9f1fb;border-radius:8px;padding:6px">Etapa 3.4</span></div>
+      <div class="v20-row" style="display:flex;align-items:end;flex-wrap:wrap;gap:10px;margin:15px 0">
+        <label class="v20-field">Data operacional<input id="sri34-date" type="date"></label>
+        <button type="button" id="sri34-refresh" class="v20-button secondary">Atualizar quadro</button></div>
+      <div id="sri34-summary" class="v20-muted">Selecione a data e atualize.</div>
+      <div id="sri34-board" style="overflow-x:auto;margin:10px 0"></div>
+      <div class="v20-row" style="display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin-top:12px">
+        <label class="v20-field">Equipe e turno<select id="sri34-shift" style="min-width:220px"></select></label>
+        <button type="button" id="sri34-preview-shift" class="v20-button secondary">Conferir fechamento do turno</button></div>
+      <div id="sri34-preview" class="v20-muted" style="margin:12px 0">Confira uma equipe e turno antes de confirmar o encerramento.</div>
+      <label style="display:flex;align-items:center;gap:8px;margin:12px 0">
+       <input type="checkbox" id="sri34-last-import"><strong>Esta é a última importação do meu turno.</strong></label>
+      <p class="v20-muted" style="margin-top:-4px">A marcação não encerra o turno sozinha: confira os dados e confirme. Protocolos pendentes continuam na carteira.</p>
+      <button type="button" id="sri34-confirm-shift" class="v20-button" disabled>Confirmar fechamento do turno no Supabase</button>
+      <div id="sri34-manager" style="margin:18px 0 0;padding:12px;border-top:1px solid #d7e4f3" hidden>
+        <h4 style="margin:0 0 8px">Fechamento geral do dia · Gestor</h4>
+        <details style="margin:10px 0"><summary>Planejar equipes e turnos esperados</summary>
+          <p class="v20-muted">Cadastre os turnos que deveriam trabalhar, mesmo sem importação, para que apareçam como pendentes no fechamento geral.</p>
+          <div class="v20-row" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:8px 0">
+            <label class="v20-field">Equipe<select id="sri34-plan-team" style="min-width:170px"></select></label>
+            <label class="v20-field">Turno esperado<input id="sri34-plan-label" maxlength="60" placeholder="Ex.: Manhã"></label>
+            <button type="button" class="v20-button secondary" id="sri34-plan">Adicionar turno esperado</button>
+          </div>
+        </details>
+        <p class="v20-muted">É possível encerrar com turnos pendentes, desde que exista uma justificativa registrada.</p>
+        <label class="v20-field">Justificativa para pendências (quando houver)
+         <textarea id="sri34-reason" rows="3" maxlength="1200" placeholder="Descreva os turnos não concluídos e o encaminhamento previsto"></textarea></label>
+        <button type="button" class="v20-button" id="sri34-close-day">Conferir e encerrar dia no Supabase</button>
+        <details style="margin-top:16px"><summary>Reabertura autorizada (Gestor/Administrador)</summary>
+          <p class="v20-muted">Para reabrir um turno de um dia encerrado, reabra primeiro o dia. Todas as ações são auditadas.</p>
+          <label class="v20-field">Motivo da reabertura (mínimo 10 caracteres)<textarea id="sri34-reopen-reason" rows="2" maxlength="1200"></textarea></label>
+          <div class="v20-row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+           <button type="button" class="v20-button secondary" id="sri34-reopen-day">Reabrir dia</button>
+           <button type="button" class="v20-button secondary" id="sri34-reopen-shift">Reabrir turno selecionado</button>
+          </div>
+        </details>
+      </div>
+      <p id="sri34-status" aria-live="polite" role="status" style="margin-top:14px">Aguardando consulta ao Supabase.</p>
+      <p class="v20-muted" style="font-size:12px;margin-top:14px">Os comparativos e relatórios locais abaixo são apenas consultas. Este painel registra o fechamento centralizado, com usuário, data, hora e conferência auditáveis.</p>`;
+    const anchor=root.querySelector('#v20-cl-body');if(anchor)root.insertBefore(panel,anchor);else root.appendChild(panel);
+    $('sri34-date').value=today();
+    $('sri34-refresh').addEventListener('click',()=>execute(loadBoard));
+    $('sri34-date').addEventListener('change',()=>{state.overview=null;resetPreview();$('sri34-board').textContent='Atualize o quadro para esta data.';});
+    $('sri34-shift').addEventListener('change',resetPreview);
+    $('sri34-last-import').addEventListener('change',()=>{if(state.prepared)$('sri34-confirm-shift').disabled=!$('sri34-last-import').checked;});
+    $('sri34-preview-shift').addEventListener('click',()=>execute(prepareShift));
+    $('sri34-confirm-shift').addEventListener('click',()=>execute(closeShift));
+    $('sri34-close-day').addEventListener('click',()=>execute(closeDay));
+    $('sri34-plan').addEventListener('click',()=>execute(planShift));
+    $('sri34-reopen-day').addEventListener('click',()=>execute(reopenDay));
+    $('sri34-reopen-shift').addEventListener('click',()=>execute(reopenShift));
+    // O último fechamento do HTML local não deve competir com o fechamento oficial.
+    // Nenhum dado local é excluído; o relatório continua disponível para comparação.
+    const oldHeading=root.querySelector('.v20-between .v20-muted');
+    if(oldHeading)oldHeading.textContent='Fechamento centralizado no Supabase. As comparações horárias permanecem disponíveis para consulta local.';
+    const sty=document.createElement('style');sty.textContent=`#v57-last-import{display:none!important}#sri34-status[data-state="error"]{color:#b42318}#sri34-status[data-state="success"]{color:#16703e}#sri34-preview{padding:10px;border:1px solid #dbe8f6;border-radius:8px}#sri34-board table{min-width:670px;width:100%}`;document.head.appendChild(sty);
+  }
+  async function session(){
+    if(typeof window.sriGetSupabaseClient!=='function')throw Error('Supabase não inicializado.');
+    const client=await window.sriGetSupabaseClient();
+    const {data,error}=await client.auth.getUser();if(error||!data?.user)throw Error('Entre no sistema novamente.');
+    const prof=await client.from('profiles').select('role,id').eq('id',data.user.id).single();
+    if(prof.error||!prof.data||!isSupervisor(prof.data.role))throw Error('Acesso restrito à supervisão e gestão.');
+    state.client=client;state.profile=prof.data;return client;
+  }
+  async function execute(fn){if(state.busy)return;state.busy=true;
+    const buttons=['sri34-refresh','sri34-preview-shift','sri34-confirm-shift','sri34-close-day','sri34-plan','sri34-reopen-day','sri34-reopen-shift'];
+    buttons.forEach(id=>{const x=$(id);if(x)x.disabled=true});
+    try{await fn()}catch(e){console.warn('[SRI 3.4]',e);message('Não foi possível concluir: '+(e?.message||String(e)),'error');}
+    finally{state.busy=false;buttons.forEach(id=>{const x=$(id);if(x)x.disabled=false});$('sri34-confirm-shift').disabled=!(state.prepared&&$('sri34-last-import').checked);}
+  }
+  async function loadBoard(){
+    const client=await session(),day=$('sri34-date').value;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(day))throw Error('Informe uma data válida.');
+    const {data,error}=await client.rpc('sri_result_closure_overview',{p_day:day});
+    if(error)throw Error('Consulta de fechamentos: '+error.message);
+    state.overview=data;resetPreview();$('sri34-last-import').checked=false;
+    const rows=Array.isArray(data?.shifts)?data.shifts:[],select=$('sri34-shift');
+    select.innerHTML=rows.map((r,i)=>`<option value="${i}">${esc(r.team_name)} · ${esc(r.shift_label)}</option>`).join('');
+    $('sri34-summary').innerHTML=`<strong>${fmt(data.total_shifts)}</strong> turno(s) esperado(s) ou com apuração · <strong>${fmt(data.closed_shifts)}</strong> fechado(s) · <strong>${fmt(data.pending_shifts)}</strong> pendente(s). Situação geral: <strong>${esc(data.day_status||'open')}</strong>.`;
+    $('sri34-board').innerHTML=rows.length?`<table class="v20-table"><thead><tr><th>Equipe</th><th>Turno</th><th>Protocolos</th><th>Monitorados</th><th>Distribuição</th><th>Fechamento</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.team_name)}</td><td>${esc(r.shift_label)}</td><td>${fmt(r.protocol_count)}</td><td>${fmt(r.indicators?.protocolos_monitorados)}</td><td>${r.distribution_revision?'v'+fmt(r.distribution_revision):'—'}</td><td>${r.status==='closed'?'Fechado':r.snapshot_id?'Aberto':'Sem apuração'}</td></tr>`).join('')}</tbody></table>`:'<p>Nenhum turno planejado ou apurado para esta data.</p>';
+    $('sri34-manager').hidden=!canManage(state.profile?.role);
+    if(canManage(state.profile?.role)){
+      const t=await client.from('teams').select('id,name').eq('active',true).order('name');
+      if(t.error)throw Error('Equipes para planejamento: '+t.error.message);
+      state.availableTeams=t.data||[];
+      $('sri34-plan-team').innerHTML=state.availableTeams.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
+    }
+    message('Quadro atualizado diretamente no Supabase.','success');
+  }
+  function choice(){const i=Number($('sri34-shift').value);const r=state.overview?.shifts?.[i];if(!r)throw Error('Selecione uma equipe e turno do quadro.');return r;}
+  async function prepareShift(){
+    if(!state.overview)await loadBoard();const r=choice();
+    if(r.status==='closed')throw Error('Este turno já foi fechado.');
+    if(!r.snapshot_id)throw Error('Este turno não possui apuração consolidada.');
+    if(!r.distribution_revision)throw Error('Salve primeiro a distribuição para este resultado.');
+    state.prepared={snapshotId:r.snapshot_id,revision:r.distribution_revision,teamName:r.team_name,shift:r.shift_label,
+      protocolCount:r.protocol_count,warnings:r.warnings,monitor:r.indicators?.protocolos_monitorados};
+    $('sri34-last-import').checked=false;$('sri34-confirm-shift').disabled=true;
+    $('sri34-preview').innerHTML=`<strong>Conferência: ${esc(r.team_name)} · ${esc(r.shift_label)}</strong><div style="margin-top:6px">${fmt(r.protocol_count)} protocolos consolidados · ${fmt(r.indicators?.protocolos_monitorados)} monitorados · distribuição v${fmt(r.distribution_revision)}.</div><div style="margin-top:6px">Alertas informativos: ${fmt(r.warnings?.divergencias_informativas)}. As tratativas pendentes não equivalem a conclusão no SIGO.</div><small>Confirme a última importação e revise os dados antes de fechar.</small>`;
+    message('Conferência pronta. Marque a última importação para habilitar a confirmação.');
+  }
+  async function closeShift(){
+    const p=state.prepared;if(!p)throw Error('Conferência ainda não realizada.');
+    if(!$('sri34-last-import').checked)throw Error('Confirme que esta é a última importação do turno.');
+    const ok=confirm(`Encerrar no Supabase o turno ${p.shift} (${p.teamName})?\n\nProtocolos consolidados: ${fmt(p.protocolCount)}\nMonitorados: ${fmt(p.monitor)}\nVersão da distribuição: ${p.revision}\n\nO SIGO não será modificado.`);
+    if(!ok)return;
+    const client=await session();
+    const {data,error}=await client.rpc('sri_close_result_shift',{
+      p_snapshot:p.snapshotId,p_revision:p.revision,p_confirm_last_import:true});
+    if(error)throw Error('Fechamento de turno: '+error.message);
+    resetPreview();$('sri34-last-import').checked=false;
+    await loadBoard();message('Turno encerrado e auditado no Supabase. Referência: '+String(data?.id||''),'success');
+  }
+  async function planShift(){
+    if(!canManage(state.profile?.role))throw Error('Somente Gestor/Administrador pode planejar turnos.');
+    const team=$('sri34-plan-team').value,day=$('sri34-date').value,shift=$('sri34-plan-label').value.trim();
+    if(!team||shift.length<2)throw Error('Selecione a equipe e informe o turno.');
+    const client=await session();
+    const {error}=await client.rpc('sri_plan_result_shift',{p_team:team,p_day:day,p_shift:shift});
+    if(error)throw Error('Planejamento: '+error.message);
+    await loadBoard();message('Turno planejado. Se não houver apuração/fechamento, será contado como pendente.','success');
+  }
+  async function closeDay(){
+    if(!canManage(state.profile?.role))throw Error('Somente Gestor/Administrador pode fechar o dia.');
+    const day=$('sri34-date').value;
+    await loadBoard();const ov=state.overview;
+    if(!ov?.total_shifts)throw Error('Sem turnos planejados ou apurados nesta data.');
+    if(['closed','closed_with_pending'].includes(ov.day_status))throw Error('Dia já encerrado.');
+    const pending=Number(ov.pending_shifts)||0,reason=$('sri34-reason').value.trim();
+    if(pending&&reason.length<10)throw Error('Existem '+fmt(pending)+' turnos pendentes. Informe justificativa com pelo menos 10 caracteres.');
+    if(!confirm(`Confirmar fechamento geral de ${day}?\n\nTurnos totais: ${ov.total_shifts}\nTurnos fechados: ${ov.closed_shifts}\nPendentes: ${pending}\n\n${pending?'Fechamento com ressalvas e justificativa registrada.':'Fechamento sem pendências.'}\nO SIGO não será modificado.`))return;
+    const client=await session();
+    const {data,error}=await client.rpc('sri_close_result_day',{p_day:day,p_justification:reason||null});
+    if(error)throw Error('Fechamento geral: '+error.message);
+    await loadBoard();message('Fechamento geral registrado no Supabase: '+(data?.status==='closed_with_pending'?'com ressalvas.':'sem pendências.'),'success');
+  }
+  async function reopenDay(){
+    if(!canManage(state.profile?.role))throw Error('Acesso restrito à gestão.');
+    const day=$('sri34-date').value,reason=$('sri34-reopen-reason').value.trim();
+    if(reason.length<10)throw Error('Informe justificativa de pelo menos 10 caracteres.');
+    if(!confirm('Reabrir o fechamento geral de '+day+'? A ação será auditada.'))return;
+    const client=await session();const {error}=await client.rpc('sri_reopen_result_day',{p_day:day,p_reason:reason});
+    if(error)throw Error('Reabertura do dia: '+error.message);
+    await loadBoard();message('Dia reaberto e auditado no Supabase.','success');
+  }
+  async function reopenShift(){
+    if(!canManage(state.profile?.role))throw Error('Acesso restrito à gestão.');
+    if(!state.overview)await loadBoard();
+    const r=choice(),reason=$('sri34-reopen-reason').value.trim();
+    if(r.status!=='closed'||!r.closure_id)throw Error('Selecione um turno fechado no quadro.');
+    if(reason.length<10)throw Error('Informe justificativa de pelo menos 10 caracteres.');
+    if(!confirm('Reabrir '+r.team_name+' · '+r.shift_label+'? A ação será auditada.'))return;
+    const client=await session();const {error}=await client.rpc('sri_reopen_result_shift',{p_closure:r.closure_id,p_reason:reason});
+    if(error)throw Error('Reabertura do turno: '+error.message);
+    await loadBoard();message('Turno reaberto e auditado no Supabase.','success');
+  }
+  async function startAfterAuth(){try{
+    const c=await window.sriGetSupabaseClient?.();if(!c)return;
+    const {data}=await c.auth.getUser();if(!data?.user)return;
+    const p=await c.from('profiles').select('role').eq('id',data.user.id).single();
+    if(!isSupervisor(p?.data?.role))return;
+    await execute(loadBoard);
+  }catch(e){console.warn('[SRI 3.4 auto]',e)}}
+  function install(){makePanel();}
+  window.sriClosureAfterAuth=startAfterAuth;
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
 })();
 
 </script>
