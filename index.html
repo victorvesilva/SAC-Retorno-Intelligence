@@ -2673,6 +2673,18 @@ function distPersist(){try{localStorage.setItem(DIST_KEY,JSON.stringify({roster:
 function distNormalize(s){return String(s||'').trim().replace(/\s+/g,' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase()}
 function distUniqueId(){return 'op'+Date.now().toString(36)+Math.random().toString(36).slice(2,9)}
 function distOperator(id){return distRoster.find(o=>o.id===id)}
+window.sriGetDistributionRoster = () => (distRoster||[]).map(o=>({id:o.id,name:o.name,situation:o.situation}));
+window.sriGetDistributionDetails = () => {
+  const details={}; const assigned=distAssignments||{};
+  for(const r of (ui.apured||[])){
+    const id=String(r.id||'');if(!assigned[id]||details[id])continue;
+    details[id]={criticality:String(distCriticities?.[id]?.value||r.criticidade||'').slice(0,80),
+      situation:String(r.situacao||'').slice(0,80),sla:String(r.sla||'').slice(0,50),
+      channel:String(r.where||'').slice(0,80),status:String(r.status||'').slice(0,80)};
+  }
+  return details;
+};
+
 function distOwner(id){const a=distAssignments[id];return a&&(distOperator(a.opId)||distArchivedRoster.find(o=>o.id===a.opId))||null}
 function distRows(){if(!ui.live)return [];const seen=new Map();for(const r of ui.apured){if(!['SAC RETORNO','WHATSSAC'].includes(r.where))continue;if(!seen.has(r.id))seen.set(r.id,r)}return [...seen.values()]}
 function distRefreshAfterLoad(){distState.rows=distRows();distState.selected.clear();distState.page=0;distBuildFilterOptions();distRefresh()}
@@ -5539,7 +5551,7 @@ async function sriAuthorizeUser(authUser){
    team:'Não vinculada',active:true,importAuthorized:false,supervisorId:null,rosterId:null};
  $('v20-login').hidden=true;document.body.classList.remove('v20-not-logged');document.body.classList.add('v20-active');
  visibleNavigation();switchTab(uiRole==='operator'?'v20-mine':'overview');
- const warn=document.getElementById('sri-stage2-warning');if(warn)warn.hidden=false;queueMicrotask(()=>window.sriSnapshotAfterAuth?.());
+ const warn=document.getElementById('sri-stage2-warning');if(warn)warn.hidden=false;queueMicrotask(()=>{window.sriSnapshotAfterAuth?.();window.sriOperatorAfterAuth?.();});
 }
 async function doLogin(email,password){
  const client=await sriClient();
@@ -6431,6 +6443,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const managerRoles = new Set(['admin','manager','supervisor']);
   const ctx = {client:null,user:null,profile:null,teams:[],operations:[],snapshotId:null,revision:0,busy:false,restoring:false,saveTimer:null,initialized:false};
+  window.sriGetSavedDistributionContext=()=>({snapshotId:ctx.snapshotId,revision:ctx.revision,teamId:ctx.teamId});
   const today = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const status = (message, type='normal') => {const el=$('sri-daily-status');if(el){el.textContent=message;el.dataset.status=type;} };
   const originalText = 'A apuração SAC + ATIVO acontece somente no navegador. O banco recebe apenas o resultado consolidado, seus indicadores e o estado da distribuição. Divergências não impedem salvar a rodada.';
@@ -6558,7 +6571,17 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       if(!data)throw Error('A distribuição mudou em outro navegador. Carregue a última versão antes de salvar suas alterações, para não sobrescrevê-las.');
       ctx.revision=data.revision;
     }
-    status('Distribuição do dia sincronizada no Supabase. Versão '+ctx.revision+'.','success');
+    let assignmentMessage='';
+    try {
+      if(window.sriSyncOperatorTasks){
+        const published=await window.sriSyncOperatorTasks(ctx.snapshotId,ctx.revision);
+        assignmentMessage=` ${Number(published?.published)||0} tarefa(s) publicadas para operadores; ${Number(published?.unlinked)||0} sem vínculo.`;
+      }
+    }catch(err){
+      status('Distribuição salva, mas a carteira dos operadores NÃO foi sincronizada: '+(err?.message||String(err)),'error');
+      return;
+    }
+    status('Distribuição do dia sincronizada no Supabase. Versão '+ctx.revision+'.'+assignmentMessage,'success');
   }
   function setLoadedDistribution(loaded){
     if(!loaded||loaded.schema!==1)return;
@@ -6617,6 +6640,226 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     });
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',makePanel);else makePanel();
+})();
+
+</script>
+<style>body.sri33-operator-cloud #v20-mine-body{display:none!important} #sri33-mine [data-state="error"],#sri33-links [data-state="error"]{color:#b42318} #sri33-mine [data-state="success"],#sri33-links [data-state="success"]{color:#16703e} #sri33-links [data-state="warning"]{color:#80531a} #sri33-mine .v20-panel{max-width:100%}</style>
+<script id="sri-operator-cloud-stage33">
+/* SAC Retorno Intelligence 2.0 — Etapa 3.3: carteiras por login e tratativas (sem dados brutos). */
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const h = v => String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const label = a => ({pending:'Pendente',in_progress:'Em tratamento',awaiting:'Aguardando retorno',completed_in_tool:'Tratativa concluída na ferramenta',note:'Anotação'}[a] || a || '—');
+  const normalize = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toUpperCase();
+  let logged = null, taskRows=[], currentTask=null, inProgress=false;
+  const stateMsg = (id,msg,kind='') => {const el=$(id);if(el){el.textContent=msg;el.dataset.state=kind;}};
+  async function session() {
+    const client = await window.sriGetSupabaseClient?.();
+    if (!client) throw Error('Conexão Supabase não disponível.');
+    const {data,error} = await client.auth.getUser();
+    if (error || !data?.user) throw Error('Entre novamente na sua conta.');
+    const {data:profile,error:pe} = await client.from('profiles').select('id,role,full_name').eq('id',data.user.id).single();
+    if (pe || !profile) throw Error('Perfil não encontrado no Supabase.');
+    logged={client,user:data.user,profile};
+    return logged;
+  }
+  function adminBox() {
+    if ($('sri33-links')) return;
+    const root=$('import'); if(!root) return;
+    root.insertAdjacentHTML('beforeend', `
+      <section class="v20-panel" id="sri33-links" style="padding:18px;margin:20px 0;border:1px solid #c9d9ed;border-radius:12px;display:none">
+       <h3>Vincular contas aos operadores da distribuição</h3>
+       <p class="v20-muted">Relacione o nome do operador já utilizado na distribuição à conta cadastrada no Supabase. A vinculação é feita por equipe e somente pela gestão.</p>
+       <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:12px 0">
+        <label class="v20-field">Operador da distribuição<select id="sri33-roster" style="min-width:180px"></select></label>
+        <label class="v20-field">Conta Supabase (Operador)<select id="sri33-account" style="min-width:180px"></select></label>
+        <button class="v20-button" type="button" id="sri33-link">Vincular operador</button>
+        <button class="v20-button secondary" type="button" id="sri33-refresh">Atualizar vínculos</button>
+       </div>
+       <p id="sri33-link-status" role="status" aria-live="polite"></p>
+       <div id="sri33-link-table" style="overflow:auto;max-width:100%"></div>
+       <button class="v20-button secondary" type="button" id="sri33-publish">Publicar carteiras da distribuição atual</button>
+       <p class="v20-muted" style="margin-top:6px">Protocolos de operadores ainda não vinculados ficarão pendentes de publicação, mas não bloquearão os demais. Nenhum protocolo é enviado à conta errada por aproximação de nomes.</p>
+      </section>`);
+    $('sri33-refresh').addEventListener('click',()=>safeLink(refreshLinks));
+    $('sri33-link').addEventListener('click',()=>safeLink(linkOne));
+    $('sri33-publish').addEventListener('click',()=>safeLink(publishCurrent));
+    $('sri-daily-team')?.addEventListener('change',()=>safeLink(refreshLinks));
+    $('sri-daily-operation')?.addEventListener('change',()=>safeLink(refreshLinks));
+  }
+  function progressPanel(){
+    if($('sri33-progress'))return;
+    const root=$('import');if(!root)return;
+    root.insertAdjacentHTML('beforeend',`
+      <section id="sri33-progress" class="v20-panel" style="display:none;margin:20px 0;padding:18px;border:1px solid #d1def0;border-radius:12px">
+       <h3>Acompanhamento das tratativas — equipe</h3>
+       <p class="v20-muted">Consulte as tarefas centralizadas e seus status. Esta visão é exclusiva da supervisão/gestão autorizada.</p>
+       <button type="button" class="v20-button secondary" id="sri33-progress-refresh">Atualizar acompanhamento</button>
+       <p id="sri33-progress-status" role="status" aria-live="polite"></p>
+       <div id="sri33-progress-table" style="overflow-x:auto"></div>
+      </section>`);
+    $('sri33-progress-refresh').addEventListener('click',()=>safeProgress(loadProgress));
+  }
+  async function safeProgress(fn){try{await fn();}catch(e){stateMsg('sri33-progress-status',e.message||String(e),'error');}}
+  async function loadProgress(){
+    const {client,profile}=await session();
+    if(!['admin','manager','supervisor'].includes(profile.role))return;
+    const team=$('sri-daily-team')?.value;
+    if(!team)throw Error('Selecione uma equipe para acompanhar.');
+    const countQuery=client.from('daily_operator_tasks').select('id',{head:true,count:'exact'}).eq('team_id',team).eq('active',true);
+    const dataQuery=client.from('daily_operator_tasks')
+       .select('id,protocol_number,operator_user_id,work_status,criticality,due_situation,updated_at')
+       .eq('team_id',team).eq('active',true).order('updated_at',{ascending:false}).limit(100);
+    const [tot,rows]=await Promise.all([countQuery,dataQuery]);
+    if(tot.error)throw Error('Total da carteira: '+tot.error.message);
+    if(rows.error)throw Error('Acompanhamento: '+rows.error.message);
+    const tasks=rows.data||[];
+    const statuses={};for(const t of tasks)statuses[t.work_status]=(statuses[t.work_status]||0)+1;
+    stateMsg('sri33-progress-status',`${tot.count||0} protocolo(s) distribuídos na equipe. Exibindo as 100 atualizações mais recentes.`,'success');
+    $('sri33-progress-table').innerHTML=tasks.length?`<table class="v20-table" style="min-width:650px;width:100%"><thead><tr><th>Protocolo</th><th>Situação</th><th>Criticidade</th><th>Última atualização</th></tr></thead><tbody>${tasks.map(t=>`<tr><td>${h(t.protocol_number)}</td><td>${h(label(t.work_status))}</td><td>${h(t.criticality||'—')}</td><td>${h(new Date(t.updated_at).toLocaleString('pt-BR'))}</td></tr>`).join('')}</tbody></table>`:'<p>Nenhuma tarefa publicada nesta equipe. Primeiro vincule operadores e publique a distribuição.</p>';
+  }
+  async function safeLink(fn) {try {await fn();}catch(e) {stateMsg('sri33-link-status',e.message||String(e),'error');}}
+  async function refreshLinks() {
+    const {client,profile}=await session();
+    const visible=['manager','admin'].includes(profile.role);
+    if ($('sri33-links')) $('sri33-links').style.display=visible?'block':'none';
+    if (!visible) return;
+    const team=$('sri-daily-team')?.value;
+    if(!team){stateMsg('sri33-link-status','Selecione uma equipe no resultado diário.');return;}
+    const roster=window.sriGetDistributionRoster?.()||[];
+    const uniqueRoster=[...new Map(roster.filter(x=>x&&x.id&&x.name).map(x=>[normalize(x.name),x])).values()];
+    const [users,links]=await Promise.all([
+      client.from('profiles').select('id,full_name,role').eq('role','operator').order('full_name'),
+      client.from('operator_links').select('user_id,operator_name').eq('team_id',team).order('operator_name')
+    ]);
+    if(users.error)throw Error('Usuários: '+users.error.message);
+    if(links.error)throw Error('Vínculos: '+links.error.message);
+    $('sri33-roster').innerHTML=uniqueRoster.map(o=>`<option value="${h(o.name)}">${h(o.name)}</option>`).join('');
+    $('sri33-account').innerHTML=(users.data||[]).map(u=>`<option value="${h(u.id)}">${h(u.full_name||'Operador sem nome')}</option>`).join('');
+    const names=new Map((users.data||[]).map(u=>[u.id,u.full_name]));
+    $('sri33-link-table').innerHTML=`<p style="font-size:13px">${(links.data||[]).length} conta(s) vinculada(s) à equipe. ${uniqueRoster.length} operador(es) na distribuição local.</p>`+
+      ((links.data||[]).length?`<table class="v20-table"><thead><tr><th>Nome da distribuição</th><th>Conta vinculada</th></tr></thead><tbody>${links.data.map(l=>`<tr><td>${h(l.operator_name)}</td><td>${h(names.get(l.user_id)||'Conta não listada')}</td></tr>`).join('')}</tbody></table>`:'');
+    stateMsg('sri33-link-status',uniqueRoster.length?'Selecione o nome operacional e sua conta para vincular.':'Carregue uma distribuição com operadores cadastrados antes de vincular.');
+  }
+  async function linkOne() {
+    const {client,profile}=await session();
+    if(!['manager','admin'].includes(profile.role))throw Error('Apenas gestor/administrador pode vincular operadores.');
+    const p_team=$('sri-daily-team')?.value,p_user=$('sri33-account')?.value,p_operator_name=$('sri33-roster')?.value;
+    if(!p_team||!p_user||!p_operator_name)throw Error('Informe equipe, operador da distribuição e conta Supabase.');
+    const selected=($('sri33-account')?.selectedOptions?.[0]?.textContent)||'conta selecionada';
+    if(!confirm('Vincular '+p_operator_name+' à conta '+selected+'? Esse usuário receberá os protocolos atribuídos a esse nome na equipe.'))return;
+    const {error}=await client.rpc('admin_link_operator',{p_team,p_user,p_operator_name});
+    if(error)throw Error('Vinculação: '+error.message);
+    await refreshLinks();stateMsg('sri33-link-status','Operador vinculado à conta do Supabase. Publique agora as carteiras.','success');
+  }
+  async function publishCurrent(){
+    const ctx=window.sriGetSavedDistributionContext?.();
+    if(!ctx?.snapshotId||!ctx?.revision)throw Error('Carregue um resultado com distribuição salva antes de publicar.');
+    await publishTasks(ctx.snapshotId,ctx.revision);
+  }
+  async function publishTasks(snapshotId,revision){
+    const {client,profile}=await session();
+    if(!['manager','admin','supervisor'].includes(profile.role))throw Error('Publicação restrita à gestão/supervisão.');
+    if(!snapshotId||!revision)throw Error('A distribuição precisa estar salva primeiro.');
+    const details=window.sriGetDistributionDetails?.()||{};
+    const {data,error}=await client.rpc('publish_daily_operator_tasks',{p_snapshot:snapshotId,p_revision:revision,p_details:details});
+    if(error)throw Error('Publicação das carteiras: '+error.message+'. Confira se o SQL da Etapa 3.3 foi executado.');
+    const info=`${Number(data?.published)||0} protocolo(s) publicados; ${Number(data?.unlinked)||0} aguardando vínculo de operador.`;
+    stateMsg('sri33-link-status',info+(data?.unlinked_names?.length?' Operadores pendentes: '+data.unlinked_names.join(', '):''),data?.unlinked?'warning':'success');
+    return data;
+  }
+  window.sriSyncOperatorTasks=publishTasks;
+
+  function operatorPanel(){
+    if($('sri33-mine'))return;
+    const root=$('v20-mine');if(!root)return;
+    root.insertAdjacentHTML('beforeend',`
+      <section class="v20-panel" id="sri33-mine" style="margin-top:16px;padding:18px;border-radius:12px">
+       <div class="v20-between"><div><h3>Minha Carteira</h3><p class="v20-muted">Protocolos distribuídos para sua conta. Use Atualizar para consultar a versão salva no Supabase.</p></div><button type="button" id="sri33-mine-refresh" class="v20-button secondary">Atualizar protocolos</button></div>
+       <p id="sri33-mine-status" role="status" aria-live="polite"></p>
+       <div id="sri33-task-table" style="overflow-x:auto"></div>
+       <h3 style="margin-top:18px">Minhas Prioridades</h3><div id="sri33-priority"></div>
+       <h3 style="margin-top:18px">Meu Histórico</h3><div id="sri33-history"></div>
+       <div id="sri33-treatment" hidden style="margin-top:16px;padding:14px;border:1px solid #d6e1ef;border-radius:10px">
+         <h4 id="sri33-treatment-title">Registrar tratativa</h4>
+         <label class="v20-field">Ação<select id="sri33-treatment-kind">
+           <option value="in_progress">Iniciar tratamento</option><option value="awaiting">Aguardando retorno</option>
+           <option value="note">Adicionar anotação</option><option value="completed_in_tool">Concluir tratativa interna (não encerra no SIGO)</option>
+         </select></label>
+         <label class="v20-field">Descrição da tratativa<textarea id="sri33-treatment-notes" rows="3" maxlength="1500" style="width:100%;max-width:720px" placeholder="Registre objetivamente o que foi feito e a próxima ação"></textarea></label>
+         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="v20-button" type="button" id="sri33-treatment-save">Salvar tratativa</button><button class="v20-button secondary" type="button" id="sri33-treatment-cancel">Cancelar</button></div>
+         <p id="sri33-treatment-status" role="status" aria-live="polite"></p>
+       </div>
+      </section>`);
+    $('sri33-mine-refresh').addEventListener('click',()=>safeMine(loadTasks));
+    $('sri33-treatment-cancel').addEventListener('click',()=>{$('sri33-treatment').hidden=true;currentTask=null});
+    $('sri33-treatment-save').addEventListener('click',()=>safeMine(saveTreatment));
+    $('sri33-task-table').addEventListener('click',e=>{
+      const btn=e.target.closest('[data-sri33-task]');if(!btn)return;
+      const row=taskRows.find(t=>t.id===btn.dataset.sri33Task);if(!row)return;
+      currentTask=row;$('sri33-treatment-title').textContent='Registrar tratativa — '+row.protocol_number;
+      $('sri33-treatment-notes').value='';$('sri33-treatment-status').textContent='';$('sri33-treatment').hidden=false;
+    });
+  }
+  async function safeMine(fn){if(inProgress)return;inProgress=true;try{await fn()}catch(e){stateMsg('sri33-mine-status',e.message||String(e),'error')}finally{inProgress=false}}
+  async function loadTasks(){
+    const {client,profile,user}=await session();
+    if(profile.role!=='operator')return;
+    const rows=[];let from=0;
+    for(let round=0;round<20;round++){
+      const {data,error}=await client.from('daily_operator_tasks')
+        .select('id,protocol_number,criticality,due_situation,sla_band,channel,source_status,work_status,operational_day,shift_label,updated_at')
+        .eq('operator_user_id',user.id).eq('active',true)
+        .order('operational_day',{ascending:false}).order('updated_at',{ascending:false})
+        .range(from,from+199);
+      if(error)throw Error('Carteira: '+error.message);
+      rows.push(...(data||[]));if((data||[]).length<200)break;from+=200;
+    }
+    taskRows=rows;
+    const rank=r=>{return /BACKLOG/i.test(r.due_situation||'')?0:/VENCE HOJE|VENCENDO HOJE/i.test(r.due_situation||'')?1:/D6/i.test(r.sla_band||'')?2:3};
+    taskRows.sort((a,b)=>rank(a)-rank(b));
+    $('sri33-task-table').innerHTML=rows.length?`<table class="v20-table" style="min-width:670px;width:100%"><thead><tr><th>Protocolo</th><th>Prioridade</th><th>Prazo</th><th>Situação</th><th>Ação</th></tr></thead><tbody>${taskRows.map(r=>`<tr><td>${h(r.protocol_number)}</td><td>${h(r.criticality||'Não informada')}</td><td>${h(r.due_situation||r.sla_band||'—')}</td><td>${h(label(r.work_status))}</td><td><button class="v20-button secondary" type="button" data-sri33-task="${h(r.id)}">Tratar</button></td></tr>`).join('')}</tbody></table>`:'<p>Sua carteira ainda não possui protocolos atribuídos. Solicite à supervisão a vinculação de sua conta e a publicação da distribuição.</p>';
+    const priority=taskRows.filter(r=>rank(r)<3);
+    $('sri33-priority').innerHTML=priority.length?`<p>${priority.length} protocolo(s) com prazo prioritário:</p><p>${priority.slice(0,20).map(r=>h(r.protocol_number)+' ('+h(r.due_situation||r.sla_band||'')+')').join(' · ')}${priority.length>20?' · ...':''}</p>`:'<p>Nenhuma prioridade de prazo identificada na carteira publicada.</p>';
+    stateMsg('sri33-mine-status',`${rows.length} protocolo(s) carregado(s) da sua conta Supabase.`,'success');
+    await loadHistory(client,user.id);
+  }
+  async function loadHistory(client,userId){
+    const {data,error}=await client.from('daily_operator_treatments')
+       .select('id,action,notes,created_at,task_id').eq('actor_id',userId)
+       .order('created_at',{ascending:false}).limit(50);
+    if(error)throw Error('Histórico: '+error.message);
+    const map=new Map(taskRows.map(r=>[r.id,r.protocol_number]));
+    $('sri33-history').innerHTML=(data||[]).length?`<div style="display:grid;gap:8px">${data.map(t=>`<div style="padding:10px;border:1px solid #dde4ef;border-radius:8px"><strong>${h(label(t.action))}</strong> · ${h(map.get(t.task_id)||'Protocolo anterior')} <small>${h(new Date(t.created_at).toLocaleString('pt-BR'))}</small><div>${h(t.notes)}</div></div>`).join('')}</div>`:'<p>Você ainda não registrou nenhuma tratativa.</p>';
+  }
+  async function saveTreatment(){
+    if(!currentTask)throw Error('Selecione um protocolo.');
+    const notes=$('sri33-treatment-notes').value.trim();
+    const action=$('sri33-treatment-kind').value;
+    if(notes.length<3)throw Error('Descreva a tratativa com pelo menos 3 caracteres.');
+    const {client}=await session();
+    const {error}=await client.rpc('record_daily_operator_treatment',{p_task:currentTask.id,p_action:action,p_notes:notes});
+    if(error)throw Error('Tratativa: '+error.message);
+    $('sri33-treatment').hidden=true;currentTask=null;
+    await loadTasks();stateMsg('sri33-mine-status','Tratativa registrada no Supabase, sem finalizar o protocolo no SIGO.','success');
+  }
+  window.sriOperatorAfterAuth=async function(){
+    adminBox();progressPanel();operatorPanel();
+    try {
+      const {profile}=await session();
+      document.body.classList.toggle('sri33-operator-cloud',profile.role==='operator');
+      if($('sri33-progress'))$('sri33-progress').style.display=['admin','manager','supervisor'].includes(profile.role)?'block':'none';
+      if(profile.role==='operator')await safeMine(loadTasks);
+      else if(['manager','admin'].includes(profile.role))await safeLink(refreshLinks);
+      if(['manager','admin','supervisor'].includes(profile.role)){
+        if($('sri-daily-team')?.value)await safeProgress(loadProgress);
+        else stateMsg('sri33-progress-status','Selecione a equipe no resultado diário e clique Atualizar acompanhamento.');
+      }
+    }catch(e){console.warn('[SAC 3.3] Conta/permissões',e.message);}
+  };
+  const init=()=>{adminBox();progressPanel();operatorPanel();};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 
 </script>
