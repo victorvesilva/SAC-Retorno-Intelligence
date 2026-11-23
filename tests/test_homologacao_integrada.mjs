@@ -15,7 +15,7 @@ for(const path of files){
  assert.doesNotMatch(sql,/\bDELETE\s+FROM\b|\bDROP\s+TABLE\b|\bTRUNCATE\b/i);
 }
 assert.match(html,/SRI CSV — correcoes auditaveis/);
-assert.match(html,/rpc\('publish_daily_operator_tasks'/);
+assert.match(html,/rpc\('publish_general_operator_tasks'/);
 assert.match(html,/rpc\('record_daily_operator_treatment'/);
 assert.match(html,/rpc\('sri_close_result_shift'/);
 assert.match(panel,/sri_v_daily_operational_metrics/);

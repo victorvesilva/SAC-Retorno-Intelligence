@@ -1,81 +1,61 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
-assert.ok(html.includes('id="sri-import-context"'),'Contexto compacto precisa existir');
-assert.ok(html.includes('id="sri-daily-panel" hidden style="display:none"'),'Painel técnico não deve ocupar espaço');
-assert.ok(!html.includes('<h3 style="color:#08418e;margin:0 0 8px">Publicação automática SAC + ATIVO</h3>'),'Remover o grande painel');
-assert.match(html,/id="sri-import-context-fields" hidden/,'Seletores só na exceção');
-assert.match(html,/id="sri-import-recovery" hidden/,'Recuperação só em falha');
-assert.match(html,/id="sri-shared-notice" hidden/,'Conflitos não podem ser ocultados');
-assert.match(html,/ctx\.userChoosingDestination=true;renderImportContext\(\)/,'Permitir seleção quando destino é ambíguo');
-assert.match(html,/\.from\('team_memberships'\)\.select\('team_id'\)\.eq\('user_id',ctx\.user\.id\)/);
-assert.match(html,/\.eq\('team_id',selectedTeam\)\.order\('created_at'/,'Recuperar só carteira da equipe escolhida');
-assert.match(html,/if\(!selectedTeam\)return;\s*query=query\.eq\('team_id',selectedTeam\)/,'Não atualizar automaticamente outra equipe');
-assert.match(html,/await loadLast\(\{startup:true\}\)/,'Recuperação automática da última apuração');
-assert.match(html,/window\.sriQueueDistributionSave=queueDistributionSave/,'Salvar distribuição automaticamente');
-assert.match(html,/sri-auto-toast-root/,'Manter notificações');
-const begin=html.indexOf('  function selectAutomaticDestination(){');
-const end=html.indexOf('  function resultPayload(){',begin);
-assert.ok(begin>0&&end>begin,'Rotinas de determinação de destino');
-const ops=[{id:'r1',name:'R1'},{id:'r2',name:'R2'}];
-const teams=[{id:'t1',operation_id:'r1',name:'Teste'},{id:'t2',operation_id:'r2',name:'Equipe Glaucio'}];
-function makeScenario({members=[],pref=null,availableTeams=teams}={}){
- const nodes=new Map();
- const $=id=>{if(!nodes.has(id))nodes.set(id,{value:'',innerHTML:'',dataset:{},hidden:false,scrollIntoView(){}});return nodes.get(id)};
- const ctx={operations:[],teams:[],profile:{role:'manager'},user:{id:'user-1'},linkedTeamIds:new Set(),userChoosingDestination:false};
- let summaryUpdates=0;
- const answers={
-   operations:{data:ops,error:null},
-   teams:{data:availableTeams,error:null},
-   team_memberships:{data:members.map(team_id=>({team_id})),error:null}
- };
- const client={from(name){
-   assert.ok(Object.hasOwn(answers,name),'Consulta não esperada '+name);
-   return {select(){return this},eq(){return this},order(){return this},
-     then(resolve,reject){return Promise.resolve(answers[name]).then(resolve,reject)}};
- }};
- const sandbox={
-   ctx,$,window:{},managerRoles:new Set(['admin','manager','supervisor']),
-   localStorage:{getItem:()=>null,setItem:()=>{}},
-   preferredPublishingTarget:()=>pref,renderImportContext:()=>{summaryUpdates++},
-   syncShift:()=>({day:'2026-11-24',shift:'Noite'}),inferredShift:()=> 'Noite',
-   status:()=>{},esc:x=>x,auth:async()=>client,console
- };
- vm.runInNewContext(html.slice(begin,end)+'\n;globalThis.controls={loadMetadata,publishingContextValid,selectAutomaticDestination,setTeams};',sandbox,{timeout:1500});
- return {ctx,$,controls:sandbox.controls,updates:()=>summaryUpdates};
-}
+const sql=fs.readFileSync(new URL('../sql/2026-11-23_sri_importacao_geral.sql',import.meta.url),'utf8');
 
-const none=makeScenario();
-await none.controls.loadMetadata();
-assert.equal(none.$('sri-daily-operation').value,'','Duas equipes sem preferência: não escolher operação aleatória');
-assert.equal(none.$('sri-daily-team').value,'','Duas equipes sem preferência: não escolher equipe aleatória');
-assert.equal(none.ctx.userChoosingDestination,true,'Seleção visível quando necessário');
-assert.equal(none.controls.publishingContextValid(),false,'Bloquear publicação sem destino');
-assert.ok(none.updates()>0);
+assert.match(html,/id="sri-import-context"/);
+assert.match(html,/id="sri-daily-panel" hidden style="display:none"/);
+assert.match(html,/id="sri-daily-operation" hidden aria-hidden="true"/);
+assert.match(html,/id="sri-daily-team" hidden aria-hidden="true"/);
+assert.match(html,/id="sri-daily-team" hidden aria-hidden="true"/);
+assert.doesNotMatch(html,/Selecione uma vez a operação e a equipe para receber os resultados/);
+assert.match(html,/id="sri-import-recovery" hidden/);
+assert.match(html,/id="sri-shared-notice" hidden/);
+assert.match(html,/await loadLast\(\{startup:true\}\)/);
+assert.match(html,/window\.sriQueueDistributionSave=queueDistributionSave/);
+assert.match(html,/window\.sriRefreshDistributionCandidates\?\.\(\)/);
+assert.match(html,/window\.sriCanAutoPublish=\(\)=>publishingContextValid/);
+assert.match(html,/const team=null,\{day,shift\}=syncShift\(\)/);
+assert.match(html,/\.is\('team_id',null\)\.order\('created_at'/);
+assert.match(html,/query=query\.is\('team_id',null\)/);
+assert.match(html,/client\.rpc\('sri_general_distribution_candidates'\)/);
+assert.match(html,/client\.rpc\('publish_general_operator_tasks'/);
+assert.match(html,/sri-auto-toast-root/);
+for(const expected of [
+ 'ALTER TABLE public.daily_result_snapshots ALTER COLUMN team_id DROP NOT NULL',
+ 'ALTER TABLE public.daily_operator_tasks ALTER COLUMN team_id DROP NOT NULL',
+ 'CREATE UNIQUE INDEX IF NOT EXISTS sri_general_snapshots_unique',
+ 'CREATE POLICY sri_general_snapshots_insert',
+ 'CREATE POLICY sri_general_snapshots_read',
+ 'CREATE OR REPLACE FUNCTION public.publish_general_operator_tasks',
+ 'CREATE OR REPLACE FUNCTION public.sri_general_distribution_candidates',
+ 'CREATE OR REPLACE FUNCTION public.record_daily_operator_treatment',
+ 'CREATE OR REPLACE FUNCTION private.sri_close_general_days',
+ 'sri-close-general-20h-brasilia',
+ "team_id IS NULL",
+ "p.operational_status IN('Ativo','Promovido')"
+])assert.ok(sql.includes(expected),'Regra backend ausente: '+expected);
+assert.match(sql,/private\.is_supervisor_of\(v_team\)/,'Permissões de supervisão são mantidas');
+assert.match(sql,/operator_user_id=\(SELECT auth\.uid\(\)\)/,'Operador só lê sua carteira');
+assert.match(sql,/v_num_teams>1/,'Conflitos reais de equipe não podem ser aplicados automaticamente');
+assert.match(sql,/ON CONFLICT\(snapshot_id,protocol_number\) DO UPDATE/,'Publicação idempotente de protocolos');
+assert.match(sql,/v_task\.team_id IS NULL/,'Operador sem equipe pode registrar tratativa');
+assert.doesNotMatch(sql,/TRUNCATE\b|DELETE\s+FROM\s+public\.daily_operator_tasks/i);
 
-const linked=makeScenario({members:['t1']});
-await linked.controls.loadMetadata();
-assert.equal(linked.$('sri-daily-operation').value,'r1');
-assert.equal(linked.$('sri-daily-team').value,'t1','Vínculo único deve ser o destino automático');
-assert.equal(linked.controls.publishingContextValid(),true,'Perfil com vínculo único não exige ação humana');
-
-const multiLink=makeScenario({members:['t1','t2']});
-await multiLink.controls.loadMetadata();
-assert.equal(multiLink.$('sri-daily-team').value,'','Vários vínculos exigem escolha');
-
-const preferred=makeScenario({pref:{operation:'r2',team:'t2'}});
-await preferred.controls.loadMetadata();
-assert.equal(preferred.$('sri-daily-team').value,'t2','Preferência válida elimina escolha repetitiva');
-assert.equal(preferred.controls.publishingContextValid(),true);
-
-const invalidPref=makeScenario({pref:{operation:'r2',team:'deleted'}});
-await invalidPref.controls.loadMetadata();
-assert.equal(invalidPref.$('sri-daily-team').value,'','Nunca usar preferência inválida');
-
-const unique=makeScenario({availableTeams:[teams[1]]});
-await unique.controls.loadMetadata();
-assert.equal(unique.$('sri-daily-team').value,'t2','Única equipe acessível: identificar automaticamente');
-
-console.log('PASS: painel simplificado, escolha somente na ambiguidade, vínculo único, preferência lembrada, proteção multi-equipe e recuperação automática.');
+const a=html.indexOf('  function publishingContextValid({showError=false}={}){');
+const b=html.indexOf('  function resultPayload(){',a);
+assert.ok(a>0&&b>a);
+let calls=0;
+const ctx={ctx:{profile:{role:'manager'},operations:[],teams:[]},window:{},
+ managerRoles:new Set(['admin','manager','supervisor']),
+ inferredShift:()=> 'Manhã',status:()=>{},renderImportContext:()=>{},
+ auth:async()=>({}),console};
+vm.runInNewContext(html.slice(a,b)+'\n;globalThis.getRules={publishingContextValid,loadMetadata}',ctx);
+assert.equal(ctx.getRules.publishingContextValid(),true,'Gestor pode importar geral, sem equipe');
+await ctx.getRules.loadMetadata();
+assert.equal(ctx.ctx.teams.length,0,'Nenhuma escolha de equipe é necessária');
+assert.equal(calls,0);
+ctx.ctx.profile={role:'operator'};
+assert.equal(ctx.getRules.publishingContextValid(),false,'Operador não deve importar apuração geral');
+console.log('PASS: importação geral SAC+ATIVO sem campos de equipe, permissões e distribuição por UUID.');

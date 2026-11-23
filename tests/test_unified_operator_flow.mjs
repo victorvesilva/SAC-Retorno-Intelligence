@@ -6,7 +6,7 @@ const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 assert.match(html,/rpc\('sri_set_user_team'/,'Vínculo técnico por equipe deve continuar usando RPC autorizada');
 assert.match(html,/const id='acct:'\+profile\.id/,'Roster precisa manter identificador UUID da conta');
 assert.match(html,/window\.sriSyncCloudRoster\s*=\s*function/,'Roster deve ser sincronizado pelo diretório unificado');
-assert.match(html,/rpc\('publish_daily_operator_tasks'/,'Publicação de carteiras deve permanecer disponível');
+assert.match(html,/rpc\('publish_general_operator_tasks'/,'Distribuição geral deve permanecer disponível');
 assert.match(html,/id="sri-unified-publish"/,'Botão principal de publicação deve permanecer disponível');
 assert.match(html,/Conciliação de operadores antigos/,'Painel excepcional deve ser identificado como legado');
 assert.match(html,/Conciliação de operadores legados \(uso excepcional\)/,'Conciliação antiga deve ser recolhível');
