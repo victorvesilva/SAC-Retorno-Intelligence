@@ -6572,11 +6572,15 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const old=sel.value;sel.innerHTML=filtered.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');
     if(filtered.some(t=>t.id===old))sel.value=old;
   }
+  // Rotulos para exibicao somente: identificadores e valores do banco permanecem intactos.
   function sriOperationLabel(name){
-    const key=String(name||'').trim().toUpperCase();
-    const labels={R1:'R1 - Manhã',R2:'R2 - Tarde'};
-    return labels[key]||String(name||'');
+    const original=String(name??'');
+    const key=original.trim().toLocaleUpperCase('pt-BR').replace(/\s+/g,' ');
+    if(/^R1(?:\s*[-–—]\s*MANH(?:A|Ã))?$/.test(key))return 'Manhã';
+    if(/^R2(?:\s*[-–—]\s*TARDE)?$/.test(key))return 'Tarde';
+    return original;
   }
+  window.sriDisplayTurnoLabel=sriOperationLabel;
   async function loadMetadata(){const client=await auth();
     const [ops,teams]=await Promise.all([
       client.from('operations').select('id,name').eq('active',true).order('name'),
@@ -6616,7 +6620,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const payload=resultPayload();const indicator=summarize(),warnings=warningSummary();
     const digest=await hash(JSON.stringify({reference:payload.reference,source:payload.source}));
     const packed=await v42Compress(payload);if(packed.length>10000000)throw Error('O resultado compactado excedeu 10 MB. É necessário processamento em lotes no servidor, sem salvar CSVs.');
-    if(!confirm(`Salvar SOMENTE o resultado da apuração no Supabase?\n\nEquipe: ${ctx.teams.find(t=>t.id===team)?.name}\nDia: ${day} · ${shift}\nProtocolos consolidados: ${indicator.protocolos_consolidados}\nMonitorados: ${indicator.protocolos_monitorados}\nDivergências informativas: ${warnings.divergencias_informativas}\n\nOs arquivos originais SAC e ATIVO NÃO serão enviados nem armazenados.`))return;
+    if(!confirm(`Salvar SOMENTE o resultado da apuração no Supabase?\n\nEquipe: ${ctx.teams.find(t=>t.id===team)?.name}\nDia: ${day} · ${sriOperationLabel(shift)}\nProtocolos consolidados: ${indicator.protocolos_consolidados}\nMonitorados: ${indicator.protocolos_monitorados}\nDivergências informativas: ${warnings.divergencias_informativas}\n\nOs arquivos originais SAC e ATIVO NÃO serão enviados nem armazenados.`))return;
     status('Salvando resultado consolidado e indicadores no Supabase...');
     const {data,error}=await client.from('daily_result_snapshots').insert({team_id:team,operational_day:day,
        shift_label:shift,reference_serial:payload.reference,imported_by:ctx.user.id,payload_sha256:digest,payload_gzip:packed,
@@ -6696,7 +6700,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       const t=ctx.teams.find(t=>t.id===data.team_id);
       if(t){$('sri-daily-operation').value=t.operation_id;setTeams();$('sri-daily-team').value=t.id;}
       $('sri-daily-day').value=data.operational_day;$('sri-daily-shift').value=data.shift_label;
-      $('sri-daily-result').innerHTML=`<p><strong>Apuração recuperada do Supabase.</strong> ${Number(data.indicators?.protocolos_consolidados)||0} protocolos consolidados. Equipe: ${esc(t?.name||'Equipe autorizada')}. Data ${esc(data.operational_day)} · ${esc(data.shift_label)}. Alertas informativos: ${Number(data.warnings?.divergencias_informativas)||0}.</p>`;
+      $('sri-daily-result').innerHTML=`<p><strong>Apuração recuperada do Supabase.</strong> ${Number(data.indicators?.protocolos_consolidados)||0} protocolos consolidados. Equipe: ${esc(t?.name||'Equipe autorizada')}. Data ${esc(data.operational_day)} · ${esc(sriOperationLabel(data.shift_label))}. Alertas informativos: ${Number(data.warnings?.divergencias_informativas)||0}.</p>`;
       status('Indicadores e carteira de distribuição carregados do Supabase. Os arquivos SAC/ATIVO não são necessários neste navegador.','success');window.sriUnifiedAfterSnapshot?.();
     }finally{ctx.restoring=false;}
   }
@@ -7033,7 +7037,7 @@ function render(root){if(!root)return;root.innerHTML=`<div class="v20-panel sri-
  <div class="v20-row" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:14px 0"><label class="v20-field">Pesquisar<input id="sri-unified-search" type="search" placeholder="Nome ou e-mail" value="${esc(state.filter)}"></label><label class="v20-field">Perfil<select id="sri-unified-role"><option value="all">Todos</option>${Object.entries(roles).map(([key,label])=>`<option value="${key}" ${state.viewRole===key?'selected':''}>${label}</option>`).join('')}</select></label><label class="v20-field">Equipe<select id="sri-unified-team"><option value="all">Todas</option><option value="none">Sem equipe</option>${state.teams.map(t=>`<option value="${esc(t.id)}" ${state.viewTeam===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select></label></div>
  <p id="sri-unified-message" role="status" aria-live="polite" class="v20-muted"></p>
  <div id="sri-unified-table"></div><div id="sri-unified-detail"></div>
- <details style="margin-top:16px"><summary>Criar equipe</summary><div class="v20-row" style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0"><label class="v20-field">Operação<select id="sri-new-team-operation">${state.operations.filter(x=>x.active).map(o=>`<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('')}</select></label><label class="v20-field">Nome da equipe<input id="sri-new-team-name" maxlength="80" placeholder="Ex.: Equipe manhã"></label><button class="v20-button secondary" type="button" id="sri-create-team">Criar equipe</button></div></details>
+ <details style="margin-top:16px"><summary>Criar equipe</summary><div class="v20-row" style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0"><label class="v20-field">Operação<select id="sri-new-team-operation">${state.operations.filter(x=>x.active).map(o=>`<option value="${esc(o.id)}">${esc(window.sriDisplayTurnoLabel(o.name))}</option>`).join('')}</select></label><label class="v20-field">Nome da equipe<input id="sri-new-team-name" maxlength="80" placeholder="Ex.: Equipe manhã"></label><button class="v20-button secondary" type="button" id="sri-create-team">Criar equipe</button></div></details>
  <details id="sri-unified-legacy-wrap" style="margin-top:14px"><summary>Conciliação de registros antigos (somente quando necessário)</summary><p class="v20-muted">Use apenas para históricos com nomes sem ID Supabase. Novas contas e distribuições não precisam desta vinculação.</p><div id="sri-unified-legacy-target"></div></details>
  </div>`;
  $('sri-unified-stats').innerHTML=stats();setTable();
@@ -7187,9 +7191,9 @@ document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.tar
     if(error)throw Error('Consulta de fechamentos: '+error.message);
     state.overview=data;resetPreview();$('sri34-last-import').checked=false;
     const rows=Array.isArray(data?.shifts)?data.shifts:[],select=$('sri34-shift');
-    select.innerHTML=rows.map((r,i)=>`<option value="${i}">${esc(r.team_name)} · ${esc(r.shift_label)}</option>`).join('');
+    select.innerHTML=rows.map((r,i)=>`<option value="${i}">${esc(r.team_name)} · ${esc(window.sriDisplayTurnoLabel(r.shift_label))}</option>`).join('');
     $('sri34-summary').innerHTML=`<strong>${fmt(data.total_shifts)}</strong> turno(s) esperado(s) ou com apuração · <strong>${fmt(data.closed_shifts)}</strong> fechado(s) · <strong>${fmt(data.pending_shifts)}</strong> pendente(s). Situação geral: <strong>${esc(data.day_status||'open')}</strong>.`;
-    $('sri34-board').innerHTML=rows.length?`<table class="v20-table"><thead><tr><th>Equipe</th><th>Turno</th><th>Protocolos</th><th>Monitorados</th><th>Distribuição</th><th>Fechamento</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.team_name)}</td><td>${esc(r.shift_label)}</td><td>${fmt(r.protocol_count)}</td><td>${fmt(r.indicators?.protocolos_monitorados)}</td><td>${r.distribution_revision?'v'+fmt(r.distribution_revision):'—'}</td><td>${r.status==='closed'?'Fechado':r.snapshot_id?'Aberto':'Sem apuração'}</td></tr>`).join('')}</tbody></table>`:'<p>Nenhum turno planejado ou apurado para esta data.</p>';
+    $('sri34-board').innerHTML=rows.length?`<table class="v20-table"><thead><tr><th>Equipe</th><th>Turno</th><th>Protocolos</th><th>Monitorados</th><th>Distribuição</th><th>Fechamento</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.team_name)}</td><td>${esc(window.sriDisplayTurnoLabel(r.shift_label))}</td><td>${fmt(r.protocol_count)}</td><td>${fmt(r.indicators?.protocolos_monitorados)}</td><td>${r.distribution_revision?'v'+fmt(r.distribution_revision):'—'}</td><td>${r.status==='closed'?'Fechado':r.snapshot_id?'Aberto':'Sem apuração'}</td></tr>`).join('')}</tbody></table>`:'<p>Nenhum turno planejado ou apurado para esta data.</p>';
     $('sri34-manager').hidden=!canManage(state.profile?.role);
     if(canManage(state.profile?.role)){
       const t=await client.from('teams').select('id,name').eq('active',true).order('name');
@@ -7208,13 +7212,13 @@ document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.tar
     state.prepared={snapshotId:r.snapshot_id,revision:r.distribution_revision,teamName:r.team_name,shift:r.shift_label,
       protocolCount:r.protocol_count,warnings:r.warnings,monitor:r.indicators?.protocolos_monitorados};
     $('sri34-last-import').checked=false;$('sri34-confirm-shift').disabled=true;
-    $('sri34-preview').innerHTML=`<strong>Conferência: ${esc(r.team_name)} · ${esc(r.shift_label)}</strong><div style="margin-top:6px">${fmt(r.protocol_count)} protocolos consolidados · ${fmt(r.indicators?.protocolos_monitorados)} monitorados · distribuição v${fmt(r.distribution_revision)}.</div><div style="margin-top:6px">Alertas informativos: ${fmt(r.warnings?.divergencias_informativas)}. As tratativas pendentes não equivalem a conclusão no SIGO.</div><small>Confirme a última importação e revise os dados antes de fechar.</small>`;
+    $('sri34-preview').innerHTML=`<strong>Conferência: ${esc(r.team_name)} · ${esc(window.sriDisplayTurnoLabel(r.shift_label))}</strong><div style="margin-top:6px">${fmt(r.protocol_count)} protocolos consolidados · ${fmt(r.indicators?.protocolos_monitorados)} monitorados · distribuição v${fmt(r.distribution_revision)}.</div><div style="margin-top:6px">Alertas informativos: ${fmt(r.warnings?.divergencias_informativas)}. As tratativas pendentes não equivalem a conclusão no SIGO.</div><small>Confirme a última importação e revise os dados antes de fechar.</small>`;
     message('Conferência pronta. Marque a última importação para habilitar a confirmação.');
   }
   async function closeShift(){
     const p=state.prepared;if(!p)throw Error('Conferência ainda não realizada.');
     if(!$('sri34-last-import').checked)throw Error('Confirme que esta é a última importação do turno.');
-    const ok=confirm(`Encerrar no Supabase o turno ${p.shift} (${p.teamName})?\n\nProtocolos consolidados: ${fmt(p.protocolCount)}\nMonitorados: ${fmt(p.monitor)}\nVersão da distribuição: ${p.revision}\n\nO SIGO não será modificado.`);
+    const ok=confirm(`Encerrar no Supabase o turno ${window.sriDisplayTurnoLabel(p.shift)} (${p.teamName})?\n\nProtocolos consolidados: ${fmt(p.protocolCount)}\nMonitorados: ${fmt(p.monitor)}\nVersão da distribuição: ${p.revision}\n\nO SIGO não será modificado.`);
     if(!ok)return;
     const client=await session();
     const {data,error}=await client.rpc('sri_close_result_shift',{
@@ -7261,7 +7265,7 @@ document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.tar
     const r=choice(),reason=$('sri34-reopen-reason').value.trim();
     if(r.status!=='closed'||!r.closure_id)throw Error('Selecione um turno fechado no quadro.');
     if(reason.length<10)throw Error('Informe justificativa de pelo menos 10 caracteres.');
-    if(!confirm('Reabrir '+r.team_name+' · '+r.shift_label+'? A ação será auditada.'))return;
+    if(!confirm('Reabrir '+r.team_name+' · '+window.sriDisplayTurnoLabel(r.shift_label)+'? A ação será auditada.'))return;
     const client=await session();const {error}=await client.rpc('sri_reopen_result_shift',{p_closure:r.closure_id,p_reason:reason});
     if(error)throw Error('Reabertura do turno: '+error.message);
     await loadBoard();message('Turno reaberto e auditado no Supabase.','success');
