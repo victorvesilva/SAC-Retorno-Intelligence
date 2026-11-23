@@ -34,6 +34,8 @@ assert.match(html,/class="v20-login-wrap sri-login-v3"/);
 assert.match(html,/class="sri-login-photo"/);
 assert.match(html,/class="sri-login-main"/);
 assert.match(html,/Bem-vindo de volta\./);
+assert.match(html,/Crie sua conta\./);
+assert.match(html,/id="sri-login-description"/);
 assert.match(html,/Mais resolutividade\./);
 assert.match(html,/id="v20-login-form"/);
 assert.match(html,/id="v20-email"/);
@@ -61,7 +63,7 @@ assert.match(logo,/viewBox="0 0 945 224"/);
 assert.match(logo,/<path fill="#0B459F"/);
 const css=fs.readFileSync(new URL('../assets/login-refinado.css',import.meta.url),'utf8');
 assert.match(css,/#v20-login \.v20-login-wrap\.sri-login-v3/);
-assert.match(css,/@media\(max-width:760px\)/);
+assert.match(css,/@media\(max-width:820px\)/);
 assert.match(css,/\.sri-login-photo \{ display:none; \}/);
 
 const operationFn=html.match(/function sriOperationLabel\(name\)\{[\s\S]*?\n  \}/);
