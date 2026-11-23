@@ -3570,7 +3570,12 @@ function v42ExportFull(){if(!ui.live&&!distRoster.length&&!distArchivedRoster.le
 async function v42ImportFull(file){if(!file)return;const inp=document.getElementById('v42-restore-all');try{
  if(file.size>130*1024*1024)throw Error('Arquivo muito grande.');const data=JSON.parse(await file.text());if(data.kind!=='SAC_RETORNO_INTELLIGENCE_LOCAL_BACKUP'||data.version!==2||!Array.isArray(data.history)||!Array.isArray(data.roster)||!data.assignments||typeof data.assignments!=='object')throw Error('Formato de backup inválido.');
  if(data.history.length>500||data.roster.length>5000||Object.keys(data.assignments).length>250000)throw Error('Backup excede os limites de segurança.');if(data.current)v42ValidateData(data.current);
- if(!confirm('Restaurar a base atual, histórico, operadores, atribuições, status e criticidades deste backup? Isso substituirá os registros locais atuais.'))return;
+ const backupDate=Number.isFinite(Date.parse(data.exportedAt))?new Date(data.exportedAt).toLocaleString('pt-BR'):'data não informada';
+ const currentTotal=Object.keys(distAssignments||{}).length;
+ const incomingTotal=Object.keys(data.assignments||{}).length;
+ const oldIds=new Set(Object.keys(distAssignments||{}));
+ const changed=Object.entries(data.assignments||{}).filter(([id,item])=>oldIds.has(id)&&distAssignments[id]?.opId!==item?.opId).length;
+ if(!confirm('CONTINGENCIAMENTO — RESTAURAÇÃO SOMENTE LOCAL\\n\\nBackup: '+backupDate+'\\nProtocolos atribuídos no backup: '+incomingTotal+'\\nProtocolos atribuídos neste navegador: '+currentTotal+'\\nDiferenças de operador em protocolos existentes: '+changed+'\\n\\nA restauração substituirá a base, a distribuição e o histórico LOCAIS. Não modifica o Supabase nem republica protocolos automaticamente.\\n\\nGuarde uma cópia da situação atual antes de continuar. Deseja confirmar a restauração?'))return;
  await v113Ready;v113ImportPayload(data.comparisonHistory||null);distRoster=data.roster.filter(x=>x&&typeof x.id==='string'&&typeof x.name==='string').map(x=>({id:x.id,name:x.name,supervisor:distCleanSupervisor(x.supervisor),situation:distSituation(x),active:distEligible(x)}));
  distArchivedRoster=Array.isArray(data.archivedRoster)?data.archivedRoster.filter(x=>x&&typeof x.id==='string'&&typeof x.name==='string').map(x=>({id:x.id,name:x.name,supervisor:distCleanSupervisor(x.supervisor),situation:distSituation(x),active:false,archived:true})):[];const ids=new Set([...distRoster,...distArchivedRoster].map(x=>x.id));distAssignments={};for(const [id,x] of Object.entries(data.assignments)){if(/^\d{7,}$/.test(id)&&x&&ids.has(x.opId))distAssignments[id]={opId:x.opId,when:String(x.when||'')}}
  distStatuses={};for(const [id,x] of Object.entries(data.statuses||{}))if(/^\d{7,}$/.test(id)&&x&&DIST_STATUS_SET.has(x.status))distStatuses[id]={status:x.status,updatedAt:String(x.updatedAt||'')};
@@ -3592,6 +3597,7 @@ renderExtractionManager=function(){v42RenderHistoryOriginal();const count=docume
 const v42ClearCurrentPrevious=deleteActiveExtraction;
 deleteActiveExtraction=function(){const active=ui.live;v42ClearCurrentPrevious();if(active&&!ui.live){v42SafeDel(V42_CURRENT_KEY);v42SetStatus('Cópia removida',true,'Base ativa e cópia local removidas. Histórico e atribuições foram preservados.')}};
 document.getElementById('v42-backup-all').addEventListener('click',v42ExportFull);
+document.getElementById('sri-contingency-full-backup').addEventListener('click',v42ExportFull);
 document.getElementById('v42-restore-all').addEventListener('change',e=>v42ImportFull(e.target.files?.[0]));
 document.getElementById('v42-forget-current').addEventListener('click',()=>{if(!v42SafeGet(V42_CURRENT_KEY)){v2Toast('Não há cópia local persistida.');return}if(!confirm('Apagar somente a cópia recuperável da base atual? O painel aberto, o histórico e as atribuições serão mantidos.'))return;v42SafeDel(V42_CURRENT_KEY);v42SetStatus('Cópia removida',true,'A cópia local foi apagada. O painel atual continua aberto; faça backup completo para não perder os registros.');v2Toast('Cópia local removida.')});
 // A última base é recuperada apenas após todos os componentes terem sido inicializados.
@@ -3644,8 +3650,9 @@ const sriBootRecovery=(()=>{
   document.getElementById('sri-boot-continue').addEventListener('click',close);
   return {open,run,close};
 })();
-if(v42SafeGet(V42_CURRENT_KEY))sriBootRecovery.open();
-requestAnimationFrame(()=>setTimeout(()=>{void sriBootRecovery.run()},0));
+const sriBootHasLocalCopy=!!v42SafeGet(V42_CURRENT_KEY);
+if(sriBootHasLocalCopy)sriBootRecovery.open();
+requestAnimationFrame(()=>setTimeout(()=>{if(sriBootHasLocalCopy)void sriBootRecovery.run();else void v42RestoreSavedOnOpen()},0));
 
 /* SAC Retorno Intelligence 4.6 · Indicadores gráficos de Gestão Operacional */
 const GO45_RISK_TYPES=[
@@ -3935,7 +3942,7 @@ async function v48ImportBatch(filesLike){
    if(status||critic||owner)updates.push({id,status,critic,owner,sourceIndex:merged.sourceIndex});
   }
   const uniqueFiles=parsed.map((p,i)=>({file:p.file,sourceRows:p.records.length,unique:new Set(p.records.map(r=>r.id)).size,updates:updates.filter(u=>u.sourceIndex===i).length}));
-  v48Pending={files:uniqueFiles,updates,sourceLines:parsed.reduce((n,p)=>n+p.records.length,0),unique:grouped.size,seen:seenValid.size,statusCount,criticCount,newOwners,reassignments,missing,invalid:invalid+ignored,conflicts:report.filter(r=>r.type==='CONFLITO').length,report,blockedIds};
+  v48Pending={baseReference:ui.reference,baseProtocols:distState.rows.map(r=>r.id).join('|'),baseAssignments:JSON.stringify(distAssignments),baseStatuses:JSON.stringify(distStatuses),baseCriticities:JSON.stringify(distCriticities),files:uniqueFiles,updates,sourceLines:parsed.reduce((n,p)=>n+p.records.length,0),unique:grouped.size,seen:seenValid.size,statusCount,criticCount,newOwners,reassignments,missing,invalid:invalid+ignored,conflicts:report.filter(r=>r.type==='CONFLITO').length,report,blockedIds};
   v48RenderPreview();
  }catch(err){feedback.textContent='Falha na consolidação: '+err.message;alert('Não foi possível validar os arquivos. Nenhuma informação foi alterada.\n\n'+err.message);v48Pending=null;root.hidden=true}
  finally{document.getElementById('dist-import-status-file').value=''}
@@ -3943,6 +3950,15 @@ async function v48ImportBatch(filesLike){
 function v48Commit(){
  const d=v48Pending;if(!d)return;
  const feedback=document.getElementById('dist-status-import-feedback');
+ // Proteção: uma prévia antiga não pode escrever sobre base ou distribuição atualizadas.
+ if(!ui.live||d.baseReference!==ui.reference||d.baseProtocols!==distState.rows.map(r=>r.id).join('|')||
+    d.baseAssignments!==JSON.stringify(distAssignments)||d.baseStatuses!==JSON.stringify(distStatuses)||
+    d.baseCriticities!==JSON.stringify(distCriticities)){
+   v48Pending=null;document.getElementById('dist-status-review').hidden=true;
+   feedback.textContent='A carteira mudou desde a prévia. Nenhum dado alterado. Selecione novamente as planilhas para conferir a versão atual.';
+   alert('A base ou as atribuições mudaram desde a conferência. Importe novamente para evitar substituir alterações mais recentes.');
+   return;
+ }
  if(d.reassignments&&!document.getElementById('v48-allow-reassignment')?.checked){v2Toast('Marque a confirmação das redistribuições antes de prosseguir.');return}
  if(d.blockedIds.size&&!confirm(`${d.blockedIds.size} protocolo(s) com inconsistências permanecerão SEM ALTERAÇÃO. Importar somente os ${d.updates.length} protocolo(s) válidos e registrar a rodada no histórico?`))return;
  const changes=d.updates.map(c=>({id:c.id,old:distStatus(c.id),next:c.status||distStatus(c.id),statusChanged:!!c.status,otherChange:!!(c.critic||c.owner),opId:c.owner||distAssignments[c.id]?.opId||''}));
