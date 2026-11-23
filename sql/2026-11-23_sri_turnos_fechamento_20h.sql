@@ -62,6 +62,7 @@ BEGIN
           AND c.shift_label=v_snapshot.shift_label
       ) THEN CONTINUE; END IF;
       IF v_snapshot.revision IS NULL OR v_snapshot.revision < 1 THEN CONTINUE; END IF;
+      IF jsonb_typeof(v_snapshot.state->'assignments') IS DISTINCT FROM 'object' THEN CONTINUE; END IF;
 
       SELECT count(*),
              count(*) FILTER (WHERE distribution_revision IS DISTINCT FROM v_snapshot.revision)
