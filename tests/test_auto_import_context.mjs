@@ -40,7 +40,7 @@ function makeScenario({members=[],pref=null,availableTeams=teams}={}){
    ctx,$,window:{},managerRoles:new Set(['admin','manager','supervisor']),
    localStorage:{getItem:()=>null,setItem:()=>{}},
    preferredPublishingTarget:()=>pref,renderImportContext:()=>{summaryUpdates++},
-   syncShift:()=>({day:'2026-11-24',shift:'Noite'}),
+   syncShift:()=>({day:'2026-11-24',shift:'Noite'}),inferredShift:()=> 'Noite',
    status:()=>{},esc:x=>x,auth:async()=>client,console
  };
  vm.runInNewContext(html.slice(begin,end)+'\n;globalThis.controls={loadMetadata,publishingContextValid,selectAutomaticDestination,setTeams};',sandbox,{timeout:1500});
