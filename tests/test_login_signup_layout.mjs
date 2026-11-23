@@ -63,8 +63,8 @@ function probe() {
  node.hidden=true;
 }
 const withLocalAssets = markup
- .replace('src="/assets/foto-atendimento-hd.webp"', 'src="file://' + path.join(base,'assets/foto-atendimento-hd.webp') + '"')
- .replace('src="/assets/hapvida-logo.svg"', 'src="file://' + path.join(base,'assets/hapvida-logo.svg') + '"');
+ .replace('src="/assets/foto-atendimento-hd.webp"', 'src="data:image/webp;base64,' + fs.readFileSync(path.join(base,'assets/foto-atendimento-hd.webp')).toString('base64') + '"')
+ .replace('src="/assets/hapvida-logo.svg"', 'src="data:image/svg+xml;base64,' + fs.readFileSync(path.join(base,'assets/hapvida-logo.svg')).toString('base64') + '"');
 const fixtureHtml =
 '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>' +
 '<style>*,*::before,*::after{box-sizing:border-box}html,body{margin:0;padding:0;max-width:100%;}</style><style>' +
@@ -76,7 +76,7 @@ const sizes = [[1440,900],[1440,690],[1024,768],[800,690],[390,844],[390,640]];
 for (const [width,height] of sizes) {
  const dom = execFileSync(chrome, [
   '--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
-  '--disable-background-networking','--allow-file-access-from-files',
+  '--disable-background-networking','--virtual-time-budget=2000',
   '--force-device-scale-factor=1',
   '--window-size='+width+','+height,
   '--user-data-dir='+path.join(tmp, 'profile-'+width+'-'+height),
