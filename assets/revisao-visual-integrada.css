@@ -1,0 +1,230 @@
+/* SAC Retorno Intelligence — Revisão Visual Integrada (23/11/2026).
+ * Escopo: padronização transversal e casos-limite de conteúdo nas telas.
+ * Somente apresentação em tela; não altera lógica, critérios, formulários ou PDF.
+ */
+@media screen {
+  .v5-app {
+    --sri-uix-blue:#0b45b7;
+    --sri-uix-ink:#17395e;
+    --sri-uix-muted:#607b98;
+    --sri-uix-line:#dfe8f4;
+    --sri-uix-surface:#f8faff;
+    --sri-uix-radius:12px;
+  }
+  /* Prevenir overflow do grid principal e dos módulos com dados extensos. */
+  .v5-app .main,
+  .v5-app .tab-content,
+  .v5-app .tab-content > *,
+  .v5-app .v20-tab > *,
+  .v5-app .v20-panel,
+  .v5-app .card,
+  .v5-app .v3-card,
+  .v5-app .v49-card,
+  .v5-app .v55-shell,
+  .v5-app .dist-panel { min-width:0; }
+  .v5-app .topbar { max-width:calc(100% + 48px); }
+  .v5-app .v5-top-identity { min-width:0; }
+  .v5-app .v5-top-name { line-height:1.3;overflow-wrap:anywhere; }
+  .v5-app #v5-active-context { overflow-wrap:anywhere; }
+  .v5-app :is(.mini-pill,.top-chip,.v55-tag) {
+    max-width:100%; overflow-wrap:anywhere; line-height:1.4;
+  }
+
+  /* Consistência dos títulos de seção, sem substituir pesos já definidos por tela. */
+  .v5-app :is(#overview,#distribution,#priorities,#agents,#intelligence,#reports,#import,#details,.v20-tab)
+  :is(.section-heading,.v20-between) { min-width:0; }
+  .v5-app :is(#overview,#distribution,#priorities,#agents,#intelligence,#reports,#import,#details,.v20-tab)
+  :is(.section-heading,.v20-between) > div { min-width:0; }
+  .v5-app :is(.section-heading,.v20-between) :is(h2,h3) { overflow-wrap:break-word; }
+  .v5-app :is(.section-heading,.v20-between) p {
+    overflow-wrap:anywhere;max-width:80ch;
+  }
+  .v5-app .go-eyebrow,
+  .v5-app .v501-feature-kicker,
+  .v5-app .eyebrow {
+    line-height:1.45;
+  }
+
+  /* Botões, campos, foco e estados: mesmo padrão independentemente do módulo. */
+  .v5-app :is(.btn,.light-button,.dist-btn,.v20-button,.v57-action,.v194-launch,.v49-tab,.v46-subtab) {
+    border-radius:9px;
+    line-height:1.4;
+    font-family:inherit;
+    text-align:center;
+  }
+  .v5-app :is(button,input,select,textarea,[role="tab"]):focus-visible {
+    outline:3px solid #ffb33a !important; outline-offset:2px;
+  }
+  .v5-app :is(button,input,select,textarea):disabled {
+    cursor:not-allowed;
+  }
+  .v5-app :is(.field,.dist-field,.v20-field,.v55-inputrow) { min-width:0; }
+  .v5-app :is(input,select,textarea) {
+    max-width:100%;
+  }
+  .v5-app :is(.field,.dist-field,.v20-field,.v55-inputrow) label {
+    line-height:1.45;overflow-wrap:anywhere;
+  }
+
+  /* Navegação e filtros gerais: texto longo e agrupamentos responsivos. */
+  .v5-app #nav .v20-nav-entry > span:last-child {
+    min-width:0;overflow-wrap:anywhere;
+  }
+  .v5-app #nav .v20-nav-group-title > span:first-child {
+    min-width:0;overflow-wrap:anywhere;
+  }
+  .v5-app #global-controls:not([hidden]) {
+    border-radius:12px;
+    max-width:100%;
+  }
+  .v5-app #global-controls .v114-toolbar,
+  .v5-app #global-controls .toolbar-right { min-width:0; }
+  .v5-app #global-controls .toolbar-right > * { min-width:0; }
+  .v5-app #global-controls :is(.v114-filter-summary,.summary-status) {
+    overflow-wrap:anywhere;
+  }
+  .v5-app #ux-active-filters:not([hidden]),
+  .v5-app #ux-dist-filter-summary:not([hidden]),
+  .v5-app #sri-filter-state:not([hidden]) {
+    overflow-wrap:anywhere;line-height:1.55;
+  }
+
+  /* Tabelas com conteúdo operacional extenso: manter rolagem interna. */
+  .v5-app :is(#distribution,#priorities,#agents,#details,#intelligence,#v20-mine,#v20-closure,#v20-settings)
+  :is(.dist-table-wrap,.v3-tablewrap,.table-scroll,.v49-table-scroll,.v20-tablewrap,.chart-matrix) {
+    max-width:100%;min-width:0;overflow-x:auto;
+    overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
+  }
+  .v5-app #distribution .dist-table,
+  .v5-app #priorities .v3-table,
+  .v5-app #agents .v3-table,
+  .v5-app #details .data-table,
+  .v5-app #intelligence .v49-table {
+    font-variant-numeric:tabular-nums;
+  }
+  .v5-app :is(#distribution,#priorities,#agents,#details,#intelligence)
+  :is(.dist-table,.v3-table,.data-table,.v49-table) :is(th,td) {
+    vertical-align:middle;
+  }
+  .v5-app #distribution .dist-table td,
+  .v5-app #priorities .v3-table td,
+  .v5-app #agents .v3-table td,
+  .v5-app #details .data-table td,
+  .v5-app #intelligence :is(.v49-table,.v3-table) td {
+    max-width:290px;
+  }
+  /* Identificadores numéricos ficam íntegros; nomes e descrições podem quebrar. */
+  .v5-app #distribution .dist-table td:nth-child(n+5),
+  .v5-app #priorities .v3-table td:nth-child(n+5),
+  .v5-app #agents .v3-table td:first-child,
+  .v5-app #details .data-table td:nth-child(n+2),
+  .v5-app #intelligence .v49-table td:first-child {
+    overflow-wrap:anywhere;
+  }
+  .v5-app #distribution .dist-table-wrap,
+  .v5-app #details .table-scroll,
+  .v5-app #agents .v3-tablewrap,
+  .v5-app #priorities .v3-tablewrap { scrollbar-gutter:stable; }
+
+  /* Mensagens, file names e indicadores sem estourar cartões. */
+  .v5-app #import :is(.dropzone small,.manage-helper,.v42-subtle,.v57-last-state),
+  .v5-app #details :is(.v57-muted,.v195-help,.v195-message),
+  .v5-app #reports :is(.v55-extraction,.v55-note),
+  .v5-app #distribution :is(.v199-entry p,.v116-tablebar span),
+  .v5-app #overview :is(.go-title-side,.go-focus-note),
+  .v5-app #v20-closure .v20-notice {
+    overflow-wrap:anywhere;word-break:normal;line-height:1.55;
+  }
+  .v5-app :is(.kpi-card,.v2-kpi,.v3-stat,.dist-kpi,.v42-daily > div,.v49-stat) {
+    min-width:0;
+  }
+  .v5-app :is(.kpi-value,.dist-kpi strong,.v3-stat strong,.v49-stat strong) {
+    font-variant-numeric:tabular-nums;
+  }
+
+  /* Telas de operador, fechamento e administração usam a mesma hierarquia. */
+  .v5-app :is(#v20-mine,#v20-closure,#v20-pending,#v20-alerts,#v20-settings,#v20-account,#v20-catalog) {
+    color:var(--sri-uix-ink);
+  }
+  .v5-app :is(#v20-mine,#v20-closure,#v20-pending,#v20-alerts,#v20-settings,#v20-account,#v20-catalog)
+  > .eyebrow {color:#45678c;font-size:10px;font-weight:730;letter-spacing:.055em;}
+  .v5-app :is(#v20-mine,#v20-closure,#v20-pending,#v20-alerts,#v20-settings,#v20-account,#v20-catalog)
+  .v20-hero-title {
+    color:var(--sri-uix-ink);
+    font-size:clamp(22px,2vw,27px);font-weight:770;
+    line-height:1.25;letter-spacing:-.45px;
+    overflow-wrap:anywhere;
+  }
+  .v5-app :is(#v20-mine,#v20-closure,#v20-pending,#v20-alerts,#v20-settings,#v20-account,#v20-catalog)
+  .v20-muted {
+    color:var(--sri-uix-muted);
+    font-size:12.5px;line-height:1.55;max-width:78ch;
+    overflow-wrap:anywhere;
+  }
+  .v5-app :is(#v20-mine,#v20-closure,#v20-pending,#v20-alerts,#v20-settings,#v20-account,#v20-catalog)
+  .v20-panel {
+    border:1px solid var(--sri-uix-line);border-radius:12px;
+    background:#fff;box-shadow:0 3px 14px rgba(23,52,86,.035);
+  }
+  .v5-app #v20-closure .v20-controls {
+    gap:10px;align-items:end;min-width:0;
+  }
+  .v5-app #v20-closure .v20-controls .v20-field {
+    min-width:130px;
+  }
+  .v5-app #v20-closure .v20-controls :is(input,select) {
+    min-height:38px;font-size:12px;border-radius:9px;
+  }
+  .v5-app #v20-closure .v20-steps {
+    display:flex;flex-wrap:wrap;gap:6px;max-width:100%;
+  }
+  .v5-app #v20-closure .v20-steps span {
+    white-space:normal;font-size:11.5px;line-height:1.4;
+  }
+  .v5-app #v20-settings .v20-row {gap:8px;flex-wrap:wrap;}
+  .v5-app #v20-settings .v20-row .v20-button {min-height:38px;}
+  .v5-app .v20-module-tabs {
+    max-width:100%;min-width:0;overflow-x:auto;
+    scrollbar-width:thin;
+  }
+  .v5-app .v20-module-tab {min-height:38px;white-space:normal;}
+
+  /* Sem novos fundos chamativos: preservar cores funcionais já existentes. */
+  .v5-app #import :is(.source-unified,.v42-vault),
+  .v5-app #reports .v55-shell,
+  .v5-app #details :is(.v57-audit,.v195-importbox) {
+    max-width:100%;
+  }
+}
+@media screen and (max-width:1120px) {
+  .v5-app #global-controls .toolbar-right {flex-wrap:wrap;}
+  .v5-app #global-controls .toolbar-right .field.multi-field {flex:1 1 145px;}
+}
+@media screen and (max-width:760px) {
+  .v5-app .topbar {max-width:calc(100% + 26px);}
+  .v5-app :is(#distribution,#priorities,#agents,#intelligence,#details,#reports,#import)>.section-heading {
+    align-items:flex-start;flex-wrap:wrap;
+  }
+  .v5-app #v20-closure .v20-between {flex-wrap:wrap;gap:12px;}
+  .v5-app #v20-closure .v20-controls {display:flex;flex-wrap:wrap;}
+  .v5-app #v20-closure .v20-controls .v20-field {flex:1 1 160px;max-width:100%;}
+  .v5-app #v20-closure .v20-controls button {flex:1 1 160px;min-height:38px;}
+  .v5-app #reports .v55-report-grid {min-width:0;}
+  .v5-app #import .source-current-actions {flex-wrap:wrap;}
+}
+@media screen and (max-width:470px) {
+  .v5-app .topbar {max-width:calc(100% + 26px);}
+  .v5-app .v5-top-name {font-size:11.5px;}
+  .v5-app #global-controls:not([hidden]) {padding:11px;}
+  .v5-app #global-controls .toolbar-right .field.multi-field {
+    min-width:0;flex:1 1 100%;max-width:100%;width:100%;
+  }
+  .v5-app #v20-closure .v20-controls .v20-field {flex-basis:100%;}
+  .v5-app #v20-settings .v20-row .v20-button {flex:1 1 100%;}
+  .v5-app #v20-mine .v20-between {align-items:flex-start;flex-wrap:wrap;}
+}
+@media (prefers-reduced-motion:reduce) {
+  .v5-app :is(.v20-module-tab,.v20-button,.v49-tab,.v46-subtab) {
+    transition:none!important;
+  }
+}
