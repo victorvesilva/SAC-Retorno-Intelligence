@@ -6774,7 +6774,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     wrap.dataset.state=configured?'ready':'required';
     const hint=$('sri-import-context-hint');
     if(hint)hint.textContent=configured
-      ?'Turno, dia operacional, salvamento e fechamento são automáticos.'
+      ?(ui.live?'Turno, salvamento e fechamento automáticos.':'Aguardando importação SAC + ATIVO · sincronização automática.')
       :'O sistema não escolhe equipes diferentes por aproximação ou horário.';
   }
   function revealRecovery(mode='save'){
@@ -7160,12 +7160,13 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     }finally{ctx.restoring=false;}
   }
   async function loadLast({startup=false}={}){const client=await auth();
-    const {data,error}=await client.from('daily_result_snapshots').select('id,team_id,operational_day,shift_label,created_at,payload_sha256').order('created_at',{ascending:false}).limit(10);
-    if(error)throw Error('Consulta de resultados: '+error.message);
-    const items=data||[],currentDay=operationalContext().day,selectedTeam=$('sri-daily-team')?.value;
+    const selectedTeam=$('sri-daily-team')?.value;
     if(!selectedTeam){if(startup)return;throw Error('Selecione a equipe antes de recuperar o resultado.');}
-    const own=items.filter(x=>x.team_id===selectedTeam);
-    const latest=own.find(x=>x.operational_day===currentDay)||own[0];
+    const {data,error}=await client.from('daily_result_snapshots').select('id,team_id,operational_day,shift_label,created_at,payload_sha256')
+      .eq('team_id',selectedTeam).order('created_at',{ascending:false}).limit(10);
+    if(error)throw Error('Consulta de resultados: '+error.message);
+    const items=data||[],currentDay=operationalContext().day;
+    const latest=items.find(x=>x.operational_day===currentDay)||items[0];
     if(!latest)throw Error('Nenhum resultado consolidado foi encontrado nas equipes autorizadas.');
     if(startup&&ui.live&&!ctx.snapshotId){
       const localHash=await hash(JSON.stringify({reference:ui.reference,source:ui.source}));
@@ -7222,7 +7223,9 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       let query=ctx.client.from('daily_result_snapshots')
         .select('id,team_id,operational_day,shift_label,created_at,payload_sha256')
         .order('created_at',{ascending:false}).limit(5);
-      if(ctx.teamId)query=query.eq('team_id',ctx.teamId);
+      const selectedTeam=$('sri-daily-team')?.value||ctx.teamId;
+      if(!selectedTeam)return;
+      query=query.eq('team_id',selectedTeam);
       const {data,error}=await query;
       if(error)throw Error(error.message);
       const next=(data||[])[0];
