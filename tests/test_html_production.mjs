@@ -43,6 +43,18 @@ assert.ok(visualCss.includes('@media screen and (max-width:620px)'),'Ajustes mó
 assert.ok(!visualCss.includes('#v20-login')&&!visualCss.includes('.sri-login-'),'O refinamento visual não pode alterar o login');
 assert.equal(visualCss.split('{').length,visualCss.split('}').length,'Blocos CSS devem estar balanceados');
 
+const visualV2Css=fs.readFileSync(new URL('../assets/refinamento-operacional-etapa2.css',import.meta.url),'utf8');
+assert.ok(html.includes('href="/assets/refinamento-operacional-etapa2.css?v=1.0.0"'),'Refinamento visual etapa 2 precisa estar ativo');
+assert.ok(html.indexOf('gestao-operacional-refinado.css?v=1.0.0')<html.indexOf('refinamento-operacional-etapa2.css?v=1.0.0'),'A etapa 2 deve carregar depois da etapa 1');
+assert.ok(html.includes('Organize a carteira, acompanhe os responsáveis e distribua demandas com segurança.'),'Descrição da tela de distribuição deve ser exibida');
+for(const selector of ['#nav .v20-nav-group-title','#nav .v20-nav-entry.active','#distribution .dist-kpi','#distribution .dist-filter-group','#distribution #v199-launch','#priorities .v3-controls','#agents .v3-table']){
+  assert.ok(visualV2Css.includes(selector),'Faltando refinamento de '+selector);
+}
+assert.ok(!visualV2Css.includes('#v20-login')&&!visualV2Css.includes('.sri-login-'),'O CSS operacional não deve alterar o login');
+assert.ok(!visualV2Css.includes('!important;display:none'),'O CSS operacional não deve suprimir elementos do sistema');
+assert.equal(visualV2Css.split('{').length,visualV2Css.split('}').length,'Blocos CSS da etapa 2 devem estar balanceados');
+
+
 assert.match(html,/src="\/assets\/foto-atendimento-hd\.webp"/);
 assert.match(html,/src="\/assets\/hapvida-logo\.svg"/);
 assert.match(html,/class="v20-login-wrap sri-login-v3"/);
