@@ -2798,12 +2798,12 @@ window.sriSyncCloudRoster = function(profiles,memberships,teams){
   const members=new Map();for(const m of memberships||[])if(!members.has(m.user_id))members.set(m.user_id,teamsById.get(m.team_id));
   const supNames=new Map((profiles||[]).map(x=>[x.id,x.full_name]));
   for(const profile of profiles||[]){if(profile.role!=='operator')continue;
-    const team=members.get(profile.id);if(!team)continue;
+    const team=members.get(profile.id)||null;
     const id='acct:'+profile.id,status=profile.operational_status||'Ativo';
     const active=['Ativo','Promovido'].includes(status);
-    now.add(id);teamMap.set(id,team.id);if(active)eligible.add(id);
+    now.add(id);teamMap.set(id,team?.id||null);if(active)eligible.add(id);
     const name=String(profile.full_name||'Operador sem nome');
-    const supervisor=supNames.get(profile.supervisor_id)||team.name||'Sem supervisor';
+    const supervisor=supNames.get(profile.supervisor_id)||team?.name||'Sem supervisor';
     let op=distRoster.find(x=>x.id===id);
     if(!op){distRoster.push({id,name,supervisor,situation:status,active});changed=true;}
     else if(op.name!==name||op.supervisor!==supervisor||op.situation!==status||op.active!==active){Object.assign(op,{name,supervisor,situation:status,active});changed=true;}
