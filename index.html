@@ -2048,7 +2048,7 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
   <div class="sri-login-main">
    <header class="sri-login-header"><img src="/assets/hapvida-logo.svg" class="sri-login-hapvida-img" alt="Hapvida" /><span class="sri-login-version">INTELLIGENCE 2.0</span></header>
    <form class="v20-login-form sri-login-form-v3" id="v20-login-form">
-    <div class="sri-login-intro"><div class="sri-login-kicker">Plataforma de inteligência operacional</div><h1 id="v20-login-title">Bem-vindo de volta.</h1><p>Acesse sua conta para acompanhar os retornos e cuidar de cada demanda com mais eficiência.</p></div>
+    <div class="sri-login-intro"><div class="sri-login-kicker">Plataforma de inteligência operacional</div><h1 id="v20-login-title">Bem-vindo de volta.</h1><p id="sri-login-description">Acesse sua conta para acompanhar os retornos e cuidar de cada demanda com mais eficiência.</p></div>
     <label class="v20-field sri-login-field">E-mail corporativo<input autocomplete="username" id="v20-email" placeholder="nome@empresa.com.br" required type="email" /></label>
     <label class="v20-field sri-login-field">Senha<input autocomplete="current-password" id="v20-pass" placeholder="Digite sua senha" required type="password" /></label>
     <label class="sri-login-show"><input id="v20-show-pass" type="checkbox" /> Mostrar senha</label>
@@ -5599,7 +5599,12 @@ function sriAuthMessage(err){const message=String(err?.message||err||'Falha de a
 }
 function sriSetAuthBusy(busy){const submit=$('sri-auth-submit');if(submit){submit.disabled=busy;submit.textContent=busy?'Aguarde...':(sriRegisterMode?'Criar conta':'Entrar no sistema')};const toggle=$('sri-auth-switch');if(toggle)toggle.disabled=busy;}
 function sriToggleSignup(value){sriRegisterMode=!!value;$('sri-signup-fields').hidden=!sriRegisterMode;
+ $('v20-login').classList.toggle('sri-signup-open',sriRegisterMode);
+ $('v20-login-title').textContent=sriRegisterMode?'Crie sua conta.':'Bem-vindo de volta.';
+ $('sri-login-description').textContent=sriRegisterMode?'Preencha seus dados para solicitar acesso à plataforma.':'Acesse sua conta para acompanhar os retornos e cuidar de cada demanda com mais eficiência.';
  $('sri-auth-submit').textContent=sriRegisterMode?'Criar conta':'Entrar no sistema';$('sri-auth-switch').textContent=sriRegisterMode?'Já tenho conta — entrar':'Criar minha conta';
+ $('sri-auth-switch').setAttribute('aria-expanded',String(sriRegisterMode));
+ $('v20-login-form').scrollTop=0;
  $('v20-pass').autocomplete=sriRegisterMode?'new-password':'current-password';
  $('sri-register-name').required=sriRegisterMode;$('sri-register-confirm').required=sriRegisterMode;
  $('v20-login-error').textContent='';$('sri-auth-info').textContent='';
