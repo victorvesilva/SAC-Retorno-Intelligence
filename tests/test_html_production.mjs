@@ -61,7 +61,7 @@ assert.ok(html.indexOf(visualLinks[0])<html.indexOf(visualLinks[1])&&html.indexO
 assert.equal(html.split('class="v49-kpi-gap"').length-1,1,'Espaçamento da área analítica deve ter um único marcador');
 for(const id of ['intelligence','v49-pane-bko','v49-pane-evolucao','v49-pane-comparativo','bko-kpis','bko-bars','v49-compare-chart','reports','v55-report-kinds','v55-source','v55-history-fields','v55-extraction-meta','v55-generate','v194-from-reports'])
  assert.ok(html.includes('id="'+id+'"'),'Controle analítico/relatório ausente: '+id);
-for(const selector of ['#intelligence .v49-tabs','#intelligence .v2-kpi','#intelligence .v49-compare-filters','#reports .v55-shell','#reports .v55-report-option','#reports #v55-generate'])
+for(const selector of ['#intelligence .v49-tabs','#intelligence .v2-kpi','#intelligence :is(.v3-controls,.v49-compare-filters)','#reports .v55-shell','#reports .v55-report-option','#reports #v55-generate'])
  assert.ok(visualV3Css.includes(selector),'Refinamento de apresentação ausente: '+selector);
 assert.equal(visualV3Css.split('{').length,visualV3Css.split('}').length,'Blocos CSS da etapa 3 devem estar balanceados');
 assert.ok(!visualV3Css.includes('#v20-login')&&!visualV3Css.includes('.sri-login-'),'A etapa 3 não pode alterar a autenticação');
