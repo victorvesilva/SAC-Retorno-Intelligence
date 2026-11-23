@@ -2764,7 +2764,11 @@ function distReadLocal(){try{return JSON.parse(localStorage.getItem(DIST_KEY)||'
 const distStored=distReadLocal();
 const DIST_OPERATOR_SITUATIONS=['Ativo','Promovido','Férias','Desligado','Afastamento'];
 function distSituation(o){return DIST_OPERATOR_SITUATIONS.includes(o?.situation)?o.situation:(o?.active===false?'Desligado':'Ativo')}
-function distEligible(o){return !!o&&['Ativo','Promovido'].includes(distSituation(o))}
+function distEligible(o){
+ if(!o||!['Ativo','Promovido'].includes(distSituation(o)))return false;
+ if(String(o.id||'').startsWith('acct:'))return window.sriUnifiedCloudEligibleIds instanceof Set&&window.sriUnifiedCloudEligibleIds.has(o.id);
+ return true;
+}
 function distCleanSupervisor(x){return String(x||'').trim().replace(/\s+/g,' ').slice(0,100)}
 let distRoster=Array.isArray(distStored.roster)?distStored.roster.filter(x=>x&&typeof x.name==='string'&&typeof x.id==='string').map(x=>({id:x.id,name:x.name,supervisor:distCleanSupervisor(x.supervisor),situation:distSituation(x),active:distEligible(x)})):[];
 let distArchivedRoster=Array.isArray(distStored.archivedRoster)?distStored.archivedRoster.filter(x=>x&&typeof x.name==='string'&&typeof x.id==='string').map(x=>({id:x.id,name:x.name,supervisor:distCleanSupervisor(x.supervisor),situation:distSituation(x),active:false,archived:true})):[];
@@ -2808,6 +2812,27 @@ window.sriSyncCloudRoster = function(profiles,memberships,teams){
   window.sriUnifiedCloudEligibleIds=eligible;window.sriUnifiedCloudRosterTeams=teamMap;
   if(changed){try{distTargetOptions();distBuildFilterOptions();distRenderRoster();distRefreshStats();distApplyFilters();}catch(e){console.warn('[Gestão unificada] Atualização visual da distribuição:',e)}}
 };
+window.sriSyncDistributionCandidates=function(candidates,selectedTeamId){
+  const previous=window.sriUnifiedCloudEligibleIds||new Set(),next=new Set(),teamMap=new Map();let changed=false;
+  for(const candidate of candidates||[]){
+    if(!candidate?.user_id||!['Ativo','Promovido'].includes(candidate.operational_status))continue;
+    if(candidate.team_id&&candidate.team_id!==selectedTeamId)continue;
+    const id='acct:'+candidate.user_id,name=String(candidate.full_name||'Operador sem nome');
+    const status=candidate.operational_status,supervisor=String(candidate.supervisor_name||'Sem supervisor');
+    next.add(id);teamMap.set(id,selectedTeamId);
+    const op=distRoster.find(x=>x.id===id);
+    if(!op){distRoster.push({id,name,supervisor,situation:status,active:true});changed=true;}
+    else if(op.name!==name||op.supervisor!==supervisor||op.situation!==status||!op.active){
+      Object.assign(op,{name,supervisor,situation:status,active:true});changed=true;
+    }
+  }
+  window.sriUnifiedCloudEligibleIds=next;
+  window.sriUnifiedCloudRosterTeams=teamMap;
+  if(changed||next.size!==previous.size||[...next].some(id=>!previous.has(id))){
+    try{distTargetOptions();distBuildFilterOptions();distRenderRoster();distRefreshStats();distApplyFilters();}
+    catch(e){console.warn('[Distribuição] Lista de contas:',e)}
+  }
+};
 window.sriRefreshCloudDistributionOptions=()=>{try{distTargetOptions();distBuildFilterOptions();distRenderRoster();distApplyFilters();}catch(e){console.warn('[Gestão unificada] Atualização de opções:',e)}};
 
 window.sriGetDistributionDetails = () => {
@@ -2828,14 +2853,14 @@ function distCountAssigned(){return distState.rows.filter(r=>!!distOwner(r.id)).
 function distRefreshStats(){const all=distState.rows,assigned=distCountAssigned();document.getElementById('dist-total').textContent=fmt.format(all.length);document.getElementById('dist-assigned').textContent=fmt.format(assigned);document.getElementById('dist-unassigned').textContent=fmt.format(all.length-assigned);document.getElementById('dist-operators').textContent=fmt.format(distRoster.filter(distEligible).length);document.getElementById('dist-import-hint').textContent=ui.live?`${fmt.format(all.length)} protocolos únicos disponíveis para atribuição (SAC Retorno + WhatsSAC).`:'Importe SAC + ATIVO para habilitar os protocolos. O cadastro de operadores funciona sem importação.';document.getElementById('dist-go-import').hidden=!!ui.live;const can=ui.live&&assigned>0;document.getElementById('dist-export-xlsx').disabled=!can;document.getElementById('dist-export-base').disabled=!can;document.getElementById('dist-check-visible').disabled=!ui.live;document.getElementById('dist-export-note').textContent=ui.live?`${fmt.format(assigned)} protocolos atribuídos na extração atual. Exportação limitada aos registros presentes na base.`:'Importe SAC + ATIVO e distribua protocolos para habilitar a exportação.';const allIds=new Set(all.map(r=>r.id));let orphan=Object.keys(distAssignments).filter(id=>!allIds.has(id)).length;document.getElementById('dist-orphans').textContent=orphan?`${fmt.format(orphan)} atribuições antigas não aparecem nesta extração, mas permanecem no histórico local.`:'Nenhuma atribuição fora da extração atual.'}
 function distRenderRoster(){const q=distNormalize(document.getElementById('dist-op-search').value),status=document.getElementById('dist-op-status').value,sup=document.getElementById('dist-op-supervisor').value;const filtered=distRoster.filter(o=>(status==='all'||(status==='active'&&distEligible(o))||(status==='inactive'&&!distEligible(o))||status===distSituation(o))&&(sup==='all'||(o.supervisor||'Sem supervisor')===sup)&&distNormalize(o.name).includes(q)).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));const assigned={};for(const a of Object.values(distAssignments))if(a&&a.opId)assigned[a.opId]=(assigned[a.opId]||0)+1;
  document.getElementById('dist-op-summary').textContent=`${distRoster.length} cadastrados · ${distRoster.filter(distEligible).length} habilitados`;
- document.getElementById('dist-operator-list').innerHTML=filtered.length?filtered.map(o=>`<div class="dist-opitem ${distEligible(o)?'':'inactive'}"><div><strong>${safe(o.name)}</strong><small>${fmt.format(assigned[o.id]||0)} protocolo(s) atribuído(s)</small></div><div><label class="dist-sublabel">Supervisor</label><input aria-label="Supervisor de ${safe(o.name)}" data-dist-op-supervisor="${safe(o.id)}" value="${safe(o.supervisor||'')}" placeholder="Sem supervisor" list="dist-supervisor-suggestions" maxlength="100"></div><div><label class="dist-sublabel">Situação</label><select aria-label="Situação de ${safe(o.name)}" data-dist-op-situation="${safe(o.id)}">${DIST_OPERATOR_SITUATIONS.map(x=>`<option value="${safe(x)}" ${distSituation(o)===x?'selected':''}>${safe(x)}</option>`).join('')}</select></div><div class="dist-row"><button type="button" class="dist-btn" data-dist-op="edit" data-op-id="${safe(o.id)}" title="Editar nome">Editar nome</button></div></div>`).join(''):'<div class="dist-empty">Nenhum operador corresponde aos filtros. Importe a planilha ou adicione operadores.</div>';distTargetOptions()}
+ document.getElementById('dist-operator-list').innerHTML=filtered.length?filtered.map(o=>`<div class="dist-opitem ${distEligible(o)?'':'inactive'}"><div><strong>${safe(o.name)}</strong><small>${fmt.format(assigned[o.id]||0)} protocolo(s) atribuído(s)</small></div><div><label class="dist-sublabel">Supervisor</label><input aria-label="Supervisor de ${safe(o.name)}" data-dist-op-supervisor="${safe(o.id)}" value="${safe(o.supervisor||'')}" placeholder="Sem supervisor" list="dist-supervisor-suggestions" maxlength="100"></div><div><label class="dist-sublabel">Situação</label><select aria-label="Situação de ${safe(o.name)}" data-dist-op-situation="${safe(o.id)}">${DIST_OPERATOR_SITUATIONS.map(x=>`<option value="${safe(x)}" ${distSituation(o)===x?'selected':''}>${safe(x)}</option>`).join('')}</select></div><div class="dist-row"><button type="button" class="dist-btn" data-dist-op="edit" data-op-id="${safe(o.id)}" title="Editar nome">Editar nome</button></div></div>`).join(''):'<div class="dist-empty">Nenhum operador elegível encontrado. Confira se a conta possui perfil Operador ativo e se a equipe de destino está selecionada.</div>';distTargetOptions()}
 function distTargetOptions(){
  const sups=[...new Set(distRoster.map(x=>x.supervisor||'Sem supervisor'))].sort((a,b)=>a.localeCompare(b,'pt-BR'));const assignSup=document.getElementById('dist-team-supervisor'),operatorSup=document.getElementById('dist-op-supervisor');
  for(const el of [assignSup,operatorSup]){const prev=el.value;el.innerHTML='<option value="all">Todos os supervisores</option>'+sups.map(x=>`<option value="${safe(x)}">${safe(x)}</option>`).join('');if(sups.includes(prev))el.value=prev}
  document.getElementById('dist-supervisor-suggestions').innerHTML=sups.filter(s=>s!=='Sem supervisor').map(s=>`<option value="${safe(s)}"></option>`).join('');
  const eligible=distRoster.filter(distEligible).filter(o=>assignSup.value==='all'||(o.supervisor||'Sem supervisor')===assignSup.value).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
  const el=document.getElementById('dist-target'),prev=el.value;el.innerHTML='<option value="">Selecione um operador habilitado</option>'+eligible.map(o=>`<option value="${safe(o.id)}">${safe(o.name)}</option>`).join('');if(eligible.some(o=>o.id===prev))el.value=prev;
- const box=document.getElementById('dist-multi-options'),checked=new Set([...box.querySelectorAll('input:checked')].map(x=>x.value));box.innerHTML=eligible.length?eligible.map(o=>`<label><input type="checkbox" value="${safe(o.id)}" ${checked.has(o.id)?'checked':''}/><span>${safe(o.name)}</span></label>`).join(''):'<div class="dist-empty">Nenhum operador habilitado para esta equipe.</div>';
+ const box=document.getElementById('dist-multi-options'),checked=new Set([...box.querySelectorAll('input:checked')].map(x=>x.value));box.innerHTML=eligible.length?eligible.map(o=>`<label><input type="checkbox" value="${safe(o.id)}" ${checked.has(o.id)?'checked':''}/><span>${safe(o.name)}</span></label>`).join(''):'<div class="dist-empty">Nenhum operador com perfil ativo disponível para esta equipe.</div>';
  distUpdateSelect();}
 function distRosterChange(){distPersist();distTargetOptions();distBuildFilterOptions();distRenderRoster();distRefreshStats();distApplyFilters();dmManagerRender();v510ShowRosterNote()}
 function distAddOperator(name){name=String(name||'').replace(/\s+/g,' ').trim();if(name.length<3||name.length>130){alert('Informe um nome de operador válido.');return false}const existing=distRoster.find(o=>distNormalize(o.name)===distNormalize(name));if(existing){alert('Este operador já está cadastrado com a situação '+distSituation(existing)+'.');return false}const situation=document.getElementById('dist-add-situation').value;const supervisor=distCleanSupervisor(document.getElementById('dist-add-supervisor').value);const old=distArchivedRoster.find(o=>distNormalize(o.name)===distNormalize(name));if(old)distArchivedRoster=distArchivedRoster.filter(o=>o.id!==old.id);distRoster.push({id:old?.id||distUniqueId(),name,supervisor,situation,active:['Ativo','Promovido'].includes(situation)});distRosterChange();return true}
@@ -6717,8 +6742,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     </section>`);
     $('sri-daily-day').value=today();
     $('sri-daily-refresh').addEventListener('click',()=>safe(loadMetadata));
-    $('sri-daily-operation').addEventListener('change',()=>{setTeams();ctx.snapshotId=null;ctx.revision=0;rememberPublishingTarget();status(publishingContextValid()?'Destino definido. O próximo processamento será publicado automaticamente.':'Selecione uma equipe para ativar a publicação automática.',publishingContextValid()?'success':'warning');});
-    $('sri-daily-team').addEventListener('change',()=>{ctx.snapshotId=null;ctx.revision=0;rememberPublishingTarget();status(publishingContextValid()?'Destino definido. O próximo processamento será publicado automaticamente.':'Selecione a operação e a equipe antes de processar. ',publishingContextValid()?'success':'warning');});
+    $('sri-daily-operation').addEventListener('change',()=>{setTeams();ctx.snapshotId=null;ctx.revision=0;rememberPublishingTarget();void Promise.resolve(window.sriRefreshDistributionCandidates?.()).catch(e=>console.warn('[Operadores]',e.message));status(publishingContextValid()?'Destino definido. O próximo processamento será publicado automaticamente.':'Selecione uma equipe para ativar a publicação automática.',publishingContextValid()?'success':'warning');});
+    $('sri-daily-team').addEventListener('change',()=>{ctx.snapshotId=null;ctx.revision=0;rememberPublishingTarget();void Promise.resolve(window.sriRefreshDistributionCandidates?.()).catch(e=>console.warn('[Operadores]',e.message));status(publishingContextValid()?'Destino definido. O próximo processamento será publicado automaticamente.':'Selecione a operação e a equipe antes de processar. ',publishingContextValid()?'success':'warning');});
     $('sri-daily-save').addEventListener('click',()=>safe(saveResult));
     $('sri-daily-load').addEventListener('click',()=>safe(async()=>{if(hasLocalChanges()&&!confirm('Há uma apuração ou distribuição local não compartilhada. Carregar a base da nuvem descartará essas alterações neste navegador. Deseja continuar?'))return;clearTimeout(ctx.saveTimer);ctx.saveTimer=null;await loadLast();}));
     $('sri-shared-apply').addEventListener('click',()=>safe(async()=>{if(!ctx.cloudPendingId)return;if(hasLocalChanges()&&!confirm('Existe trabalho local não compartilhado. Atualizar agora substituirá a apuração e a distribuição desta sessão. Deseja descartar as alterações locais?'))return;clearTimeout(ctx.saveTimer);ctx.saveTimer=null;await loadSnapshot({id:ctx.cloudPendingId});clearSharedNotice();}));
@@ -6803,6 +6828,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       else op.value='';
     }
     setTeams();
+    await window.sriRefreshDistributionCandidates?.();
     if(publishingContextValid())status('Destino configurado. Após processar SAC + ATIVO, o resultado será salvo automaticamente no Supabase.','success');
     else status('Escolha uma vez operação e equipe de destino para habilitar a publicação automática.','warning');
   }
@@ -7163,9 +7189,14 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const {client,profile}=await session();
     if(!['manager','admin','supervisor'].includes(profile.role))throw Error('Publicação restrita à gestão/supervisão.');
     if(!snapshotId||!revision)throw Error('A distribuição precisa estar salva primeiro.');
+    // Somente operadores já atribuídos recebem vínculo automático à equipe da apuração.
+    // A RPC valida, no banco, a função Operador, a situação Ativo/Promovido e conflitos de equipe.
+    const {error:linkError}=await client.rpc('sri_activate_assigned_operator_accounts',{p_snapshot:snapshotId,p_revision:revision});
+    if(linkError)throw Error('Habilitação dos operadores: '+linkError.message);
     const details=window.sriGetDistributionDetails?.()||{};
     const {data,error}=await client.rpc('publish_daily_operator_tasks',{p_snapshot:snapshotId,p_revision:revision,p_details:details});
     if(error)throw Error('Publicação das carteiras: '+error.message+'. Confira se o SQL da Etapa 3.3 foi executado.');
+    if(Number(data?.unlinked)>0)throw Error(`${Number(data.unlinked)} atribuição(ões) sem carteira publicada. Verifique os vínculos de operadores legados antes de prosseguir.`);
     const info=`${Number(data?.published)||0} protocolo(s) publicados; ${Number(data?.unlinked)||0} aguardando vínculo de operador.`;
     stateMsg('sri33-link-status',info+(data?.unlinked_names?.length?' Operadores pendentes: '+data.unlinked_names.join(', '):''),data?.unlinked?'warning':'success');
     return data;
@@ -7334,7 +7365,7 @@ async function refresh(){
  all(client,'team_memberships','user_id,team_id')
  ]);
  state.rows=p;state.teams=t;state.operations=op;state.memberships=m;
- if(typeof window.sriSyncCloudRoster==='function')window.sriSyncCloudRoster(state.rows,state.memberships,state.teams);
+ await window.sriRefreshDistributionCandidates?.();
  return state;
 }
 function selectUsers(){return state.rows.filter(u=>{
@@ -7371,7 +7402,7 @@ function openEditor(id){const u=state.rows.find(x=>x.id===id);if(!u)return;state
 }
 async function saveTeam(id){const u=state.rows.find(x=>x.id===id);if(!u)return;const team=$('sri-user-team')?.value||null,status=$('sri-user-status')?.value,supervisor=$('sri-user-supervisor')?.value||null;
  if(status==='Desligado'&&!confirm('Marcar o usuário como Desligado? A publicação de novas tarefas será impedida, e carteiras ativas precisam ser redistribuídas antes.'))return;
- msg('Atualizando equipe e situação no Supabase...');try{const client=await session();const {error}=await client.rpc('sri_set_user_team',{p_user:id,p_team:team,p_status:status,p_supervisor:supervisor});if(error)throw Error(error.message);await refresh();setTable();openEditor(id);msg('Equipe e situação atualizadas. O cadastro de login permanece único.','success');}catch(e){msg('Não foi possível salvar: '+e.message,'error');}}
+ msg('Atualizando equipe e situação no Supabase...');try{const client=await session();const {error}=await client.rpc('sri_set_user_team',{p_user:id,p_team:team,p_status:status,p_supervisor:supervisor});if(error)throw Error(error.message);await refresh();await window.sriRefreshDistributionCandidates?.();setTable();openEditor(id);msg('Equipe e situação atualizadas. O cadastro de login permanece único.','success');}catch(e){msg('Não foi possível salvar: '+e.message,'error');}}
 async function changeRole(id){const u=state.rows.find(x=>x.id===id);const role=$('sri-user-role')?.value;if(!u||!role||u.role===role)return;if(!confirm(`Alterar o perfil de ${u.full_name} de ${roles[u.role]||u.role} para ${roles[role]||role}?\n\nEsta ação modifica permissões reais no Supabase.`))return;
  msg('Atualizando perfil de acesso...');try{const client=await session();if(state.role!=='admin')throw Error('Somente o Administrador pode promover perfis.');const {error}=await client.rpc('admin_change_user_role',{p_user_id:id,p_new_role:role});if(error)throw Error(error.message);await refresh();setTable();openEditor(id);msg('Perfil atualizado no banco. O usuário deve entrar novamente para atualizar a interface.','success');}catch(e){msg('Não foi possível alterar o perfil: '+e.message,'error');}}
 async function createTeam(){const op=$('sri-new-team-operation')?.value;const name=$('sri-new-team-name')?.value?.trim();if(!op||!name||name.length<2){msg('Selecione uma operação e informe o nome da equipe.','error');return;}msg('Criando equipe...');try{const client=await session();const {error}=await client.rpc('create_import_team',{p_operation:op,p_name:name});if(error)throw Error(error.message);await refresh();render($('v20-settings-body'));msg('Equipe criada no banco. Agora atribua os operadores.','success');}catch(e){msg('Não foi possível criar a equipe: '+e.message,'error');}}
@@ -7394,18 +7425,26 @@ function render(root){if(!root)return;root.innerHTML=`<div class="v20-panel sri-
 }
 async function reload(root){if(state.loading)return;state.loading=true;try{await refresh();render(root);msg('Diretório atualizado diretamente do Supabase.','success')}catch(e){if(root)root.innerHTML='<div class="v20-panel" style="padding:18px"><h3>Gestão de Usuários</h3><p role="alert">Não foi possível carregar o diretório do Supabase: '+esc(e.message)+'</p><button id="sri-unified-retry" class="v20-button secondary" type="button">Tentar novamente</button></div>';$('sri-unified-retry')?.addEventListener('click',()=>reload(root));}finally{state.loading=false;}}
 window.sriUnifiedUsersRender=el=>{el.innerHTML='<div class="v20-panel" style="padding:18px"><h3>Gestão de Usuários</h3><p>Carregando contas do Supabase...</p></div>';reload(el)};
+window.sriRefreshDistributionCandidates=async()=>{
+ const client=await window.sriGetSupabaseClient?.();
+ if(!client)throw Error('Conexão Supabase indisponível para consultar operadores.');
+ const team=document.getElementById('sri-daily-team')?.value;
+ if(!team){window.sriSyncDistributionCandidates?.([],null);return;}
+ const {data,error}=await client.rpc('sri_distribution_operator_candidates',{p_team:team});
+ if(error){
+   window.sriSyncDistributionCandidates?.([],null);
+   const message='Não foi possível consultar os operadores cadastrados: '+error.message;
+   const note=document.getElementById('dist-persist-warning');if(note)note.textContent=message;
+   throw Error(message);
+ }
+ if(document.getElementById('sri-daily-team')?.value!==team)return;
+ window.sriSyncDistributionCandidates?.(data||[],team);
+};
 window.sriUnifiedAfterAuth=async()=>{try{
  const c=await window.sriGetSupabaseClient?.();if(!c)return;const {data}=await c.auth.getUser();if(!data?.user)return;
  const {data:p}=await c.from('profiles').select('role').eq('id',data.user.id).single();
  if(['manager','admin'].includes(p?.role)){await refresh();return;}
- if(p?.role==='supervisor'){
-   const [profiles,teams,memberships]=await Promise.all([
-     all(c,'profiles','id,full_name,role,operational_status,supervisor_id'),
-     all(c,'teams','id,name,operation_id,active'),
-     all(c,'team_memberships','user_id,team_id')
-   ]);
-   window.sriSyncCloudRoster?.(profiles,memberships,teams);
- }
+ if(p?.role==='supervisor')await window.sriRefreshDistributionCandidates?.();
 }catch(e){console.warn('[Gestão unificada] Não foi possível atualizar a lista de operadores:',e.message)}};
 window.sriUnifiedAfterSnapshot=()=>window.sriUnifiedAfterAuth?.();window.sriClosureAfterAuth?.();
 function installPublishButton(){

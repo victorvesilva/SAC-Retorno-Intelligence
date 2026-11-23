@@ -15,6 +15,7 @@ jobs:
           node tests/test_prd_static.mjs
           node tests/test_html_production.mjs
           node tests/test_unified_operator_flow.mjs
+          node tests/test_distribution_operator_profiles.mjs
           node tests/test_contingency_boot.mjs
           node tests/test_cloud_shared_sync.mjs
           node tests/test_auto_publish.mjs
