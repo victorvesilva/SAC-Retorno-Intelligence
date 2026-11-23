@@ -5,7 +5,7 @@ const html=fs.readFileSync(new URL('../index.html', import.meta.url),'utf8');
 const js=fs.readFileSync(new URL('../sri-prd-painel.js', import.meta.url),'utf8');
 const sql=fs.readFileSync(new URL('../sql/2026-11-22_sri_prd_5_frentes.sql', import.meta.url),'utf8');
 new vm.Script(js,{filename:'sri-prd-painel.js'});
-assert.match(html,/src="\/sri-prd-painel\.js"/);
+assert.match(html,/src="\/sri-prd-painel\.js\?v=2\.0-prod-20261123"/);
 assert.match(html,/sri_close_result_shift/);
 assert.match(html,/publish_daily_operator_tasks/);
 assert.match(js,/sri_v_daily_operational_metrics/);
