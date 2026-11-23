@@ -22,13 +22,13 @@ for(const [input,expected] of [
 ])assert.equal(name(input),expected,'Rotulagem incorreta de '+input);
 
 // A alteração não pode trocar os valores internos usados nas relações e registros.
-assert.match(html,/ctx\.operations\.map\(o=>`<option value="\$\{esc\(o\.id\)\}">\$\{esc\(o\.name\)\}<\/option>`\)/,'Operação não deve ser confundida com o turno');
+assert.match(html,/const team=null,\{day,shift\}=syncShift\(\)/,'Operação e turno não são definidos por equipe na importação');
 assert.match(html,/state\.operations\.filter\(x=>x\.active\)\.map\(o=>`<option value="\$\{esc\(o\.id\)\}">\$\{esc\(window\.sriDisplayTurnoLabel\(o\.name\)\)\}<\/option>`\)/);
 assert.match(html,/shift_label:shift,/,'Gravação de turno no banco deve preservar seu código original');
 assert.match(html,/shift:r\.shift_label,/,'Conferência de fechamento deve manter valor bruto para lógica interna');
 assert.match(html,/p_shift:shift/,'Planejamento deve manter o valor original informado');
 assert.match(html,/window\.sriDisplayTurnoLabel\(r\.shift_label\)/,'Fechamento deve exibir rótulo amigável');
-assert.match(html,/esc\(sriOperationLabel\(data\.shift_label\)\)/,'Leitura do resultado deve exibir rótulo amigável');
+assert.match(html,/\$\('sri-daily-shift'\)\.value=data\.shift_label/,'Resultado preserva a etiqueta de turno');
 assert.doesNotMatch(html,/R1:'R1 - Manhã'|R2:'R2 - Tarde'/,'Rótulos mistos antigos ainda presentes');
 
 console.log('PASS: labels legados preservados em consultas e operação separada do turno automático.');
