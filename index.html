@@ -6906,6 +6906,24 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(s)s.value=current.shift;
     return current;
   }
+  function selectAutomaticDestination(){
+    const op=$('sri-daily-operation'),team=$('sri-daily-team');
+    if(!op||!team)return;
+    const previous=ctx.teams.find(t=>t.id===team.value);
+    const preferred=preferredPublishingTarget();
+    const trustedPreferred=ctx.teams.find(t=>t.id===preferred?.team&&t.operation_id===preferred?.operation);
+    const linked=ctx.teams.filter(t=>ctx.linkedTeamIds?.has(t.id));
+    // Preferência explícita e ainda válida. Sem preferência, só inferir destino único.
+    const chosen=previous||trustedPreferred||
+      (linked.length===1?linked[0]:null)||
+      (ctx.teams.length===1?ctx.teams[0]:null);
+    if(chosen)op.value=chosen.operation_id;
+    else if(ctx.operations.length===1)op.value=ctx.operations[0].id;
+    else op.value='';
+    setTeams();
+    if(chosen)team.value=chosen.id;
+    renderImportContext();
+  }
   function setTeams(){
     const operation=$('sri-daily-operation')?.value;
     const filtered=ctx.teams.filter(t=>t.operation_id===operation),sel=$('sri-daily-team');if(!sel)return;
@@ -6916,36 +6934,43 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     else if(filtered.length===1)sel.value=filtered[0].id;
     else sel.value='';
     syncShift();
+    renderImportContext();
   }
   function publishingContextValid({showError=false}={}){
     const operation=$('sri-daily-operation')?.value,team=$('sri-daily-team')?.value,shift=inferredShift();
     if(ctx.profile&&managerRoles.has(ctx.profile.role)&&ctx.operations.some(o=>o.id===operation)&&
       ctx.teams.some(t=>t.id===team&&t.operation_id===operation)&&shift)return true;
     if(showError){
-      status('Publicação pendente: selecione a operação e a equipe de destino ANTES de processar SAC + ATIVO. O turno será preenchido automaticamente. Nenhum CSV será enviado ao banco.','error');
-      $('sri-daily-panel')?.scrollIntoView?.({behavior:'smooth',block:'start'});
+      ctx.userChoosingDestination=true;renderImportContext();
+      status('Escolha a equipe autorizada uma vez para continuar com a importação. O turno e a publicação são automáticos.','warning');
+      $('sri-import-context')?.scrollIntoView?.({behavior:'smooth',block:'nearest'});
     }
     return false;
   }
   window.sriCanAutoPublish=()=>publishingContextValid({showError:true});
   async function loadMetadata(){const client=await auth();
-    const [ops,teams]=await Promise.all([
+    const [ops,teams,memberships]=await Promise.all([
       client.from('operations').select('id,name').eq('active',true).order('name'),
-      client.from('teams').select('id,name,operation_id').eq('active',true).order('name')]);
-    if(ops.error)throw Error('Operações: '+ops.error.message);if(teams.error)throw Error('Equipes: '+teams.error.message);
+      client.from('teams').select('id,name,operation_id').eq('active',true).order('name'),
+      client.from('team_memberships').select('team_id').eq('user_id',ctx.user.id)
+    ]);
+    if(ops.error)throw Error('Operações: '+ops.error.message);
+    if(teams.error)throw Error('Equipes: '+teams.error.message);
     ctx.operations=ops.data||[];ctx.teams=teams.data||[];
+    ctx.linkedTeamIds=new Set((memberships.error?[]:memberships.data||[]).map(x=>x.team_id));
+    if(memberships.error)console.warn('[Destino automático] Vínculos indisponíveis; nenhuma equipe será presumida por nome:',memberships.error.message);
     try{ctx.lastCycleKey=localStorage.getItem('sri_last_operational_cycle_'+ctx.user.id)||ctx.lastCycleKey;}catch(_){}
-    const op=$('sri-daily-operation'),previous=op?.value,preferred=preferredPublishingTarget();
-    if(op){op.innerHTML='<option value="">Selecione a operação</option>'+ctx.operations.map(o=>`<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('');
-      if(ctx.operations.some(o=>o.id===previous))op.value=previous;
-      else if(ctx.operations.some(o=>o.id===preferred?.operation))op.value=preferred.operation;
-      else if(ctx.operations.length===1)op.value=ctx.operations[0].id;
-      else op.value='';
-    }
-    setTeams();
+    const op=$('sri-daily-operation');
+    if(op)op.innerHTML='<option value="">Selecione a operação</option>'+ctx.operations.map(o=>`<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('');
+    selectAutomaticDestination();
     await window.sriRefreshDistributionCandidates?.();
-    if(publishingContextValid())status('Destino configurado. Após processar SAC + ATIVO, o resultado será salvo automaticamente no Supabase.','success');
-    else status('Escolha uma vez operação e equipe de destino para habilitar a publicação automática.','warning');
+    if(publishingContextValid()){
+      // O destino já foi recuperado ou é inequívoco: não exigir nova escolha.
+      status('Destino preparado para publicação automática.','normal');
+    }else{
+      ctx.userChoosingDestination=true;renderImportContext();
+      status('Aguardando a seleção de equipe autorizada para importar.','normal');
+    }
   }
     function resultPayload(){
     if(!ui.live||!ui.source?.length||!ui.apured?.length)throw Error('Primeiro processe SAC + ATIVO em Importar Bases. Não há resultado consolidado carregado.');
@@ -7137,7 +7162,10 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   async function loadLast({startup=false}={}){const client=await auth();
     const {data,error}=await client.from('daily_result_snapshots').select('id,team_id,operational_day,shift_label,created_at,payload_sha256').order('created_at',{ascending:false}).limit(10);
     if(error)throw Error('Consulta de resultados: '+error.message);
-    const items=data||[],currentDay=operationalContext().day,latest=items.find(x=>x.operational_day===currentDay)||items[0];
+    const items=data||[],currentDay=operationalContext().day,selectedTeam=$('sri-daily-team')?.value;
+    if(!selectedTeam){if(startup)return;throw Error('Selecione a equipe antes de recuperar o resultado.');}
+    const own=items.filter(x=>x.team_id===selectedTeam);
+    const latest=own.find(x=>x.operational_day===currentDay)||own[0];
     if(!latest)throw Error('Nenhum resultado consolidado foi encontrado nas equipes autorizadas.');
     if(startup&&ui.live&&!ctx.snapshotId){
       const localHash=await hash(JSON.stringify({reference:ui.reference,source:ui.source}));
@@ -7204,7 +7232,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         .select('revision').eq('snapshot_id',next.id).maybeSingle();
       if(readyError||!ready)return;
       if(next.id===ctx.snapshotId&&Number(ready.revision)<=Number(ctx.revision)){clearSharedNotice();return;}
-      if(hasLocalChanges()||document.activeElement?.closest('#sri-daily-panel input,#sri-daily-panel select')){
+      if(hasLocalChanges()||document.activeElement?.closest('#sri-import-context-fields select')){
         showSharedNotice(next,'Há uma versão mais recente na nuvem, mas seu navegador possui alterações ou uma edição em andamento. Salve/conclua o trabalho antes de atualizar, ou revise e confirme a substituição.');
         return;
       }
@@ -7223,7 +7251,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     return safe(async()=>{const client=await window.sriGetSupabaseClient();const {data}=await client.auth.getUser();
       if(!data?.user)return;const {data:p}=await client.from('profiles').select('role').eq('id',data.user.id).single();
       if(!managerRoles.has(p?.role))return;
-      await loadMetadata();await loadLast({startup:true}).catch(e=>{if(/Nenhum resultado/.test(String(e)))status('Nenhum resultado salvo ainda. Processe SAC + ATIVO para compartilhar o resultado.');else throw e;});
+      await loadMetadata();await loadLast({startup:true}).catch(e=>{if(/Nenhum resultado/.test(String(e)))status('Aguardando primeira importação. Os resultados serão carregados automaticamente.','normal');else throw e;});
     }).then(()=>startSharedUpdates());
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',makePanel);else makePanel();
