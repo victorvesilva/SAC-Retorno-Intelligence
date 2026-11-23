@@ -7,7 +7,7 @@ const sql=fs.readFileSync(new URL('../sql/2026-11-22_sri_prd_5_frentes.sql', imp
 new vm.Script(js,{filename:'sri-prd-painel.js'});
 assert.match(html,/src="\/sri-prd-painel\.js\?v=2\.0-prod-20261123"/);
 assert.match(html,/sri_close_result_shift/);
-assert.match(html,/publish_daily_operator_tasks/);
+assert.match(html,/publish_general_operator_tasks/);
 assert.match(js,/sri_v_daily_operational_metrics/);
 assert.match(js,/@page\{size:A4 portrait/);
 assert.match(js,/function printReport/);
