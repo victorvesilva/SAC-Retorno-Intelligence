@@ -15,6 +15,7 @@ assert.equal(css.split('{').length,css.split('}').length,'CSS deve manter chaves
 assert.match(html,/switchTab\(opts\.tab\|\|ui\.tab\|\|'overview'\)/,'Restauração local não deve forçar página inicial');
 assert.match(html,/v42ApplyCurrent\(payload,\{tab:ui\.tab\|\|'overview'\}\)/,'Recuperação do Supabase deve preservar tela escolhida');
 assert.match(html,/sriBootRecovery\.beginCloud\(\)/,'Sincronização autenticada deve ser coberta pelo modal');
+assert.match(html,/await sriBootRecovery\.waitForLocal\(\)/,'Sincronização na nuvem deve aguardar recuperação local antes de carregar dados');
 assert.match(html,/finally\{sriBootRecovery\.endCloud\(\);\}/,'Modal deve ser liberado após sincronização da equipe');
 assert.match(html,/window\.sriSnapshotAfterAuth=\(\)=>\{\s*if\(!ctx\.initialized\)makePanel\(\);\s*return safe/,'Sincronização com Supabase precisa ser aguardada');
 assert.match(html,/const sriBootHasLocalCopy=!!v42SafeGet\(V42_CURRENT_KEY\)/,'Abertura do modal deve conferir a cópia local');
@@ -68,6 +69,7 @@ function environment({copy=false,restore=async()=>true}={}){
  assert.equal(x.dialog.hidden,false,'Cache presente deve abrir o modal antes da restauração');
  x.controller.beginCloud();
  await x.controller.run();
+ await x.controller.waitForLocal();
  assert.equal(x.dialog.hidden,false,'Cloud pendente não pode liberar navegação antes da hora');
  x.controller.endCloud();
  assert.equal(x.dialog.hidden,true,'Modal deve fechar após as duas sincronizações');
