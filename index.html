@@ -6754,8 +6754,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const root=$('import'); if(!root) return;
     root.insertAdjacentHTML('beforeend', `
       <section class="v20-panel" id="sri33-links" style="padding:18px;margin:20px 0;border:1px solid #c9d9ed;border-radius:12px;display:none">
-       <h3>Vincular contas aos operadores da distribuição</h3>
-       <p class="v20-muted">Relacione o nome do operador já utilizado na distribuição à conta cadastrada no Supabase. A vinculação é feita por equipe e somente pela gestão.</p>
+       <h3>Conciliação de operadores antigos</h3>
+       <p class="v20-muted">Somente para carteiras antigas sem identificador de conta. Operadores cadastrados no Supabase recebem distribuição diretamente após inclusão na equipe, sem vinculação manual.</p>
        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:12px 0">
         <label class="v20-field">Operador da distribuição<select id="sri33-roster" style="min-width:180px"></select></label>
         <label class="v20-field">Conta Supabase (Operador)<select id="sri33-account" style="min-width:180px"></select></label>
@@ -6802,7 +6802,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const tasks=rows.data||[];
     const statuses={};for(const t of tasks)statuses[t.work_status]=(statuses[t.work_status]||0)+1;
     stateMsg('sri33-progress-status',`${tot.count||0} protocolo(s) distribuídos na equipe. Exibindo as 100 atualizações mais recentes.`,'success');
-    $('sri33-progress-table').innerHTML=tasks.length?`<table class="v20-table" style="min-width:650px;width:100%"><thead><tr><th>Protocolo</th><th>Situação</th><th>Criticidade</th><th>Última atualização</th></tr></thead><tbody>${tasks.map(t=>`<tr><td>${h(t.protocol_number)}</td><td>${h(label(t.work_status))}</td><td>${h(t.criticality||'—')}</td><td>${h(new Date(t.updated_at).toLocaleString('pt-BR'))}</td></tr>`).join('')}</tbody></table>`:'<p>Nenhuma tarefa publicada nesta equipe. Primeiro vincule operadores e publique a distribuição.</p>';
+    $('sri33-progress-table').innerHTML=tasks.length?`<table class="v20-table" style="min-width:650px;width:100%"><thead><tr><th>Protocolo</th><th>Situação</th><th>Criticidade</th><th>Última atualização</th></tr></thead><tbody>${tasks.map(t=>`<tr><td>${h(t.protocol_number)}</td><td>${h(label(t.work_status))}</td><td>${h(t.criticality||'—')}</td><td>${h(new Date(t.updated_at).toLocaleString('pt-BR'))}</td></tr>`).join('')}</tbody></table>`:'<p>Nenhuma tarefa publicada nesta equipe. Confirme a equipe e publique a distribuição; somente carteiras legadas podem precisar de conciliação.</p>';
   }
   async function safeLink(fn) {try {await fn();}catch(e) {stateMsg('sri33-link-status',e.message||String(e),'error');}}
   async function refreshLinks() {
@@ -6813,7 +6813,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const team=$('sri-daily-team')?.value;
     if(!team){stateMsg('sri33-link-status','Selecione uma equipe no resultado diário.');return;}
     const roster=window.sriGetDistributionRoster?.()||[];
-    const uniqueRoster=[...new Map(roster.filter(x=>x&&x.id&&x.name).map(x=>[normalize(x.name),x])).values()];
+    // Formulário excepcional: contas acct:uuid são vinculadas diretamente ao cadastro.
+    const uniqueRoster=[...new Map(roster.filter(x=>x&&x.id&&x.name&&!String(x.id).startsWith('acct:')).map(x=>[normalize(x.name),x])).values()];
     const [users,links]=await Promise.all([
       client.from('profiles').select('id,full_name,role').eq('role','operator').order('full_name'),
       client.from('operator_links').select('user_id,operator_name').eq('team_id',team).order('operator_name')
@@ -6825,13 +6826,14 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const names=new Map((users.data||[]).map(u=>[u.id,u.full_name]));
     $('sri33-link-table').innerHTML=`<p style="font-size:13px">${(links.data||[]).length} conta(s) vinculada(s) à equipe. ${uniqueRoster.length} operador(es) na distribuição local.</p>`+
       ((links.data||[]).length?`<table class="v20-table"><thead><tr><th>Nome da distribuição</th><th>Conta vinculada</th></tr></thead><tbody>${links.data.map(l=>`<tr><td>${h(l.operator_name)}</td><td>${h(names.get(l.user_id)||'Conta não listada')}</td></tr>`).join('')}</tbody></table>`:'');
-    stateMsg('sri33-link-status',uniqueRoster.length?'Selecione o nome operacional e sua conta para vincular.':'Carregue uma distribuição com operadores cadastrados antes de vincular.');
+    stateMsg('sri33-link-status',uniqueRoster.length?'Conciliação legada: selecione o nome antigo e sua conta atual para confirmar.':'Nenhum operador legado disponível. Cadastros novos não exigem vínculo manual.');
   }
   async function linkOne() {
     const {client,profile}=await session();
     if(!['manager','admin'].includes(profile.role))throw Error('Apenas gestor/administrador pode vincular operadores.');
     const p_team=$('sri-daily-team')?.value,p_user=$('sri33-account')?.value,p_operator_name=$('sri33-roster')?.value;
-    if(!p_team||!p_user||!p_operator_name)throw Error('Informe equipe, operador da distribuição e conta Supabase.');
+    if(!p_team||!p_user||!p_operator_name)throw Error('Informe equipe, operador antigo da distribuição e conta Supabase.');
+    if(!(window.sriGetDistributionRoster?.()||[]).some(o=>o?.name===p_operator_name&&!String(o.id||'').startsWith('acct:')))throw Error('Operadores cadastrados não precisam ser vinculados manualmente.');
     const selected=($('sri33-account')?.selectedOptions?.[0]?.textContent)||'conta selecionada';
     if(!confirm('Vincular '+p_operator_name+' à conta '+selected+'? Esse usuário receberá os protocolos atribuídos a esse nome na equipe.'))return;
     const {error}=await client.rpc('admin_link_operator',{p_team,p_user,p_operator_name});
@@ -7038,7 +7040,7 @@ function render(root){if(!root)return;root.innerHTML=`<div class="v20-panel sri-
  <p id="sri-unified-message" role="status" aria-live="polite" class="v20-muted"></p>
  <div id="sri-unified-table"></div><div id="sri-unified-detail"></div>
  <details style="margin-top:16px"><summary>Criar equipe</summary><div class="v20-row" style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0"><label class="v20-field">Operação<select id="sri-new-team-operation">${state.operations.filter(x=>x.active).map(o=>`<option value="${esc(o.id)}">${esc(window.sriDisplayTurnoLabel(o.name))}</option>`).join('')}</select></label><label class="v20-field">Nome da equipe<input id="sri-new-team-name" maxlength="80" placeholder="Ex.: Equipe manhã"></label><button class="v20-button secondary" type="button" id="sri-create-team">Criar equipe</button></div></details>
- <details id="sri-unified-legacy-wrap" style="margin-top:14px"><summary>Conciliação de registros antigos (somente quando necessário)</summary><p class="v20-muted">Use apenas para históricos com nomes sem ID Supabase. Novas contas e distribuições não precisam desta vinculação.</p><div id="sri-unified-legacy-target"></div></details>
+ <details id="sri-unified-legacy-wrap" style="margin-top:14px"><summary>Conciliação de operadores legados (uso excepcional)</summary><p class="v20-muted">Recurso reservado para recuperar carteiras antigas identificadas apenas por nome. Para operadores novos, basta o cadastro, a equipe ativa e a publicação da distribuição.</p><div id="sri-unified-legacy-target"></div></details>
  </div>`;
  $('sri-unified-stats').innerHTML=stats();setTable();
  $('sri-unified-refresh').addEventListener('click',()=>reload(root));
