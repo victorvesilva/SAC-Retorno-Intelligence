@@ -6701,6 +6701,16 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 })();
 </script>
 
+<style id="sri-automatic-operation-style">
+#sri-daily-panel .sri-automatic-time-note{font-size:12px;color:#516b8b;margin:0 0 6px}
+#sri-daily-save,#sri-daily-refresh,#sri-daily-distribution,#sri-unified-publish{display:none!important}
+#sri-daily-save.sri-retry-show{display:inline-flex!important}
+#sri-auto-toast-root{position:fixed;right:20px;top:20px;z-index:2147483000;display:grid;gap:9px;width:min(365px,calc(100vw - 32px));pointer-events:none}
+.sri-auto-toast{display:flex;align-items:flex-start;gap:10px;background:#fff;border:1px solid #c9d8ef;border-left:4px solid #0b45b7;box-shadow:0 10px 35px #18385824;border-radius:10px;padding:13px 12px;color:#17314e;pointer-events:auto;font-size:13px}
+.sri-auto-toast[data-kind=success]{border-left-color:#188154}.sri-auto-toast[data-kind=error]{border-left-color:#c73535}.sri-auto-toast[data-kind=warning]{border-left-color:#e6a21e}
+.sri-auto-toast-message{flex:1;line-height:1.45}.sri-auto-toast-close{border:0;background:transparent;font-size:18px;line-height:1;color:#7186a1;padding:0 3px}
+@media(max-width:600px){#sri-auto-toast-root{top:12px;right:12px}}
+</style>
 <script id="sri-daily-result-cloud">
 /* SAC Retorno Intelligence 2.0: persistência de RESULTADO CONSOLIDADO, não de CSVs.
  * Os arquivos SAC e ATIVO são lidos somente no navegador pela rotina já existente.
@@ -6714,8 +6724,24 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   const ctx = {client:null,user:null,profile:null,teams:[],operations:[],snapshotId:null,revision:0,busy:false,restoring:false,saveTimer:null,initialized:false,fileStaged:false,localDataUnsaved:false,syncedDistributionState:null,syncedPayloadHash:null,cloudTimer:null,cloudChecking:false,cloudPendingId:null,pendingSnapshot:null};
   window.sriGetSavedDistributionContext=()=>({snapshotId:ctx.snapshotId,revision:ctx.revision,teamId:ctx.teamId});
   const today = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-  const status = (message, type='normal') => {const el=$('sri-daily-status');if(el){el.textContent=message;el.dataset.status=type;} };
-  const originalText = 'Após processar SAC + ATIVO, a apuração consolidada, seus indicadores e a distribuição são publicados automaticamente no Supabase. Os CSVs originais nunca são enviados ao banco. Se houver falha, a apuração permanece neste navegador para nova tentativa.';
+  function notify(message,kind='success'){
+    let root=$('sri-auto-toast-root');
+    if(!root){root=document.createElement('div');root.id='sri-auto-toast-root';root.setAttribute('aria-live','polite');document.body.appendChild(root);}
+    const item=document.createElement('div');item.className='sri-auto-toast';item.dataset.kind=kind;
+    const mark=document.createElement('span');mark.textContent=kind==='error'?'!':kind==='warning'?'⚠':'✓';mark.setAttribute('aria-hidden','true');
+    const msg=document.createElement('span');msg.className='sri-auto-toast-message';msg.textContent=String(message||'');
+    const close=document.createElement('button');close.type='button';close.className='sri-auto-toast-close';close.setAttribute('aria-label','Fechar notificação');close.textContent='×';close.onclick=()=>item.remove();
+    item.append(mark,msg,close);root.appendChild(item);
+    while(root.children.length>3)root.firstElementChild?.remove();
+    if(kind!=='error')setTimeout(()=>item.remove(),kind==='warning'?7000:4800);
+  }
+  window.sriToast=notify;
+  const status = (message, type='normal') => {
+    const el=$('sri-daily-status');if(el){el.textContent=message;el.dataset.status=type;}
+    if(['success','error','warning'].includes(type)&&!/^Destino configurado|^Escolha uma vez/.test(message))notify(message,type);
+    if(type==='success')$('sri-daily-save')?.classList.remove('sri-retry-show');
+  };
+  const originalText = 'As importações atualizam automaticamente a apuração vigente até o fechamento das 20h. Após esse horário, os resultados passam ao próximo dia operacional. Histórico e carteiras são preservados.';
 
   function makePanel(){
     const root=$('import');if(!root||$('sri-daily-panel'))return;
@@ -6723,14 +6749,15 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     (heading||root).insertAdjacentHTML(heading?'afterend':'afterbegin', `
     <section id="sri-daily-panel" class="v20-panel" style="margin:20px 0;padding:20px;border:2px solid #b6d4ed;border-radius:14px">
       <h3 style="color:#08418e;margin:0 0 8px">Publicação automática SAC + ATIVO</h3>
-      <p class="v20-muted">Após a apuração validada, o resultado será compartilhado automaticamente, sem confirmação manual. <strong>Os CSVs SAC e ATIVO não são enviados ao Supabase.</strong></p>
+      <p class="v20-muted">Importe SAC + ATIVO normalmente. O sistema identifica o turno, atualiza e compartilha o resultado sem confirmação. <strong>Os CSVs originais não são enviados ao Supabase.</strong></p>
       <p style="font-size:13px;color:#5c6473">${originalText}</p>
       <div class="v20-row" style="gap:12px;display:flex;flex-wrap:wrap;margin:16px 0;align-items:end">
         <label class="v20-field">Operação da importação<select id="sri-daily-operation" style="min-width:130px" required></select></label>
         <label class="v20-field">Equipe de destino<select id="sri-daily-team" style="min-width:140px" required></select></label>
-        <label class="v20-field">Data do resultado<input id="sri-daily-day" type="date"></label>
-        <label class="v20-field">Turno (automático)<input id="sri-daily-shift" maxlength="60" value="" readonly placeholder="Defina a operação"></label>
+        <input id="sri-daily-day" type="hidden">
+        <input id="sri-daily-shift" type="hidden">
       </div>
+      <p class="sri-automatic-time-note">Turnos automáticos: manhã (07h–12h59), tarde (13h–17h59), noite (18h–06h59). Fechamento diário às 20h, no horário de Brasília.</p>
       <div class="v20-row" style="display:flex;flex-wrap:wrap;gap:8px">
         <button class="v20-button secondary" type="button" id="sri-daily-refresh">Atualizar equipes</button>
         <button class="v20-button" type="button" id="sri-daily-save">Reenviar apuração pendente</button>
@@ -6740,7 +6767,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       <div id="sri-shared-notice" hidden role="status" aria-live="polite" style="margin:12px 0;padding:13px 15px;background:#fff6e7;border:1px solid #e6bf71;border-radius:12px;color:#704a11"><strong>Atualização compartilhada disponível.</strong><p id="sri-shared-text" style="margin:6px 0 10px;font-size:13px"></p><button type="button" id="sri-shared-apply" class="v20-button secondary">Conferir e atualizar</button></div><p id="sri-daily-status" role="status" aria-live="polite" style="margin:14px 0 6px;font-size:13px">Entre no sistema e defina a operação e equipe uma vez. O resultado será publicado automaticamente.</p>
       <div id="sri-daily-result" style="margin-top:10px;max-width:100%;overflow:auto"></div>
     </section>`);
-    $('sri-daily-day').value=today();
+    syncShift();
     $('sri-daily-refresh').addEventListener('click',()=>safe(loadMetadata));
     $('sri-daily-operation').addEventListener('change',()=>{setTeams();ctx.snapshotId=null;ctx.revision=0;rememberPublishingTarget();void Promise.resolve(window.sriRefreshDistributionCandidates?.()).catch(e=>console.warn('[Operadores]',e.message));status(publishingContextValid()?'Destino definido. O próximo processamento será publicado automaticamente.':'Selecione uma equipe para ativar a publicação automática.',publishingContextValid()?'success':'warning');});
     $('sri-daily-team').addEventListener('change',()=>{ctx.snapshotId=null;ctx.revision=0;rememberPublishingTarget();void Promise.resolve(window.sriRefreshDistributionCandidates?.()).catch(e=>console.warn('[Operadores]',e.message));status(publishingContextValid()?'Destino definido. O próximo processamento será publicado automaticamente.':'Selecione a operação e a equipe antes de processar. ',publishingContextValid()?'success':'warning');});
@@ -6751,7 +6778,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     ctx.initialized=true;
   }
   async function safe(fn){if(ctx.busy)return;ctx.busy=true;for(const id of ['sri-daily-save','sri-daily-load','sri-daily-distribution'])if($(id))$(id).disabled=true;
-    try{await fn();}catch(e){console.warn('[Resultado diário]',e);status('Não foi possível concluir: '+(e?.message||String(e)),'error');}
+    try{await fn();}catch(e){console.warn('[Resultado diário]',e);$('sri-daily-save')?.classList.add('sri-retry-show');status('Não foi possível concluir: '+(e?.message||String(e)),'error');}
     finally{ctx.busy=false;for(const id of ['sri-daily-save','sri-daily-load','sri-daily-distribution'])if($(id))$(id).disabled=false;}
   }
   async function auth(){
@@ -6783,14 +6810,26 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     return original;
   }
   window.sriDisplayTurnoLabel=sriOperationLabel;
-  function inferredShift(){
-    const op=ctx.operations.find(x=>x.id===$('sri-daily-operation')?.value);
-    if(!op)return '';
-    const value=sriOperationLabel(op.name);
-    return value==='Manhã'||value==='Tarde'?value:'';
+  // Turno definido exclusivamente pelo relógio de Brasília, independente de R1/R2.
+  // O dia operacional seguinte começa às 20:00; 00:00–06:59 é turno Noite desse novo ciclo.
+  function operationalContext(instant=new Date()){
+    const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{
+      timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit',
+      hour:'2-digit',minute:'2-digit',hourCycle:'h23'
+    }).formatToParts(instant).filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));
+    const hour=Number(parts.hour)%24;
+    const shift=hour>=7&&hour<13?'Manhã':hour>=13&&hour<18?'Tarde':'Noite';
+    const dateUTC=Date.UTC(Number(parts.year),Number(parts.month)-1,Number(parts.day))+(hour>=20?86400000:0);
+    return {day:new Date(dateUTC).toISOString().slice(0,10),shift,hour};
   }
+  window.sriOperationalContext=operationalContext;
+  function inferredShift(){return operationalContext().shift;}
   function syncShift(){
-    const el=$('sri-daily-shift');if(el)el.value=inferredShift();
+    const current=operationalContext();
+    const d=$('sri-daily-day'),s=$('sri-daily-shift');
+    if(d)d.value=current.day;
+    if(s)s.value=current.shift;
+    return current;
   }
   function setTeams(){
     const operation=$('sri-daily-operation')?.value;
@@ -6820,8 +6859,9 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       client.from('teams').select('id,name,operation_id').eq('active',true).order('name')]);
     if(ops.error)throw Error('Operações: '+ops.error.message);if(teams.error)throw Error('Equipes: '+teams.error.message);
     ctx.operations=ops.data||[];ctx.teams=teams.data||[];
+    try{ctx.lastCycleKey=localStorage.getItem('sri_last_operational_cycle_'+ctx.user.id)||ctx.lastCycleKey;}catch(_){}
     const op=$('sri-daily-operation'),previous=op?.value,preferred=preferredPublishingTarget();
-    if(op){op.innerHTML='<option value="">Selecione a operação</option>'+ctx.operations.map(o=>`<option value="${esc(o.id)}">${esc(sriOperationLabel(o.name))}</option>`).join('');
+    if(op){op.innerHTML='<option value="">Selecione a operação</option>'+ctx.operations.map(o=>`<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('');
       if(ctx.operations.some(o=>o.id===previous))op.value=previous;
       else if(ctx.operations.some(o=>o.id===preferred?.operation))op.value=preferred.operation;
       else if(ctx.operations.length===1)op.value=ctx.operations[0].id;
@@ -6854,11 +6894,45 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       linhas_invalidas:Math.max(0,Number(ui.quality?.bad)||0),
       tratamento:'Alertas informativos: não bloquear a apuração. Não concluir protocolos automaticamente com base apenas em ausência ou divergência.'};}
   async function hash(text){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+  // Histórico imutável: importa nova versão, mantém snapshot anterior e transfere a
+  // distribuição da última rodada válida do MESMO dia/turno/equipe, sem misturar ciclos.
+  async function carryForwardDistribution(client,team,day,shift){
+    const cycle=[team,day,shift].join('|');
+    const ids=new Set((ui.source||[]).map(row=>String(row.id)));
+    if(ctx.lastCycleKey&&ctx.lastCycleKey!==cycle){
+      for(const id of ids){delete distAssignments[id];delete distStatuses[id];delete distCriticities[id];}
+      v194Events=(v194Events||[]).filter(e=>!ids.has(String(e.protocol||'')));
+    }
+    const latest=await client.from('daily_result_snapshots')
+      .select('id').eq('team_id',team).eq('operational_day',day).eq('shift_label',shift)
+      .order('created_at',{ascending:false}).limit(20);
+    if(latest.error)throw Error('Conferência da apuração anterior: '+latest.error.message);
+    let previous=null;
+    for(const s of latest.data||[]){
+      const d=await client.from('daily_result_distributions').select('state').eq('snapshot_id',s.id).maybeSingle();
+      if(d.error)throw Error('Conferência da carteira anterior: '+d.error.message);
+      if(d.data?.state?.schema===1){previous=d.data.state;break;}
+    }
+    if(previous){
+      for(const field of [['assignments',distAssignments],['statuses',distStatuses],['criticities',distCriticities]]){
+        for(const [id,value] of Object.entries(previous[field[0]]||{}))if(ids.has(String(id)))field[1][id]=value;
+      }
+      for(const row of previous.roster||[])if(row?.id&&!distRoster.some(x=>x.id===row.id))distRoster.push(row);
+      for(const row of previous.archivedRoster||[])if(row?.id&&!distArchivedRoster.some(x=>x.id===row.id))distArchivedRoster.push(row);
+      const known=new Set((v194Events||[]).map(x=>JSON.stringify(x)));
+      for(const row of previous.events||[])if(ids.has(String(row.protocol||''))){
+        const key=JSON.stringify(row);if(!known.has(key)){v194Events.push(row);known.add(key);}
+      }
+      status('Distribuições e alterações da rodada anterior preservadas nesta atualização.','success');
+    }
+    distPersist();if(typeof distRefreshAfterLoad==='function')distRefreshAfterLoad();
+  }
   async function saveResult(){
     const client=await auth();
-    const team=$('sri-daily-team')?.value,day=$('sri-daily-day')?.value,shift=inferredShift();
+    const team=$('sri-daily-team')?.value,{day,shift}=syncShift();
     if(!publishingContextValid())throw Error('Defina operação e equipe de destino antes de publicar a apuração.');
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!shift)throw Error('Informe uma data válida; o turno é identificado pela operação.');
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!shift)throw Error('Não foi possível identificar o horário operacional de Brasília.');
+    await carryForwardDistribution(client,team,day,shift);
     const payload=resultPayload(),indicator=summarize(),warnings=warningSummary();
     const digest=await hash(JSON.stringify({reference:payload.reference,source:payload.source}));
     const key=[team,day,shift,digest].join('|');
@@ -6899,6 +6973,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     status('Resultado consolidado gravado. Sincronizando a distribuição...','pending');
     await saveDistribution();
     ctx.localDataUnsaved=false;ctx.fileStaged=false;ctx.pendingSnapshot=null;
+    ctx.lastCycleKey=[team,day,shift].join('|');
+    try{localStorage.setItem('sri_last_operational_cycle_'+ctx.user.id,ctx.lastCycleKey);}catch(_){}
     markSharedDigest(digest);clearSharedNotice();
     $('sri-daily-result').innerHTML=`<p><strong>Apuração publicada automaticamente.</strong> ${indicator.protocolos_consolidados} protocolos consolidados; ${indicator.protocolos_monitorados} monitorados. Equipe: ${esc(ctx.teams.find(t=>t.id===team)?.name)}. Divergências: ${warnings.divergencias_informativas} aviso(s).</p>`;
     status('Apuração SAC + ATIVO publicada automaticamente no Supabase, incluindo distribuição. CSVs originais não enviados.','success');
@@ -6970,6 +7046,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       ctx.revision=dist.data?.revision||0;
       if(dist.data?.state)setLoadedDistribution(dist.data.state);
       ctx.snapshotId=data.id;ctx.teamId=data.team_id;
+      ctx.lastCycleKey=[data.team_id,data.operational_day,data.shift_label].join('|');
+      try{localStorage.setItem('sri_last_operational_cycle_'+ctx.user.id,ctx.lastCycleKey);}catch(_){}
       const t=ctx.teams.find(t=>t.id===data.team_id);
       if(t){$('sri-daily-operation').value=t.operation_id;setTeams();$('sri-daily-team').value=t.id;}
       $('sri-daily-day').value=data.operational_day;$('sri-daily-shift').value=data.shift_label;
@@ -6981,7 +7059,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   async function loadLast({startup=false}={}){const client=await auth();
     const {data,error}=await client.from('daily_result_snapshots').select('id,team_id,operational_day,shift_label,created_at,payload_sha256').order('created_at',{ascending:false}).limit(10);
     if(error)throw Error('Consulta de resultados: '+error.message);
-    const items=data||[],currentDay=today(),latest=items.find(x=>x.operational_day===currentDay)||items[0];
+    const items=data||[],currentDay=operationalContext().day,latest=items.find(x=>x.operational_day===currentDay)||items[0];
     if(!latest)throw Error('Nenhum resultado consolidado foi encontrado nas equipes autorizadas.');
     if(startup&&ui.live&&!ctx.snapshotId){
       const localHash=await hash(JSON.stringify({reference:ui.reference,source:ui.source}));
@@ -7018,7 +7096,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   window.sriMarkLocalImportPending=()=>{
     clearTimeout(ctx.saveTimer);ctx.saveTimer=null;
     ctx.localDataUnsaved=true;ctx.snapshotId=null;ctx.revision=0;ctx.pendingSnapshot=null;
-    status('Apuração processada no navegador. Publicação automática no Supabase iniciada após a validação.','pending');
+    syncShift();status('Apuração processada. Salvando e compartilhando automaticamente...','pending');
   };
   window.sriShareProcessedResult=()=>{
     if(!ctx.profile||!managerRoles.has(ctx.profile.role)){status('Apuração local preservada. Publicação automática exige sessão autenticada como gestão ou supervisão.','error');return;}
