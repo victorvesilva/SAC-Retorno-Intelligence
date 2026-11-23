@@ -23,7 +23,7 @@ const markers=[
  'id="sri-shared-apply"'
 ];
 for(const m of markers)assert.ok(html.includes(m),'Fluxo compartilhado ausente: '+m);
-assert.ok(html.includes('if(!ctx.teams.some(t=>t.id===team)||!shift'), 'Publicação sem seleção explícita de equipe e turno');
+assert.ok(html.includes('if(!publishingContextValid({showError:true}))return;'), 'Auto-publicação deve validar equipe e turno antes do envio');
 assert.ok(html.includes('if(hasLocalChanges()&&!confirm('), 'Atualização manual deve exigir confirmação antes de descartar dados');
 const start=html.indexOf("  const sharedDigestKey='sri_cloud_shared_digest_v1';");
 const end=html.indexOf('  window.sriSnapshotAfterAuth=()=>{',start);
