@@ -7156,7 +7156,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   const label = a => ({pending:'Pendente',in_progress:'Em tratamento',awaiting:'Aguardando retorno',completed_in_tool:'Tratativa concluída na ferramenta',note:'Anotação'}[a] || a || '—');
   const normalize = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toUpperCase();
   let logged = null, taskRows=[], currentTask=null, inProgress=false;
-  const stateMsg = (id,msg,kind='') => {const el=$(id);if(el){el.textContent=msg;el.dataset.state=kind;}};
+  const stateMsg = (id,msg,kind='') => {const el=$(id);if(el){el.textContent=msg;el.dataset.state=kind;}if(kind==='error'||(kind==='success'&&/salv|registr|atualiz|vinculad|conclu|publicad|fechad/i.test(msg)))window.sriToast?.(msg,kind);};
   async function session() {
     const client = await window.sriGetSupabaseClient?.();
     if (!client) throw Error('Conexão Supabase não disponível.');
@@ -7423,7 +7423,7 @@ const state={rows:[],teams:[],operations:[],memberships:[],user:null,role:null,c
 const defaultTeamOf=id=>state.memberships.filter(m=>m.user_id===id).map(m=>state.teams.find(t=>t.id===m.team_id)).filter(Boolean)[0]||null;
 const teamName=id=>state.teams.find(t=>t.id===id)?.name||'Sem equipe';
 const supervisorName=id=>state.rows.find(u=>u.id===id)?.full_name||'—';
-const msg=(message,kind='')=>{const el=$('sri-unified-message');if(el){el.textContent=message;el.dataset.state=kind}};
+const msg=(message,kind='')=>{const el=$('sri-unified-message');if(el){el.textContent=message;el.dataset.state=kind}if(kind==='error'||(kind==='success'&&/salv|registr|atualiz|vinculad|conclu|publicad|criad|altera/i.test(message)))window.sriToast?.(message,kind);};
 async function session(){
  const client=await window.sriGetSupabaseClient?.();if(!client)throw Error('Conexão Supabase indisponível.');
  const {data,error}=await client.auth.getUser();if(error||!data?.user)throw Error('Entre no sistema para acessar esta área.');
@@ -7564,7 +7564,7 @@ document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.tar
   const state = {client:null,profile:null,overview:null,prepared:null,busy:false,availableTeams:[]};
   const canManage = role => ['admin','manager'].includes(role);
   const isSupervisor = role => ['admin','manager','supervisor'].includes(role);
-  function message(s,kind='normal') {const el=$('sri34-status'); if(el){el.textContent=s;el.dataset.state=kind;}}
+  function message(s,kind='normal') {const el=$('sri34-status'); if(el){el.textContent=s;el.dataset.state=kind;}if(kind==='error'||(kind==='success'&&/salv|registr|atualiz|vinculad|conclu|publicad|fechad|encerrad/i.test(s)))window.sriToast?.(s,kind);}
   function resetPreview() {state.prepared=null;const e=$('sri34-preview');if(e)e.innerHTML='Confira uma equipe e turno antes de confirmar o encerramento.';const b=$('sri34-confirm-shift');if(b)b.disabled=true;}
   function makePanel(){
     const root=$('v20-closure');if(!root||$('sri34-panel'))return;
