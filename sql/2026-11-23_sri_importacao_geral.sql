@@ -229,7 +229,7 @@ BEGIN
   FROM public.profiles p WHERE p.id=v_user;
   IF NOT FOUND OR v_role<>'operator' OR v_status NOT IN('Ativo','Promovido') THEN
     RAISE EXCEPTION 'Operador inativo ou inválido para o protocolo %',v_protocol; END IF;
-  SELECT count(*),min(tm.team_id) INTO v_num_teams,v_team
+  SELECT count(*),(array_agg(tm.team_id ORDER BY tm.team_id))[1] INTO v_num_teams,v_team
   FROM public.team_memberships tm JOIN public.teams t ON t.id=tm.team_id AND t.active
   WHERE tm.user_id=v_user;
   IF v_num_teams>1 THEN
@@ -244,7 +244,7 @@ BEGIN
  FOR v_assignment IN SELECT key,value FROM jsonb_each(v_state->'assignments') LOOP
   v_protocol:=btrim(v_assignment.key);
   v_user:=substring(v_assignment.value->>'opId' FROM 6)::uuid;
-  SELECT min(tm.team_id) INTO v_team
+  SELECT (array_agg(tm.team_id ORDER BY tm.team_id))[1] INTO v_team
   FROM public.team_memberships tm JOIN public.teams t ON t.id=tm.team_id AND t.active
   WHERE tm.user_id=v_user;
   IF v_team IS NOT NULL THEN
