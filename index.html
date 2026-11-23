@@ -6537,6 +6537,11 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const old=sel.value;sel.innerHTML=filtered.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');
     if(filtered.some(t=>t.id===old))sel.value=old;
   }
+  function sriOperationLabel(name){
+    const key=String(name||'').trim().toUpperCase();
+    const labels={R1:'R1 - Manhã',R2:'R2 - Tarde'};
+    return labels[key]||String(name||'');
+  }
   async function loadMetadata(){const client=await auth();
     const [ops,teams]=await Promise.all([
       client.from('operations').select('id,name').eq('active',true).order('name'),
@@ -6544,7 +6549,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(ops.error)throw Error('Operações: '+ops.error.message);if(teams.error)throw Error('Equipes: '+teams.error.message);
     ctx.operations=ops.data||[];ctx.teams=teams.data||[];
     const op=$('sri-daily-operation'),previous=op?.value;
-    if(op){op.innerHTML=ctx.operations.map(o=>`<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('');if(ctx.operations.some(o=>o.id===previous))op.value=previous;}
+    if(op){op.innerHTML=ctx.operations.map(o=>`<option value="${esc(o.id)}">${esc(sriOperationLabel(o.name))}</option>`).join('');if(ctx.operations.some(o=>o.id===previous))op.value=previous;}
     setTeams();status('Equipes carregadas. Importe SAC + ATIVO, confira a apuração e salve apenas o resultado.');
   }
   function resultPayload(){
