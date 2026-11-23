@@ -1,0 +1,37 @@
+/* SAC Retorno Intelligence — contingência supervisor + recuperação inicial segura. */
+@media screen {
+ #sri-boot-modal[hidden]{display:none!important}
+ #sri-boot-modal{position:fixed;inset:0;z-index:999999;display:grid;place-items:center;padding:20px;background:rgba(10,30,67,.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+ #sri-boot-modal .sri-boot-card{width:min(100%,430px);border:1px solid #d8e5f7;border-radius:20px;background:#fff;padding:32px 28px 27px;box-shadow:0 25px 75px rgba(5,31,80,.26);text-align:center;font:14px/1.5 "Segoe UI",Arial,sans-serif;color:#163b66}
+ #sri-boot-modal .sri-boot-symbol{width:62px;height:62px;margin:0 auto 18px;display:grid;place-items:center;border-radius:17px;background:#edf4ff;color:#0b45b7}
+ #sri-boot-modal .sri-boot-spinner{width:36px;height:36px;border:4px solid #dceafe;border-top-color:#0b45b7;border-radius:50%;animation:sriBootSpin .85s linear infinite}
+ #sri-boot-modal h2{margin:0 0 10px;font-size:22px;line-height:1.2;font-weight:790;letter-spacing:-.4px;color:#123e79}
+ #sri-boot-modal p{margin:0 auto 18px;max-width:340px;color:#566f8c;font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+ #sri-boot-modal .sri-boot-progress{height:5px;width:100%;margin:13px auto 14px;overflow:hidden;border-radius:12px;background:#e6edf7}
+ #sri-boot-modal .sri-boot-progress:before{content:"";display:block;height:100%;width:37%;border-radius:12px;background:#0b45b7;animation:sriBootSlide 1.5s ease-in-out infinite alternate}
+ #sri-boot-modal .sri-boot-help{font-size:11.5px;color:#7186a1;min-height:32px}
+ #sri-boot-modal .sri-boot-actions{display:flex;gap:10px;justify-content:center;margin-top:15px}
+ #sri-boot-modal .sri-boot-actions[hidden]{display:none!important}
+ #sri-boot-modal button{border:1px solid #c7d9f5;border-radius:9px;background:#0b45b7;color:white;min-height:38px;padding:9px 14px;cursor:pointer;font-weight:750;font:inherit}
+ #sri-boot-modal .sri-boot-secondary{background:#f3f7ff;color:#12437f}
+ #sri-boot-modal button:focus-visible{outline:3px solid #ffb33a;outline-offset:3px}
+ #sri-boot-modal[data-state="error"] .sri-boot-progress,#sri-boot-modal[data-state="error"] .sri-boot-spinner{animation:none}
+ #sri-boot-modal[data-state="error"] .sri-boot-progress:before{animation:none;width:100%;background:#ce824b}
+ @keyframes sriBootSpin{to{transform:rotate(360deg)}}
+ @keyframes sriBootSlide{from{transform:translateX(-42%)}to{transform:translateX(215%)}}
+ #dist-pane-exports .v48-import-intro{display:flex!important;align-items:flex-start;border:1px solid #d7e5f8;border-left:3px solid #0b45b7;padding:14px 16px;border-radius:11px;background:#f5f9ff;margin:12px 0}
+ #dist-pane-exports .v48-import-intro strong{font-size:13px;color:#173d6f}
+ #dist-pane-exports .v48-import-intro p{font-size:11.75px;line-height:1.6;margin:5px 0;color:#577392}
+ #dist-pane-exports label[for="dist-import-status-file"]{display:inline-flex!important;align-items:center;justify-content:center;gap:7px;padding:10px 14px;min-height:39px;cursor:pointer}
+ #dist-pane-exports #dist-status-import-feedback{display:inline!important;font-size:11.5px;color:#58718e;line-height:1.5}
+ #dist-pane-exports #dist-status-review[hidden]{display:none!important}
+ #dist-pane-exports #dist-status-review:not([hidden]){display:block!important;margin:12px 0}
+ #dist-pane-exports .sri-contingency-actions{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin:12px 0 8px}
+ #dist-pane-exports .sri-contingency-actions .dist-btn{min-height:40px}
+ #dist-pane-exports .sri-contingency-section{border:1px solid #dce8f6;border-radius:11px;background:#f9fbff;padding:14px 16px;margin:14px 0}
+ #dist-pane-exports .sri-contingency-section h4{font-size:13px;font-weight:760;color:#193e6b;margin:0 0 6px}
+ #dist-pane-exports .sri-contingency-section p{font-size:11.75px;line-height:1.6;margin:3px 0 9px;color:#587591;max-width:90ch}
+ #dist-pane-exports .sri-contingency-section .sri-contingency-note{font-weight:650;color:#435e81}
+ @media(max-width:600px){#sri-boot-modal .sri-boot-card{padding:26px 18px}#sri-boot-modal h2{font-size:19px}#dist-pane-exports .sri-contingency-actions>*{width:100%;justify-content:center}}
+}
+@media(prefers-reduced-motion:reduce){#sri-boot-modal .sri-boot-spinner,#sri-boot-modal .sri-boot-progress:before{animation-duration:3s}}
