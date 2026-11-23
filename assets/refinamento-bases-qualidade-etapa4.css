@@ -1,0 +1,355 @@
+/* SAC Retorno Intelligence 2.0 — Evolução Visual 4 (2026-11-23).
+ * Base e Qualidade / Importar Bases.
+ * Somente CSS de tela: não altera validação, apuração, histórico, alertas ou dados.
+ */
+@media screen {
+  /* Títulos de módulos e textos auxiliares. */
+  .v5-app #import,
+  .v5-app #details{
+    --v4-ink:#17395f;--v4-muted:#607996;--v4-border:#dfe8f3;
+    --v4-bg:#f8faff;--v4-primary:#0b45b7;min-width:0;
+  }
+  .v5-app #import>.section-heading,
+  .v5-app #details>.v46-main-heading{
+    margin:5px 0 15px;align-items:center;gap:12px;
+  }
+  .v5-app #import>.section-heading h2,
+  .v5-app #details>.v46-main-heading h2{
+    margin:0 0 4px;color:var(--v4-ink);line-height:1.2;
+    font-size:clamp(22px,2.1vw,27px);font-weight:770;letter-spacing:-.55px;
+  }
+  .v5-app #import>.section-heading p,
+  .v5-app #details>.v46-main-heading p{
+    margin:0;color:var(--v4-muted);font-size:12.5px;
+    line-height:1.55;max-width:760px;
+  }
+
+  /* Fluxo de importação — informação, seleção, processamento, segurança. */
+  .v5-app #import #v198-import-banner{
+    padding:12px 14px;margin:0 0 12px;
+    font-size:12px;line-height:1.55;border-radius:11px;
+    border:1px solid #d7e4f5;border-left:3px solid #0b45b7;
+    background:#f4f8ff;color:#385f89;
+  }
+  .v5-app #import #v198-import-banner.warn{
+    border-color:#f1daa9;border-left-color:#d88a24;
+    background:#fff8ed;color:#785621;
+  }
+  .v5-app #import #v198-import-banner.good{
+    border-color:#c9e7d8;border-left-color:#15976b;
+    background:#effaf4;color:#236a4f;
+  }
+  .v5-app #import .source-unified{
+    gap:12px;padding:17px;
+    border:1px solid var(--v4-border);
+    border-radius:14px;background:#fff;
+    box-shadow:0 3px 16px rgba(23,52,86,.045);
+  }
+  .v5-app #import .upload-grid{gap:12px;align-items:stretch}
+  .v5-app #import .source-upload{gap:8px}
+  .v5-app #import .source-upload .dropzone{
+    min-height:130px;max-height:none;height:100%;
+    padding:18px 14px;gap:4px;position:relative;
+    border:1.6px dashed #bfd0e8;border-radius:12px;
+    background:#f7faff;box-shadow:none;color:var(--v4-ink);
+    transition:background-color .15s ease,border-color .15s ease;
+  }
+  .v5-app #import .source-upload .dropzone:hover,
+  .v5-app #import .source-upload .dropzone.drag{
+    border-color:#3776d1;background:#eef5ff;
+    transform:none;
+  }
+  .v5-app #import .source-upload .dropzone:focus-within{
+    outline:3px solid #ffb33a;outline-offset:2px;
+  }
+  .v5-app #import .source-upload .dropzone .i{
+    color:#0b45b7;
+    display:inline-flex;align-items:center;justify-content:center;
+    width:36px;height:36px;border-radius:10px;background:#e9f1ff;
+    margin:0 0 5px;
+  }
+  .v5-app #import .source-upload .dropzone strong{
+    font-size:14px;line-height:1.3;font-weight:760;color:#173e6b;
+  }
+  .v5-app #import .source-upload .dropzone small{
+    font-size:11.5px;line-height:1.45;
+    color:#5f7794;overflow-wrap:anywhere;max-width:100%;
+  }
+  .v5-app #import .remove-file-action{
+    min-height:35px;align-self:flex-end;padding:8px 12px;
+    font-size:11.5px;font-weight:710;border-radius:9px;
+  }
+  .v5-app #import .remove-file-action:disabled{opacity:.45}
+
+  /* Fechamento de turno, conferência e processamento sem mudar os avisos. */
+  .v5-app #import .v57-last-import{
+    padding:13px 15px;gap:7px;margin:4px 0;
+    background:#f7faff;border-radius:11px;
+  }
+  .v5-app #import .v57-last-import label{
+    font-size:12px;line-height:1.45;font-weight:750;
+  }
+  .v5-app #import .v57-last-import small{font-size:11.5px;line-height:1.55}
+  .v5-app #import .v20-saneamento-hint{
+    font-size:11.5px;line-height:1.6;
+    border:1px solid #e0e9f5;border-radius:10px;
+    background:#fafcff;color:#506f8e;padding:11px 13px;
+  }
+  .v5-app #import .upload-foot{
+    display:flex;align-items:center;flex-wrap:wrap;
+    gap:12px;padding:13px 14px;margin:4px 0 0;
+    border:1px solid #dbe6f5;border-radius:11px;
+    background:#f7faff;
+  }
+  .v5-app #import #active-extraction-info{
+    flex:1 1 240px;font-size:11.5px;line-height:1.55;
+    color:#55718f;min-width:0;overflow-wrap:anywhere;
+  }
+  .v5-app #import #process-btn{
+    min-height:42px;min-width:185px;
+    font-size:12px;font-weight:760;
+    border-radius:9px;white-space:normal;
+  }
+  .v5-app #import #progress-box{
+    border:1px solid #d6e4f5;background:#f7faff;
+    padding:12px 14px;border-radius:10px;
+  }
+  .v5-app #import .source-current-actions{
+    border-top:1px solid #e5ecf5;gap:10px;
+    padding-top:13px;align-items:center;
+  }
+  .v5-app #import .source-current-actions .mini-pill{
+    font-size:11px;padding:7px 10px;
+  }
+  .v5-app #import .source-current-actions .manage-file-list{
+    gap:7px;flex:1 1 240px;overflow-wrap:anywhere;
+  }
+  .v5-app #import #remove-active-extraction{
+    min-height:36px;font-size:11.5px;font-weight:710;
+  }
+  .v5-app #import .source-details{
+    border-top:1px solid #e5ecf5;padding:11px 0 0;
+  }
+  .v5-app #import .source-details>summary{
+    font-size:12.5px;font-weight:750;color:#285184;
+    padding:3px 0;
+  }
+  .v5-app #import .v195-shortcut{
+    display:flex;align-items:center;gap:12px;
+    border:1px solid #dae6f5;border-left:3px solid #0b45b7;
+    background:#f7faff;border-radius:11px;
+    padding:14px 16px;margin:2px 0 0;
+  }
+  .v5-app #import .v195-shortcut strong{
+    font-size:12.75px;font-weight:760;color:#174472;
+  }
+  .v5-app #import .v195-shortcut p{
+    font-size:11.5px;line-height:1.5;color:#627c98;margin:4px 0 0;
+  }
+  .v5-app #import .v195-shortcut button{
+    min-height:38px;white-space:normal;font-size:11.5px;
+  }
+
+  /* Histórico e cópias locais: resumo gerencial, ações sem mudança de comportamento. */
+  .v5-app #import .v42-vault{
+    margin:3px 0 0;padding:17px;
+    background:#fbfcff;border:1px solid #dce7f5;border-radius:12px;
+  }
+  .v5-app #import .v42-vault-head{gap:12px;margin-bottom:7px}
+  .v5-app #import .v42-vault h3{
+    font-size:14.5px;font-weight:760;color:#183f6e;
+  }
+  .v5-app #import .v42-vault p{
+    margin:5px 0 10px;font-size:11.5px;
+    line-height:1.55;color:#657f9b;
+  }
+  .v5-app #import .v42-daily{gap:10px;margin:12px 0}
+  .v5-app #import .v42-daily>div{
+    padding:12px;background:#fff;border:1px solid #e1e9f4;
+    border-radius:10px;min-width:0;
+  }
+  .v5-app #import .v42-daily strong{
+    font-size:23px;line-height:1.2;
+    font-weight:780;font-variant-numeric:tabular-nums;
+  }
+  .v5-app #import .v42-daily span{
+    font-size:11px;line-height:1.5;color:#607b98;
+  }
+  .v5-app #import .v42-vault-actions{gap:8px;flex-wrap:wrap}
+  .v5-app #import .v42-vault-actions .light-button{
+    min-height:36px;font-size:11.5px;
+    border-radius:9px;font-weight:710;
+  }
+  .v5-app #import .v42-subtle{
+    margin-top:9px;font-size:11.5px;line-height:1.5;
+  }
+
+  /* Base e Qualidade: abas e área de consulta. */
+  .v5-app #details .v46-subtabs{
+    width:max-content;max-width:100%;gap:5px;
+    padding:5px;margin:0 0 16px;
+    background:#eef3fa;border:1px solid #dce6f3;
+    border-radius:12px;
+  }
+  .v5-app #details .v46-subtab{
+    min-height:39px;font-size:12px;font-weight:720;
+    padding:9px 13px;border-radius:9px;
+    color:#5c7290;white-space:normal;
+  }
+  .v5-app #details .v46-subtab:hover{
+    background:#f9fbff;color:#0b45b7;
+  }
+  .v5-app #details .v46-subtab.active{
+    color:#0b45b7;background:#fff;
+    border-color:#d6e4f6;box-shadow:0 2px 7px rgba(24,58,106,.07);
+    font-weight:780;
+  }
+  .v5-app #details .v46-pane>.section-heading{margin:9px 0 13px}
+  .v5-app #details .v46-pane>.section-heading :is(h2,h3){
+    color:#173b66;font-size:17px;line-height:1.3;
+    font-weight:770;letter-spacing:-.2px;
+  }
+  .v5-app #details .v46-pane>.section-heading p{
+    font-size:12px;line-height:1.55;color:#637f9b;
+  }
+  .v5-app #details #v46-pane-records .table-tools{
+    display:flex;flex-wrap:wrap;gap:10px;
+    align-items:center;margin:10px 0;
+  }
+  .v5-app #details #v46-pane-records .search-box{
+    flex:1 1 245px;max-width:none;min-width:170px;
+    border:1px solid #d8e3f1;border-radius:9px;
+  }
+  .v5-app #details #search-record{font-size:12px;line-height:1.45}
+  .v5-app #details #v46-pane-records .advanced-filters{
+    padding:11px 12px;background:#f7faff;
+    border:1px solid #e0e9f5;border-radius:11px;
+    gap:10px;margin:11px 0;
+  }
+  .v5-app #details .advanced-filters .field label{
+    font-size:11.5px;line-height:1.4;font-weight:720;
+    color:#536f8e;
+  }
+  .v5-app #details .advanced-filters .multi-select{
+    min-height:38px;font-size:12px;min-width:135px;
+  }
+  .v5-app #details #reset-detail{
+    min-height:36px;border-radius:9px;font-size:11.5px;
+  }
+  .v5-app #details #v46-pane-records>.card{
+    border:1px solid #dce6f2;border-radius:12px;overflow:hidden;
+  }
+  .v5-app #details .data-table{
+    font-variant-numeric:tabular-nums;
+  }
+  .v5-app #details .data-table th{
+    position:sticky;top:0;z-index:1;
+    padding:11px 10px;background:#eef3fa;
+    color:#476380;font-size:11px;font-weight:760;
+    letter-spacing:0;line-height:1.4;
+  }
+  .v5-app #details .data-table td{
+    padding:10px;color:#2f5073;font-size:11.5px;
+    line-height:1.45;border-top:1px solid #e9eff7;
+  }
+  .v5-app #details .data-table tbody tr:nth-child(even):not(:hover){
+    background:#fbfcff;
+  }
+  .v5-app #details .data-table tbody tr:hover{
+    background:#edf4ff;
+  }
+  .v5-app #details .table-pagination{
+    padding:12px 15px;border-top:1px solid #e9eff7;
+    font-size:11.5px;color:#617c99;
+  }
+  .v5-app #details .pager-actions button{
+    min-height:35px;padding:7px 12px;
+    font-size:11.5px;border-radius:9px;
+  }
+
+  /* Qualidade e conciliação: blocos destacados, sem interferir no cálculo. */
+  .v5-app #details #v46-pane-quality .v57-audit,
+  .v5-app #details #v46-pane-quality .v3-card,
+  .v5-app #details #v46-pane-reconcile .v195-panel,
+  .v5-app #details #v46-pane-reconcile .v195-importbox{
+    border:1px solid #dfe8f3;background:#fff;
+    border-radius:12px;padding:16px;
+    box-shadow:0 3px 14px rgba(23,52,86,.04);
+  }
+  .v5-app #details #v46-pane-quality .v57-audit{
+    margin:4px 0 17px;
+  }
+  .v5-app #details #v46-pane-quality .v57-header h3,
+  .v5-app #details #v46-pane-reconcile .v195-importbox h3{
+    color:#173f6d;font-size:15px;line-height:1.3;
+    font-weight:760;
+  }
+  .v5-app #details #v46-pane-quality .v57-header p{
+    color:#607b98;font-size:11.5px;line-height:1.5;
+  }
+  .v5-app #details #v46-pane-quality .v57-action,
+  .v5-app #details #v46-pane-reconcile .dist-btn{
+    min-height:36px;border-radius:9px;
+    font-size:11.5px;font-weight:720;
+  }
+  .v5-app #details #v46-pane-reconcile .v195-header{
+    padding:15px 17px;border:1px solid #dce7f5;
+    border-radius:12px;gap:12px;background:#fff;
+  }
+  .v5-app #details #v46-pane-reconcile .v195-header h2{
+    font-size:20px;color:#163d6a;letter-spacing:-.25px;
+  }
+  .v5-app #details #v46-pane-reconcile .v195-header p{
+    color:#607994;font-size:12px;line-height:1.55;
+  }
+  .v5-app #details #v46-pane-reconcile .v195-message{
+    font-size:11.5px;line-height:1.55;
+    border-radius:9px;overflow-wrap:anywhere;
+  }
+  .v5-app #details #v46-pane-reconcile .v195-help{
+    font-size:11.5px;line-height:1.55;color:#617b97;
+  }
+
+  /* Acessibilidade sem alterar interação e permissões dos controles. */
+  .v5-app #import :is(button,summary,select,label.dropzone):focus-visible,
+  .v5-app #details :is(button,input,summary,select):focus-visible{
+    outline:3px solid #ffb33a!important;outline-offset:2px;
+  }
+}
+@media screen and (max-width:1050px){
+  .v5-app #import .v42-daily{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .v5-app #details .v46-subtabs{max-width:100%}
+}
+@media screen and (max-width:760px){
+  .v5-app #import .upload-grid{grid-template-columns:1fr}
+  .v5-app #import .source-unified{padding:12px}
+  .v5-app #import .source-upload .dropzone{min-height:115px}
+  .v5-app #import .upload-foot{align-items:stretch;flex-direction:column}
+  .v5-app #import #process-btn{width:100%}
+  .v5-app #import .v195-shortcut{
+    align-items:stretch;flex-direction:column;
+  }
+  .v5-app #import .v195-shortcut button{width:100%}
+  .v5-app #details .v46-subtabs{
+    display:flex;width:100%;overflow-x:auto;flex-wrap:nowrap;
+  }
+  .v5-app #details .v46-subtab{flex:1 0 auto}
+  .v5-app #details .v46-pane>.section-heading{flex-wrap:wrap}
+  .v5-app #details #v46-pane-records .table-tools{
+    align-items:stretch;
+  }
+  .v5-app #details #v46-pane-records .search-box{flex:1 1 100%;max-width:100%}
+  .v5-app #details #v46-pane-records .advanced-filters{
+    align-items:stretch;
+  }
+}
+@media screen and (max-width:460px){
+  .v5-app #import .v42-daily{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .v5-app #import .v42-daily>div{padding:9px}
+  .v5-app #import .v42-daily strong{font-size:20px}
+  .v5-app #details .advanced-filters .field{flex:1 1 100%}
+  .v5-app #details .advanced-filters .multi-select{width:100%}
+}
+@media (prefers-reduced-motion:reduce){
+  .v5-app #import .dropzone{transition:none!important}
+}
