@@ -23,7 +23,7 @@ const markers=[
  'id="sri-shared-apply"'
 ];
 for(const m of markers)assert.ok(html.includes(m),'Fluxo compartilhado ausente: '+m);
-assert.ok(html.includes('if(!publishingContextValid({showError:true}))return;'), 'Auto-publicação deve validar equipe e turno antes do envio');
+assert.ok(html.includes('if(!publishingContextValid({showError:true}))return;'), 'Auto-publicação deve validar perfil e turno antes do envio');
 assert.ok(html.includes('if(hasLocalChanges()&&!confirm('), 'Atualização manual deve exigir confirmação antes de descartar dados');
 const start=html.indexOf("  const sharedDigestKey='sri_cloud_shared_digest_v1';");
 const end=html.indexOf('  window.sriSnapshotAfterAuth=()=>{',start);
@@ -64,7 +64,7 @@ assert.equal($('sri-shared-notice').hidden,true);
 state.localDataUnsaved=true;state.snapshotId='old';state.teamId='team';
 const candidate={id:'new',team_id:'team',operational_day:'2026-11-23'};
 context.ctx.client={from:table=>{
- const q={select(){return q},order(){return q},limit(){return q},eq(){return q},
+ const q={select(){return q},order(){return q},limit(){return q},eq(){return q},is(){return q},
   then(resolve){return Promise.resolve({data:[candidate],error:null}).then(resolve)},
   maybeSingle(){return Promise.resolve({data:{revision:0},error:null})}};
  return q;
