@@ -1821,7 +1821,7 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
 </nav></div>
 </aside>
 <main class="main">
-<header class="topbar" role="banner"><div class="v5-top-identity"><div><div class="v5-top-name">SAC Retorno Intelligence</div><div class="v5-top-subtitle" id="v5-active-context">Gestão Operacional · acompanhamento consolidado</div></div></div><div class="top-right"><button class="v54-clear-all" id="v54-clear-all" title="Remover todos os filtros de visualização do sistema" type="button"><span class="i" data-icon="refresh"></span><span>Limpar todos os filtros</span></button><div class="top-chip"><span class="privacy-dot" style="margin-right:0"></span><span id="connection-text">Local</span></div><div class="top-chip" title="Data e hora do processamento SAC + ATIVO, no horário de Brasília">ÚLTIMA IMPORTAÇÃO SAC + ATIVO <strong id="update-clock">—</strong></div></div></header>
+<header class="topbar" role="banner"><div class="v5-top-identity"><div><div class="v5-top-name">SAC Retorno Intelligence</div><div class="v5-top-subtitle" id="v5-active-context">Gestão Operacional · acompanhamento consolidado</div></div></div><div class="top-right"><button class="v54-clear-all" id="v54-clear-all" title="Remover todos os filtros de visualização do sistema" type="button"><span class="i" data-icon="refresh"></span><span>Limpar todos os filtros</span></button><div class="top-chip" id="sri-connection-chip" data-connection="checking" title="Verificando a comunicação com o Supabase"><span class="privacy-dot" style="margin-right:0"></span><span id="connection-text" role="status" aria-live="polite">Verificando...</span></div><div class="top-chip" title="Data e hora do processamento SAC + ATIVO, no horário de Brasília">ÚLTIMA IMPORTAÇÃO SAC + ATIVO <strong id="update-clock">—</strong></div></div></header>
 <section class="hero"><div class="hero-copy"><div class="eyebrow">CENTRAL DE MONITORAMENTO • HAPVIDA</div><h1>SAC Retorno Intelligence</h1><p>SAC + ATIVO: indicadores, prioridades e distribuição em uma única ferramenta.</p></div><div class="hero-actions" id="hero-actions"><button class="btn btn-white" id="hero-upload"><span class="i" data-icon="upload"></span> Importar novas bases</button></div></section>
 <div aria-label="Filtros e ações dos painéis analíticos" id="global-controls">
 <div class="toolbar v114-toolbar"><div class="toolbar-left"><span class="mini-pill demo" id="source-pill">SEM DADOS</span><div class="summary-status" id="status-text">Nenhuma extração processada</div></div><details class="v114-filter-details" id="v114-filter-details"><summary><span class="v114-filter-summary">Filtros gerais <span aria-hidden="true" class="v114-filter-chevron">⌄</span></span><span class="v114-filter-description">Operadora · Área · Canal · Fila</span></summary><div class="toolbar-right"><div class="field multi-field"><label>Operadora</label><div class="multi-select" data-placeholder="Todas as operadoras" id="f-bko"></div></div><div class="field multi-field"><label>Área</label><div class="multi-select" data-placeholder="Todas as áreas" id="f-area"></div></div><div class="field multi-field"><label>Canal</label><div class="multi-select" data-placeholder="Todos os canais" id="f-canal"></div></div><div class="field multi-field"><label>Fila</label><div class="multi-select" data-placeholder="Todas as filas" id="f-fila"></div></div><div class="field-date"><label for="ref-date">Data-base</label><input disabled="" id="ref-date" type="date"/></div><button class="btn btn-ghost" id="clear-filters" title="Limpar todos os filtros do sistema"><span class="i" data-icon="refresh"></span> Limpar filtros gerais</button></div></details></div>
@@ -2347,7 +2347,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')for(const m of multi
 
 function refilter(){if(!ui.live)return;let s=ui.selected;ui.filtered=ui.apured.filter(r=>['SAC RETORNO','WHATSSAC'].includes(r.where)&&multiMatch(s.bko,r.bko)&&multiMatch(s.area,r.area)&&multiMatch(s.canal,r.where)&&multiMatch(s.fila,r.fila));ui.page=0;updatePage()}
 function populate(id,values,first){const m=multiControls.get(id);if(!m)return;m.root.dataset.placeholder=first;multiSetOptions(id,values);multiEnable(id,ui.live)}
-function postLoad(){ui.live=true;document.getElementById('source-pill').classList.remove('demo');document.getElementById('source-pill').textContent='BASES ATUALIZADAS';document.getElementById('connection-text').textContent='Importado';{const el=document.getElementById('sidebar-source'); if(el) el.textContent='Dados atuais • 2 CSVs processados';}document.getElementById('status-text').textContent=`${fmt.format(ui.quality.merged)} linhas mescladas · referência ${longDate(ui.reference)}`;document.getElementById('state-banner').innerHTML=`<div class="notice-left">${ico('check')}<span>Mesclagem e apuração concluídas. <b>${fmt.format(ui.quality.merged)} registros</b> na consolidação e <b>${fmt.format(ui.apured.filter(r=>['SAC RETORNO','WHATSSAC'].includes(r.where)).length)}</b> no recorte do dashboard.</span></div>`;document.getElementById('state-banner').style.background='#edfaf5';document.getElementById('state-banner').style.borderColor='#c9efe1';populate('f-bko',[...new Set(ui.apured.map(r=>r.bko))],'Todas as operadoras');populate('f-area',[...new Set(ui.apured.filter(r=>['SAC RETORNO','WHATSSAC'].includes(r.where)).map(r=>r.area))],'Todas as áreas');populate('f-fila',[...new Set(ui.apured.filter(r=>['SAC RETORNO','WHATSSAC'].includes(r.where)).map(r=>r.fila))],'Todas as filas');multiEnable('f-canal',true);for(const id of ['detail-situacao','detail-sla','detail-age'])multiEnable(id,true);document.getElementById('ref-date').disabled=false;document.getElementById('ref-date').value=iso(ui.reference);const heroActions=document.getElementById('hero-actions'); if(heroActions)heroActions.classList.add('hidden-live');refilter();switchTab('overview')}
+function postLoad(){ui.live=true;document.getElementById('source-pill').classList.remove('demo');document.getElementById('source-pill').textContent='BASES ATUALIZADAS';/* Estado de importação independente do indicador de conexão Supabase. */{const el=document.getElementById('sidebar-source'); if(el) el.textContent='Dados atuais • 2 CSVs processados';}document.getElementById('status-text').textContent=`${fmt.format(ui.quality.merged)} linhas mescladas · referência ${longDate(ui.reference)}`;document.getElementById('state-banner').innerHTML=`<div class="notice-left">${ico('check')}<span>Mesclagem e apuração concluídas. <b>${fmt.format(ui.quality.merged)} registros</b> na consolidação e <b>${fmt.format(ui.apured.filter(r=>['SAC RETORNO','WHATSSAC'].includes(r.where)).length)}</b> no recorte do dashboard.</span></div>`;document.getElementById('state-banner').style.background='#edfaf5';document.getElementById('state-banner').style.borderColor='#c9efe1';populate('f-bko',[...new Set(ui.apured.map(r=>r.bko))],'Todas as operadoras');populate('f-area',[...new Set(ui.apured.filter(r=>['SAC RETORNO','WHATSSAC'].includes(r.where)).map(r=>r.area))],'Todas as áreas');populate('f-fila',[...new Set(ui.apured.filter(r=>['SAC RETORNO','WHATSSAC'].includes(r.where)).map(r=>r.fila))],'Todas as filas');multiEnable('f-canal',true);for(const id of ['detail-situacao','detail-sla','detail-age'])multiEnable(id,true);document.getElementById('ref-date').disabled=false;document.getElementById('ref-date').value=iso(ui.reference);const heroActions=document.getElementById('hero-actions'); if(heroActions)heroActions.classList.add('hidden-live');refilter();switchTab('overview')}
 function recalc(){const day=ui.reference;const criticalTopics=['CENTRO CLINICO - AGENDAMENTO PQA','CENTRO CLINICO - RETORNO CIRURGICO','CRED - AGENDAMENTO CIRURGIA','SOL.AGENDA - RETORNO PRE/POS CIRURGICO'];const whitelist=new Set(['SACNB','SACRPR','SACCRED','SACMEDP','SACTEA','SACREMB','SACPADIG','SACCRED1','SACTELE']);const groups={"ASSISTENCIAL 2":['SACCRED','SACREMB','SACCOBR','SACODONT'],"ASSISTENCIAL 1":['SACRPR','SACMEDP','SACTEA','SACNB','SACONCO','SACPADIG','SACVIMA','SACLAB'],"ASSISTENCIAL 3":['SACHOSP','SACPGC','SACGNHAP','SACGNMED','SACPE','SACDIRMD','SACENGEN','SACSUP'],"NÃO ASSISTENCIAL 1":['SACRETEN','SACFINA','SACCOB','SACNEG'],"NÃO ASSISTENCIAL 2":['DAVIDZ','SACDADOS'],"NÃO ASSISTENCIAL 3":['SACVEND','SACCOMER','SACCORP','SACVAREJ','SACADES','SACCAD','SACLICIT','SACADM'],"ATENDIMENTO":['SACAUTOA','SACAUTON','SACATEND','ATDCALL'],"SAC BACKOFFICE":['SACBKO','RECALL']};const gmap={};for(const [group,codes]of Object.entries(groups))for(const code of codes)gmap[code]=group;
  ui.apured=ui.source.map(r=>{let diasDemanda=r.limite===null?null:7-(r.limite-day);let sla=diasDemanda===null?'':diasDemanda>=8?'BACKLOG':diasDemanda>=0&&diasDemanda<=7?'D'+diasDemanda:'';let situacao=r.limite===null?'':r.limite>day?'NO PRAZO':r.limite===day?'VENCE HOJE':'BACKLOG';let perfil=situacao==='NO PRAZO'?'FUTURO':situacao==='VENCE HOJE'?'PRESENTE':situacao==='BACKLOG'?'PASSADO':'';let prazo=r.limite!==null&&r.servico!==null?r.limite-r.servico:null;let tipo=prazo===null?'':prazo<=7?'SAC':'OUVIDORIA';let diasAgente=r.envio===null?null:day-r.envio;let agente=normalizeReturnAgent(r.status,Object.prototype.hasOwnProperty.call(r,'agenteOriginal')?r.agenteOriginal:r.agente);let where=['0','10'].includes(r.status)?'ÁREA DE NEGÓCIO':r.status==='11'?'FILIAL':r.status==='12'||r.statusDesc==='AGENTE'?agente==='RETORNO'?'SAC RETORNO':agente==='WHATSSAC'?'WHATSSAC':agente==='EGRETAE'?'OUVIDORIA':'ÁREA DE NEGÓCIO':r.status?'ÁREA DE NEGÓCIO':'';let nip=(where==='SAC RETORNO')?r.historico==='S'||r.ameaca==='S'?'CLIENTE NIP':'DEMAIS CLIENTES':'';let slaRetorno=where==='SAC RETORNO'&&diasAgente!==null?diasAgente>=(r.historico==='S'?2:3)?'TEMPO EXCEDIDO':'NO PRAZO':'';let risco=r.ameaca==='S'||r.reincidente==='S'||r.historico==='S'||criticalTopics.includes(r.assunto)||r.especialidade.includes('TEA');let fila=whitelist.has(r.area)?situacao==='VENCE HOJE'?'D7':((r.area==='SACCRED'||r.area==='SACCRED1')&&sla==='D6')?'CREDENCIAMENTO_D6':risco?'CRITICA':'REGULAR':'';return {...r,agente,diasDemanda,sla,situacao,perfil,prazo,tipo,diasAgente,where,nip,slaRetorno,fila,grupo:gmap[r.area]||'',whatsElegivel:(r.celLen===10||r.celLen===11)?'ELEGÍVEL DISPARO':'NÃO ELEGÍVEL'};});}
 function normCode(s){const v=String(s||'').trim();return /^\d+$/.test(v)?String(parseInt(v,10)):v}
@@ -2551,7 +2551,7 @@ function resetLoadedData(){
  for(const id of multiControls.keys())multiEnable(id,false);
  document.getElementById('search-record').value='';
  document.getElementById('source-pill').classList.add('demo');document.getElementById('source-pill').textContent='SEM DADOS';
- document.getElementById('connection-text').textContent='Local';
+ /* Limpar bases não altera a conectividade com o Supabase. */
  {const el=document.getElementById('sidebar-source'); if(el) el.textContent='Aguardando importação';}
  document.getElementById('status-text').textContent='Nenhuma extração ativa · 0 registros';
  const notice=document.getElementById('state-banner');notice.style.background='';notice.style.borderColor='';
@@ -6701,6 +6701,16 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 })();
 </script>
 
+<style id="sri-connection-status-style">
+#sri-connection-chip{white-space:nowrap}
+#sri-connection-chip .privacy-dot{background:#91a4b9;box-shadow:0 0 0 4px #91a4b926;transition:background .2s}
+#sri-connection-chip[data-connection="online"] .privacy-dot{background:#1b9a65;box-shadow:0 0 0 4px #1b9a6526}
+#sri-connection-chip[data-connection="syncing"] .privacy-dot,
+#sri-connection-chip[data-connection="checking"] .privacy-dot{background:#3288e8;box-shadow:0 0 0 4px #3288e826}
+#sri-connection-chip[data-connection="pending"] .privacy-dot{background:#e6aa15;box-shadow:0 0 0 4px #e6aa1529}
+#sri-connection-chip[data-connection="offline"] .privacy-dot{background:#db4545;box-shadow:0 0 0 4px #db454525}
+#sri-connection-chip[data-connection="session"] .privacy-dot{background:#9ca8b8;box-shadow:0 0 0 4px #9ca8b824}
+</style>
 <style id="sri-automatic-operation-style">
 #sri-daily-panel .sri-automatic-time-note{font-size:12px;color:#516b8b;margin:0 0 6px}
 #sri-daily-save,#sri-daily-refresh,#sri-daily-distribution,#sri-unified-publish{display:none!important}
@@ -7014,6 +7024,9 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       throw Error('Distribuição salva, mas a carteira dos operadores NÃO foi sincronizada: '+(err?.message||String(err)));
     }
     ctx.syncedDistributionState=JSON.stringify(state);
+    ctx.lastCloudSaveAt=new Date().toISOString();
+    if(typeof window.dispatchEvent==='function'&&typeof CustomEvent==='function')
+      window.dispatchEvent(new CustomEvent('sri-cloud-saved',{detail:{at:ctx.lastCloudSaveAt}}));
     status('Distribuição do dia sincronizada no Supabase. Versão '+ctx.revision+'.'+assignmentMessage,'success');
   }
   function setLoadedDistribution(loaded){
@@ -7092,6 +7105,12 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   }
   function clearSharedNotice(){ctx.cloudPendingId=null;const notice=$('sri-shared-notice');if(notice)notice.hidden=true;}
   window.sriIsPublishing=()=>ctx.busy;
+  // Indicador global: consulta somente estado de publicação, nunca conteúdo das bases.
+  window.sriGetCloudSyncState=()=>({
+    busy:Boolean(ctx.busy||ui.busy),
+    pending:Boolean(hasLocalChanges()),
+    lastSaveAt:ctx.lastCloudSaveAt||null
+  });
   window.sriMarkLocalUploadStaged=()=>{clearTimeout(ctx.saveTimer);ctx.saveTimer=null;ctx.fileStaged=true;status('Arquivos SAC/ATIVO selecionados para conferência. Nenhuma atualização externa substituirá esta seleção.','warning');};
   window.sriMarkLocalImportPending=()=>{
     clearTimeout(ctx.saveTimer);ctx.saveTimer=null;
@@ -7744,5 +7763,6 @@ document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.tar
 
 </script>
 <script defer src="/sri-prd-painel.js?v=2.0-prod-20261123"></script>
+<script defer src="/assets/sri-connection-status.js?v=20261123"></script>
 </body>
 </html>
