@@ -45,7 +45,7 @@ function probe() {
    root:{ scrollWidth:root.scrollWidth,clientWidth:root.clientWidth,scrollHeight:root.scrollHeight },
    title:$('v20-login-title').textContent,
    signupHidden:$('sri-signup-fields').hidden,
-   signupClass:root.classList.contains('sri-signup-open')
+   signupClass:root.classList.contains('sri-signup-open'),brandLoaded:root.querySelector('.sri-login-hapvida-img').complete&&root.querySelector('.sri-login-hapvida-img').naturalWidth>0,photoLoaded:root.querySelector('.sri-login-photo img').complete&&root.querySelector('.sri-login-photo img').naturalWidth>0
   };
  }
  const login = snap();
@@ -62,9 +62,13 @@ function probe() {
  node.id='sri-login-test-result';node.textContent=JSON.stringify(output);document.body.appendChild(node);
  node.hidden=true;
 }
+const withLocalAssets = markup
+ .replace('src="/assets/foto-atendimento-hd.webp"', 'src="file://' + path.join(base,'assets/foto-atendimento-hd.webp') + '"')
+ .replace('src="/assets/hapvida-logo.svg"', 'src="file://' + path.join(base,'assets/hapvida-logo.svg') + '"');
 const fixtureHtml =
-'<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><style>' +
-css + '</style></head><body>' + markup +
+'<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>' +
+'<style>*,*::before,*::after{box-sizing:border-box}html,body{margin:0;padding:0;max-width:100%;}</style><style>' +
+css + '</style></head><body>' + withLocalAssets +
 '<script>let sriRegisterMode=false; const $=id=>document.getElementById(id);' +
 toggle + ';(' + probe.toString() + ')();</script></body></html>';
 fs.writeFileSync(fixture, fixtureHtml, 'utf8');
@@ -89,6 +93,8 @@ for (const [width,height] of sizes) {
  assert.equal(restored.title,'Bem-vindo de volta.');
  assert.equal(restored.signupHidden,true);
  assert.equal(restored.signupClass,false);
+ assert.ok(signup.brandLoaded,'Logo oficial não carregou: '+width+'x'+height);
+ assert.ok(signup.photoLoaded,'Foto HD não carregou: '+width+'x'+height);
  assert.ok(signup.card.top>=-1,'A borda superior não pode ficar cortada: '+width+'x'+height+' top='+signup.card.top);
  assert.ok(signup.root.scrollWidth<=signup.root.clientWidth+3,'Não pode haver rolagem horizontal '+width+'x'+height);
  if(!mobile) {
