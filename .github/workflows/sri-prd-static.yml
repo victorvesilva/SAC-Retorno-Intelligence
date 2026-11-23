@@ -17,6 +17,7 @@ jobs:
           node tests/test_unified_operator_flow.mjs
           node tests/test_contingency_boot.mjs
           node tests/test_cloud_shared_sync.mjs
+          node tests/test_prd_reset.mjs
           node tests/test_import_timestamp.mjs
           node tests/test_turno_display_labels.mjs
           node tests/test_csv_integrity.mjs

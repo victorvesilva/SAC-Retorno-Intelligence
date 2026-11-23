@@ -1761,6 +1761,33 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
 <link rel="stylesheet" href="/assets/refinamento-bases-qualidade-etapa4.css?v=1.0.0" />
 <link rel="stylesheet" href="/assets/revisao-visual-integrada.css?v=1.0.0" />
 <link rel="stylesheet" href="/assets/sri-contingencia-boot.css?v=1.0.0" />
+<script id="sri-prd-first-start-reset">
+/* Início oficial da PRD — limpeza única de caches do Intelligence, sem tocar no Supabase Auth. */
+(function(){
+ 'use strict';
+ const marker='sri_prd_cutover_epoch';
+ const epoch='PRD_2026_11_23_INITIAL_START_V1';
+ const applicationKey=/^(?:sri(?:[_-]|$)|sac(?:[_-]|pulse|20|$))/i;
+ function purge(storage){
+   if(!storage)return;
+   const keys=[];
+   for(let i=0;i<storage.length;i++){
+     const key=storage.key(i);
+     if(key&&key!==marker&&applicationKey.test(key))keys.push(key);
+   }
+   for(const key of keys)storage.removeItem(key);
+ }
+ try{
+   const store=window.localStorage;
+   if(store&&store.getItem(marker)===epoch)return;
+   // Apaga carteiras, extrações, históricos, filtros e cadastros locais legados.
+   // Nunca remove tokens sb-* do Supabase: contas e login permanecem intactos.
+   purge(store);
+   purge(window.sessionStorage);
+   if(store)store.setItem(marker,epoch);
+ }catch(err){console.warn('[SRI PRD] Limpeza local indisponível neste navegador:',err?.message||String(err));}
+})();
+</script>
 </head>
 <body>
 <div id="sri-boot-modal" role="dialog" aria-modal="true" aria-labelledby="sri-boot-title" aria-describedby="sri-boot-message" tabindex="-1" data-state="loading" hidden>
