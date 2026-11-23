@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const sql=fs.readFileSync(new URL('../sql/2026-11-23_sri_turnos_fechamento_20h.sql',import.meta.url),'utf8');
+const globalSql=fs.readFileSync(new URL('../sql/2026-11-23_sri_importacao_geral.sql',import.meta.url),'utf8');
 const a=html.indexOf('  // Turno definido exclusivamente pelo relógio de Brasília');
 const b=html.indexOf('  function setTeams(){',a);
 assert.ok(a>0&&b>a,'Contexto automático não encontrado');
@@ -30,9 +31,9 @@ for(const [utc,shift,day] of cases){
 }
 assert.match(html,/<input id="sri-daily-day" type="hidden">/);
 assert.match(html,/<input id="sri-daily-shift" type="hidden">/);
-assert.match(html,/const team=\$\('sri-daily-team'\)\?\.value,\{day,shift\}=syncShift\(\)/);
+assert.match(html,/const team=null,\{day,shift\}=syncShift\(\)/);
 assert.match(html,/await carryForwardDistribution\(client,team,day,shift\)/);
-assert.match(html,/eq\('team_id',team\)\.eq\('operational_day',day\)\.eq\('shift_label',shift\)/);
+assert.match(html,/is\('team_id',null\)\.eq\('operational_day',day\)\.eq\('shift_label',shift\)/);
 assert.match(html,/function notify\(message,kind='success'\)/);
 assert.match(html,/window\.sriToast=notify/);
 assert.match(html,/root\.id='sri-auto-toast-root'/);
@@ -49,4 +50,7 @@ assert.match(sql,/private\.sri_carry_task_status/);
 assert.match(sql,/NEW\.operator_user_id/);
 assert.match(sql,/ALTER COLUMN closed_by DROP NOT NULL/);
 assert.doesNotMatch(sql,/\bDELETE\s+FROM\b|\bTRUNCATE\b|\bDROP\s+TABLE\b/i);
+assert.match(globalSql,/sri-close-general-20h-brasilia/);
+assert.match(globalSql,/private\.sri_close_general_days/);
+assert.match(globalSql,/time '20:00'/);
 console.log('PASS: 11 limites horários, fechamento 20h, salvamento automatico, toast, histórico, PG cron e proteção de progresso.');
