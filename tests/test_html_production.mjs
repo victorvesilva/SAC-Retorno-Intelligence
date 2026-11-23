@@ -31,6 +31,18 @@ assert.match(html,/Cadastro local legado:/);
 assert.match(html,/O SIGO permanece como sistema oficial dos protocolos/);
 // Tela de acesso premium: logo do anexo, foto em HD, campos originais e versão móvel.
 assert.match(html,/href="\/assets\/login-refinado\.css\?v=2\.0\.3"/);
+const visualCss=fs.readFileSync(new URL('../assets/gestao-operacional-refinado.css',import.meta.url),'utf8');
+assert.match(html,/href="\\/assets\\/gestao-operacional-refinado\\.css\\?v=1\\.0\\.0"/);
+const riskHeading=html.indexOf('class="go-section-title go-attention-heading"');
+const compositionHeading=html.indexOf('class="go-section-title go-composition-heading"');
+assert.ok(riskHeading>0&&compositionHeading>riskHeading,'Os riscos precisam aparecer antes da composição da carteira');
+assert.equal((html.match(/id="go-focus"/g)||[]).length,1,'Painel de atenção não pode ser duplicado');
+assert.match(visualCss,/#overview \\.go-focus-item/);
+assert.match(visualCss,/#distribution \\.dist-table/);
+assert.match(visualCss,/@media screen and \\(max-width:620px\\)/);
+assert.doesNotMatch(visualCss,/#v20-login|\\.sri-login-/,'O refinamento visual não pode alterar o login');
+assert.equal((visualCss.match(/\\{/g)||[]).length,(visualCss.match(/\\}/g)||[]).length,'Blocos CSS devem estar balanceados');
+
 assert.match(html,/src="\/assets\/foto-atendimento-hd\.webp"/);
 assert.match(html,/src="\/assets\/hapvida-logo\.svg"/);
 assert.match(html,/class="v20-login-wrap sri-login-v3"/);
