@@ -9,7 +9,12 @@ const config=fs.readFileSync(new URL('../api/supabase-config.js',import.meta.url
 assert.match(html,/<html lang="pt-BR">/);
 assert.match(html,/<title>SAC Retorno Intelligence 2\.0 \| Plataforma Operacional<\/title>/);
 assert.match(html,/<meta name="robots" content="noindex,nofollow"\/>/);
-assert.match(html,/AMBIENTE DE PRODUÇÃO · ACESSO AUTENTICADO/);
+assert.doesNotMatch(html,/sri-deployment-banner|AMBIENTE DE PRODUÇÃO · ACESSO AUTENTICADO/);
+assert.doesNotMatch(html,/LOGIN SUPABASE · DADOS LOCAIS · NÃO PRODUÇÃO/);
+assert.doesNotMatch(html,/Resultados por equipe e operador aguardando apuração homologada/);
+assert.match(html,/Nenhuma meta configurada\. Defina metas para iniciar o acompanhamento/);
+assert.match(html,/meta\(s\) em rascunho neste navegador/);
+assert.match(html,/Os rascunhos de metas são salvos apenas neste navegador/);
 assert.match(html,/VERSÃO 2\.0 · PRODUÇÃO · AUTENTICAÇÃO CORPORATIVA/);
 assert.match(html,/document\.body\.dataset\.sriVersion='sac-retorno-2\.0-prod-20261123'/);
 assert.match(html,/src="\/sri-prd-painel\.js\?v=2\.0-prod-20261123"/);
