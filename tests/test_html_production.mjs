@@ -30,7 +30,19 @@ assert.match(html,/data-v20="loadSample" disabled/);
 assert.match(html,/Cadastro local legado:/);
 assert.match(html,/O SIGO permanece como sistema oficial dos protocolos/);
 // Tela de acesso premium: logo do anexo, foto em HD, campos originais e versão móvel.
-assert.match(html,/href="\/assets\/login-refinado\.css\?v=2\.0\.3"/);
+assert.ok(html.includes('href="/assets/login-refinado.css?v=2.0.4"'),'Login deve carregar o estilo atualizado');
+assert.ok(html.includes('<span class="sri-login-version">SAC Retorno Intelligence</span>'),'O selo de login precisa conter somente o nome do produto');
+assert.ok(!html.includes('<span class="sri-login-version">INTELLIGENCE 2.0</span>'),'O selo não pode mostrar a versão antiga');
+const globalUiCss=fs.readFileSync(new URL('../assets/revisao-visual-integrada.css',import.meta.url),'utf8');
+assert.ok(html.includes('href="/assets/revisao-visual-integrada.css?v=1.0.0"'),'Estilo de revisão integrada deve estar ativo');
+assert.ok(html.indexOf('refinamento-bases-qualidade-etapa4.css?v=1.0.0') < html.indexOf('revisao-visual-integrada.css?v=1.0.0'),'A revisão global deve carregar após a etapa 4');
+for(const selector of ['.v5-app .main','.v5-app .topbar','.v5-app #global-controls','.v5-app #distribution .dist-table','.v5-app #v20-closure .v20-controls','.v5-app #v20-settings .v20-row']){
+ assert.ok(globalUiCss.includes(selector),'Regra visual geral ausente: '+selector);
+}
+assert.equal(globalUiCss.split('{').length,globalUiCss.split('}').length,'CSS global deve estar balanceado');
+assert.ok(!globalUiCss.includes('#v20-login'),'CSS transversal não pode modificar login');
+assert.ok(!globalUiCss.includes('.v51-pdf-page'),'CSS transversal não pode modificar PDF');
+
 const visualCss=fs.readFileSync(new URL('../assets/gestao-operacional-refinado.css',import.meta.url),'utf8');
 assert.ok(html.includes('href="/assets/gestao-operacional-refinado.css?v=1.0.0"'),'Folha de estilo operacional deve ser carregada');
 const riskHeading=html.indexOf('class="go-section-title go-attention-heading"');
