@@ -95,7 +95,7 @@
   #v20-login .sri-login-main { padding:32px 33px 24px; }
   #v20-login .sri-login-hapvida-img { width:180px; }
 }
-@media(max-width:760px) {
+@media(max-width:820px) {
   #v20-login { padding:12px; place-items:start center; }
   #v20-login .v20-login-wrap.sri-login-v3 { width:min(520px,100%); display:flex; flex-direction:column; height:auto; max-height:none; min-height:0; border-radius:18px; margin-block:0 12px; }
   #v20-login .sri-login-photo { display:none; }
