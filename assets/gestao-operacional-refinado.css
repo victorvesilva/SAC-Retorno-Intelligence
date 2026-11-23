@@ -1,0 +1,94 @@
+/* SAC Retorno Intelligence 2.0 — refinamento visual da gestão (2026-11-23).
+ * Somente apresentação: preserva dados, alertas, filtros, distribuição e autenticação.
+ * Escopo: Gestão Operacional, tabelas operacionais e estados visuais do menu.
+ */
+@media screen {
+  /* A identidade já aparece na barra superior: o título operacional ganha espaço. */
+  .v5-app #overview .go-head{align-items:center;gap:10px;margin:4px 0 10px}
+  .v5-app #overview .go-head-title>.go-eyebrow{display:none}
+  .v5-app #overview .go-head h2{font-size:clamp(22px,2vw,27px);line-height:1.15;margin:0;color:#15365e;letter-spacing:-.6px}
+  .v5-app #overview .go-head p{font-size:12.5px;line-height:1.5;margin:3px 0 0;color:#617890}
+  .v5-app #overview .go-head>.mini-pill{font-size:11px;padding:6px 10px;max-width:100%;overflow-wrap:anywhere}
+
+  /* Ações do turno legíveis em uma faixa discreta, sem competir com os indicadores. */
+  .v5-app #overview .v114-journey{padding:9px 12px;margin:0 0 12px;border-color:#e0e8f2;background:#fff;box-shadow:0 2px 10px rgba(23,52,86,.035)}
+  .v5-app #overview .v114-journey-title{flex-direction:row;align-items:center;flex-wrap:wrap;column-gap:10px;row-gap:2px}
+  .v5-app #overview .v114-journey-title strong{font-size:12px;font-weight:750;color:#173b67}
+  .v5-app #overview .v114-journey-title span{font-size:11px;color:#667f9b}
+  .v5-app #overview .v114-journey-actions{gap:7px}
+  .v5-app #overview .v114-journey-actions button{min-height:35px;padding:7px 11px;font-size:11.5px;font-weight:700;border:1px solid #dce6f4;border-radius:8px;white-space:normal}
+  .v5-app #overview .v114-journey-actions button[data-v114-tab="priorities"]{border-color:#bcd1fa;background:#edf4ff;color:#0b45b7}
+  .v5-app #overview .v114-journey-actions button:hover{background:#eaf2ff;border-color:#b4ccf2;color:#0b45b7}
+
+  /* Indicadores: mais informação acima da dobra sem reduzir a leitura. */
+  .v5-app #overview .go-kpi-stack{margin-bottom:12px}
+  .v5-app #overview .kpi-grid,.v5-app #overview .kpi-grid.secondary{gap:10px}
+  .v5-app #overview .kpi-grid.secondary{margin-top:10px}
+  .v5-app #overview .kpi-card{min-height:111px;padding:13px 15px!important;border-radius:12px!important}
+  .v5-app #overview .kpi-card .kpi-lbl{font-size:11px;font-weight:700;line-height:1.35}
+  .v5-app #overview .kpi-card .kpi-value{font-size:clamp(23px,2.5vw,31px);line-height:1.15;margin:5px 0 4px;font-variant-numeric:tabular-nums}
+  .v5-app #overview .kpi-card .kpi-bottom{font-size:11px;line-height:1.4}
+  .v5-app #overview .go-section-title{margin:18px 0 10px;align-items:end}
+  .v5-app #overview .go-section-title h3{font-size:17px;font-weight:750;line-height:1.25}
+  .v5-app #overview .go-eyebrow{font-size:10px;letter-spacing:.8px}
+  .v5-app #overview .go-title-side{font-size:11.5px;color:#617a98;max-width:47%}
+  .v5-app #overview .go-attention-heading{margin-top:13px}
+  .v5-app #overview .go-composition-heading{margin-top:20px}
+
+  /* Riscos e prazos aparecem antes dos gráficos descritivos, com ênfase controlada. */
+  .v5-app #overview .go-focus{gap:10px}
+  .v5-app #overview .go-focus-item{padding:12px 13px;border:1px solid #e1e9f4;border-left:3px solid var(--go-tone,#0b45b7);border-radius:12px;background:#fff;box-shadow:0 2px 13px rgba(23,52,86,.045)}
+  .v5-app #overview .go-focus-head{font-size:11px;line-height:1.4;letter-spacing:0;color:#536f91}
+  .v5-app #overview .go-focus-number{font-size:clamp(25px,2.4vw,30px);font-variant-numeric:tabular-nums;margin:5px 0 2px}
+  .v5-app #overview .go-focus-note{font-size:11px;min-height:0;margin:0 0 9px;color:#677f9a}
+  .v5-app #overview .go-focus-bars{gap:7px}
+  .v5-app #overview .go-focus-bar-name,.v5-app #overview .go-focus-bar small{font-size:11px}
+  .v5-app #overview .go-focus-bar-track{height:5px}
+  .v5-app #overview .go-focus-bar:focus-visible{outline:2px solid #0b45b7;outline-offset:3px;border-radius:4px}
+  .v5-app #overview .go-composition,.v5-app #overview .go-insight-grid{gap:11px}
+  .v5-app #overview .card-head{padding:14px 15px 0!important}
+  .v5-app #overview .card-title{font-size:13.5px;font-weight:750}
+  .v5-app #overview .card-sub{font-size:11.5px;line-height:1.45}
+  .v5-app #overview .go-extra-grid .card{min-width:0}
+
+  /* Distribuição e central de prioridades: leitura de linha sem mudar campos ou regras. */
+  .v5-app #distribution .dist-panel{border-color:#e0e7f1;box-shadow:0 3px 13px rgba(23,52,86,.045)!important}
+  .v5-app #distribution .dist-table,
+  .v5-app #priorities .v3-table{font-variant-numeric:tabular-nums}
+  .v5-app #distribution .dist-table thead th,
+  .v5-app #priorities .v3-table thead th{background:#eef3fb!important;color:#3d5878!important;font-size:11px!important;font-weight:750;letter-spacing:.1px;line-height:1.4}
+  .v5-app #distribution .dist-table tbody td,
+  .v5-app #priorities .v3-table tbody td{font-size:11.5px;line-height:1.45;color:#284666;border-bottom:1px solid #e9eef6}
+  .v5-app #distribution .dist-table tbody tr:nth-child(even):not(:hover),
+  .v5-app #priorities .v3-table tbody tr:nth-child(even):not(:hover){background:#fbfcff}
+  .v5-app #distribution .dist-table tbody tr:hover,
+  .v5-app #priorities .v3-table tbody tr:hover{background:#edf4ff!important}
+  .v5-app #distribution .dist-kpi strong{font-variant-numeric:tabular-nums}
+  .v5-app #distribution .dist-filter-trigger:focus-visible{outline:3px solid #ffb33a;outline-offset:2px}
+
+  /* Refinamento, sem alterar o comportamento recolhível do menu Híbrido Moderno. */
+  .v5-app .v5-nav-panel .nav-link{transition:background-color .15s ease,color .15s ease;border-radius:9px}
+  .v5-app .v5-nav-panel .nav-link:hover{background:#eef4ff;color:#0b45b7}
+}
+@media screen and (max-width:1100px){
+  .v5-app #overview .go-focus{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .v5-app #overview .v114-journey-title{width:100%}
+}
+@media screen and (max-width:700px){
+  .v5-app #overview .go-head{align-items:start;flex-direction:column;gap:8px}
+  .v5-app #overview .go-head>.mini-pill{align-self:flex-start}
+  .v5-app #overview .go-section-title{align-items:flex-start;gap:5px}
+  .v5-app #overview .go-title-side{max-width:56%}
+  .v5-app #overview .v114-journey-actions{width:100%}
+  .v5-app #overview .v114-journey-actions button{flex:1 1 42%}
+}
+@media screen and (max-width:620px){
+  .v5-app #overview .go-focus{grid-template-columns:1fr}
+  .v5-app #overview .go-title-side{display:none}
+  .v5-app #overview .kpi-card{padding:12px!important}
+  .v5-app #overview .go-head h2{font-size:22px}
+}
+@media print{
+  /* Mantém a renderização de relatórios e da página impressa independente do refinamento. */
+  .v5-app #overview .go-focus-item{break-inside:avoid}
+}
