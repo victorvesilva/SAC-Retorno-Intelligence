@@ -33,7 +33,8 @@ AS $$
    AND (now() AT TIME ZONE 'America/Sao_Paulo')::time < time '18:00' THEN 'Tarde'
   ELSE 'Noite' END AS shift_label;
 $$;
-REVOKE ALL ON FUNCTION private.sri_current_general_cycle() FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION private.sri_current_general_cycle() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION private.sri_current_general_cycle() TO authenticated;
 
 CREATE TABLE IF NOT EXISTS public.sri_general_day_closures (
  operational_day date PRIMARY KEY,
