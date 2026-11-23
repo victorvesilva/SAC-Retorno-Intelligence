@@ -143,7 +143,7 @@ assert.equal(operationLabel('r2'),'Tarde');
 assert.equal(operationLabel(' R1 '),'Manhã');
 assert.equal(operationLabel('Outra Operação'),'Outra Operação');
 assert.match(html,/value="\$\{esc\(o\.id\)\}"\>\$\{esc\(sriOperationLabel\(o\.name\)\)\}/);
-assert.match(html,/ctx\.teams\.filter\(t=>t\.operation_id===op\)/);
+assert.match(html,/ctx\.teams\.filter\(t=>t\.operation_id===(?:op|operation)\)/);
 assert.doesNotMatch(html,/Gestor Demonstração|Supervisor Demonstração|Operador Demonstração|adm@teste\.local|supervisor@teste\.local|operador@teste\.local/);
 assert.doesNotMatch(html,/ETAPA 2 · LOGIN SUPABASE · DADOS OPERACIONAIS AINDA LOCAIS/);
 assert.doesNotMatch(html,/ETAPA 2 · AUTENTICAÇÃO SUPABASE · DADOS OPERACIONAIS DE TESTE/);

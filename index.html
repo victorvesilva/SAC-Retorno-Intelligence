@@ -6717,8 +6717,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     </section>`);
     $('sri-daily-day').value=today();
     $('sri-daily-refresh').addEventListener('click',()=>safe(loadMetadata));
-    $('sri-daily-operation').addEventListener('change',()=>{setTeams();ctx.snapshotId=null;ctx.revision=0;rememberPublishingTarget();});
-    $('sri-daily-team').addEventListener('change',()=>{ctx.snapshotId=null;ctx.revision=0;rememberPublishingTarget();});
+    $('sri-daily-operation').addEventListener('change',()=>{setTeams();ctx.snapshotId=null;ctx.revision=0;rememberPublishingTarget();status(publishingContextValid()?'Destino definido. O próximo processamento será publicado automaticamente.':'Selecione uma equipe para ativar a publicação automática.',publishingContextValid()?'success':'warning');});
+    $('sri-daily-team').addEventListener('change',()=>{ctx.snapshotId=null;ctx.revision=0;rememberPublishingTarget();status(publishingContextValid()?'Destino definido. O próximo processamento será publicado automaticamente.':'Selecione a operação e a equipe antes de processar. ',publishingContextValid()?'success':'warning');});
     $('sri-daily-save').addEventListener('click',()=>safe(saveResult));
     $('sri-daily-load').addEventListener('click',()=>safe(async()=>{if(hasLocalChanges()&&!confirm('Há uma apuração ou distribuição local não compartilhada. Carregar a base da nuvem descartará essas alterações neste navegador. Deseja continuar?'))return;clearTimeout(ctx.saveTimer);ctx.saveTimer=null;await loadLast();}));
     $('sri-shared-apply').addEventListener('click',()=>safe(async()=>{if(!ctx.cloudPendingId)return;if(hasLocalChanges()&&!confirm('Existe trabalho local não compartilhado. Atualizar agora substituirá a apuração e a distribuição desta sessão. Deseja descartar as alterações locais?'))return;clearTimeout(ctx.saveTimer);ctx.saveTimer=null;await loadSnapshot({id:ctx.cloudPendingId});clearSharedNotice();}));
