@@ -6795,6 +6795,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       status('Distribuição salva, mas a carteira dos operadores NÃO foi sincronizada: '+(err?.message||String(err)),'error');
       return;
     }
+    ctx.syncedDistributionState=JSON.stringify(distributionState());
     status('Distribuição do dia sincronizada no Supabase. Versão '+ctx.revision+'.'+assignmentMessage,'success');
   }
   function setLoadedDistribution(loaded){
@@ -6848,7 +6849,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   function queueDistributionSave(){
     if(ctx.restoring||ctx.fileStaged||ctx.localDataUnsaved||!ctx.snapshotId||!ctx.profile||!managerRoles.has(ctx.profile.role))return;
     clearTimeout(ctx.saveTimer);
-    ctx.saveTimer=setTimeout(()=>safe(saveDistribution),1200);
+    ctx.saveTimer=setTimeout(()=>{ctx.saveTimer=null;void safe(saveDistribution)},1200);
   }
   window.sriQueueDistributionSave=queueDistributionSave;
 
@@ -6869,7 +6870,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(notice)notice.hidden=false;
   }
   function clearSharedNotice(){ctx.cloudPendingId=null;const notice=$('sri-shared-notice');if(notice)notice.hidden=true;}
-  window.sriMarkLocalUploadStaged=()=>{ctx.fileStaged=true;status('Arquivos SAC/ATIVO selecionados para conferência. Nenhuma atualização externa substituirá esta seleção.','warning');};
+  window.sriMarkLocalUploadStaged=()=>{clearTimeout(ctx.saveTimer);ctx.saveTimer=null;ctx.fileStaged=true;status('Arquivos SAC/ATIVO selecionados para conferência. Nenhuma atualização externa substituirá esta seleção.','warning');};
   window.sriMarkLocalImportPending=()=>{
     clearTimeout(ctx.saveTimer);ctx.saveTimer=null;
     ctx.localDataUnsaved=true;ctx.snapshotId=null;ctx.revision=0;
@@ -6893,11 +6894,12 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       const {data,error}=await query;
       if(error)throw Error(error.message);
       const next=(data||[])[0];
-      if(!next||next.id===ctx.snapshotId){if(next?.id===ctx.snapshotId)clearSharedNotice();return;}
+      if(!next)return;
       // Somente um resultado com distribuição persistida é considerado pronto para consumo.
       const {data:ready,error:readyError}=await ctx.client.from('daily_result_distributions')
         .select('revision').eq('snapshot_id',next.id).maybeSingle();
       if(readyError||!ready)return;
+      if(next.id===ctx.snapshotId&&Number(ready.revision)<=Number(ctx.revision)){clearSharedNotice();return;}
       if(hasLocalChanges()||document.activeElement?.closest('#sri-daily-panel input,#sri-daily-panel select')){
         showSharedNotice(next,'Há uma versão mais recente na nuvem, mas seu navegador possui alterações ou uma edição em andamento. Salve/conclua o trabalho antes de atualizar, ou revise e confirme a substituição.');
         return;
