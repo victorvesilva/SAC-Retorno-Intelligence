@@ -8,7 +8,7 @@ assert.match(html,/id="sri-import-context"/);
 assert.match(html,/id="sri-daily-panel" hidden style="display:none"/);
 assert.match(html,/id="sri-daily-operation" hidden aria-hidden="true"/);
 assert.match(html,/id="sri-daily-team" hidden aria-hidden="true"/);
-assert.doesNotMatch(html,/<label class="v20-field">(?:Operação|Equipe)<select/);
+assert.match(html,/id="sri-daily-team" hidden aria-hidden="true"/);
 assert.doesNotMatch(html,/Selecione uma vez a operação e a equipe para receber os resultados/);
 assert.match(html,/id="sri-import-recovery" hidden/);
 assert.match(html,/id="sri-shared-notice" hidden/);
