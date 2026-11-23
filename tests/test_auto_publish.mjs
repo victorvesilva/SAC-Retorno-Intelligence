@@ -28,7 +28,7 @@ function runMetadata(){
  const ctx={operations:[{id:'r1',name:'R1'},{id:'r2',name:'R2'}],
   teams:[{id:'t1',name:'R1 Equipe',operation_id:'r1'},{id:'t2',name:'R2 Equipe',operation_id:'r2'}],
   profile:{role:'manager'},user:{id:'u'}};
- const context={ctx,$,window:{},managerRoles:new Set(['admin','manager','supervisor']),
+ const context={ctx,$,window:{},ui:{live:false},managerRoles:new Set(['admin','manager','supervisor']),
   localStorage:{getItem:k=>saves.get(k)||null,setItem:(k,v)=>saves.set(k,v)},
   status:()=>{},esc:s=>s};
  vm.runInNewContext(html.slice(startMeta,endMeta)+'\n;globalThis.meta={inferredShift,operationalContext,setTeams,loadMetadata,publishingContextValid,rememberPublishingTarget};',context);
