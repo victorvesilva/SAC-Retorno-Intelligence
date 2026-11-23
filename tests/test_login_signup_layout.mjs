@@ -14,6 +14,7 @@ assert.match(css, /#v20-login\.sri-signup-open/);
 assert.match(css, /@media\(max-width:820px\)/);
 assert.match(html, /classList\.toggle\('sri-signup-open',sriRegisterMode\)/);
 assert.match(html, /'Crie sua conta\.'/);
+assert.ok(html.includes('<span class="sri-login-version">SAC Retorno Intelligence</span>'),'Identidade do sistema no login deve estar sem 2.0');
 
 const start = html.indexOf('<div aria-labelledby="v20-login-title"');
 const end = html.indexOf('\n</main></div>', start);
@@ -45,7 +46,7 @@ function probe() {
    root:{ scrollWidth:root.scrollWidth,clientWidth:root.clientWidth,scrollHeight:root.scrollHeight },
    title:$('v20-login-title').textContent,
    signupHidden:$('sri-signup-fields').hidden,
-   signupClass:root.classList.contains('sri-signup-open'),brandLoaded:root.querySelector('.sri-login-hapvida-img').complete&&root.querySelector('.sri-login-hapvida-img').naturalWidth>0,photoLoaded:root.querySelector('.sri-login-photo img').complete&&root.querySelector('.sri-login-photo img').naturalWidth>0
+   signupClass:root.classList.contains('sri-signup-open'),badge:box(root.querySelector('.sri-login-version')),header:box(root.querySelector('.sri-login-header')),brandLoaded:root.querySelector('.sri-login-hapvida-img').complete&&root.querySelector('.sri-login-hapvida-img').naturalWidth>0,photoLoaded:root.querySelector('.sri-login-photo img').complete&&root.querySelector('.sri-login-photo img').naturalWidth>0
   };
  }
  const login = snap();
@@ -94,6 +95,9 @@ for (const [width,height] of sizes) {
  assert.equal(restored.signupHidden,true);
  assert.equal(restored.signupClass,false);
  assert.ok(signup.brandLoaded,'Logo oficial não carregou: '+width+'x'+height);
+ assert.ok(signup.badge.width>75,'Etiqueta deve continuar legível '+width+'x'+height);
+ assert.ok(signup.badge.bottom<=signup.header.bottom+3,'Etiqueta saiu do cabeçalho '+width+'x'+height);
+ assert.ok(signup.badge.width<=signup.header.width+3,'Etiqueta ultrapassou o cabeçalho '+width+'x'+height);
  assert.ok(signup.photoLoaded,'Foto HD não carregou: '+width+'x'+height);
  assert.ok(signup.card.top>=-1,'A borda superior não pode ficar cortada: '+width+'x'+height+' top='+signup.card.top);
  assert.ok(signup.root.scrollWidth<=signup.root.clientWidth+3,'Não pode haver rolagem horizontal '+width+'x'+height);
