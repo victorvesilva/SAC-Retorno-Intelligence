@@ -30,6 +30,7 @@ jobs:
           name: login-cadastro-layout-sintetico
           path: .tmp/login-signup-*.png
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 7
       - name: Instalar verificadores A4
         run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
