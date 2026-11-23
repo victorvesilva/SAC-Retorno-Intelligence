@@ -26,6 +26,15 @@ assert.match(html,/if\(location\.protocol==='https:'\)throw Error\('Carga fictí
 assert.match(html,/data-v20="loadSample" disabled/);
 assert.match(html,/Cadastro local legado:/);
 assert.match(html,/O encerramento dos protocolos permanece no SIGO/);
+const operationFn=html.match(/function sriOperationLabel\(name\)\{[\s\S]*?\n  \}/);
+assert.ok(operationFn,'Tradutor de nomes de operações não localizado');
+const operationLabel=vm.runInNewContext('('+operationFn[0]+')');
+assert.equal(operationLabel('R1'),'R1 - Manhã');
+assert.equal(operationLabel('r2'),'R2 - Tarde');
+assert.equal(operationLabel(' R1 '),'R1 - Manhã');
+assert.equal(operationLabel('Outra Operação'),'Outra Operação');
+assert.match(html,/value="\$\{esc\(o\.id\)\}"\>\$\{esc\(sriOperationLabel\(o\.name\)\)\}/);
+assert.match(html,/ctx\.teams\.filter\(t=>t\.operation_id===op\)/);
 assert.doesNotMatch(html,/Gestor Demonstração|Supervisor Demonstração|Operador Demonstração|adm@teste\.local|supervisor@teste\.local|operador@teste\.local/);
 assert.doesNotMatch(html,/ETAPA 2 · LOGIN SUPABASE · DADOS OPERACIONAIS AINDA LOCAIS/);
 assert.doesNotMatch(html,/ETAPA 2 · AUTENTICAÇÃO SUPABASE · DADOS OPERACIONAIS DE TESTE/);
