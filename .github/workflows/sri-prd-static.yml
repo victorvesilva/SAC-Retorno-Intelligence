@@ -14,6 +14,7 @@ jobs:
         run: |
           node tests/test_prd_static.mjs
           node tests/test_html_production.mjs
+          node tests/test_turno_display_labels.mjs
           node tests/test_csv_integrity.mjs
           node tests/test_p1_authorization.mjs
           node tests/test_p1_closure_guard.mjs
