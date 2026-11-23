@@ -90,6 +90,17 @@
 #v20-login .v20-login-form.sri-login-form-v3:focus-within { scroll-behavior:auto; }
 #v20-login .v20-login-form.sri-login-form-v3::-webkit-scrollbar { width:7px; }
 #v20-login .v20-login-form.sri-login-form-v3::-webkit-scrollbar-thumb { background:#cedded; border-radius:10px; }
+/* Cadastro: utiliza toda a altura útil sem aumentar a foto. */
+#v20-login.sri-signup-open .sri-login-foot { display:none; }
+#v20-login.sri-signup-open .v20-login-form.sri-login-form-v3 { gap:10px; padding:12px 7px 10px 0; }
+#v20-login.sri-signup-open .sri-login-intro h1 { font-size:clamp(28px,2.6vw,36px); margin-bottom:6px; }
+#v20-login.sri-signup-open .sri-login-intro p { margin-bottom:0; line-height:1.4; }
+#v20-login.sri-signup-open .sri-login-field { gap:5px; }
+#v20-login.sri-signup-open .sri-login-field input { min-height:44px; padding:10px 13px; }
+#v20-login.sri-signup-open .sri-login-submit { min-height:46px; margin-top:1px; }
+#v20-login.sri-signup-open .sri-login-signup-note { margin:0; }
+#v20-login.sri-signup-open .sri-login-register { min-height:26px; }
+
 @media(max-width:1020px) {
   #v20-login .v20-login-wrap.sri-login-v3 { grid-template-columns:minmax(300px,.82fr) minmax(440px,1.18fr); }
   #v20-login .sri-login-main { padding:32px 33px 24px; }
