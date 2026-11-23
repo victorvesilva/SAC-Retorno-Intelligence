@@ -3611,6 +3611,7 @@ const sriBootRecovery=(()=>{
   const help=document.getElementById('sri-boot-help');
   const actions=document.getElementById('sri-boot-actions');
   let loading=false,localPending=false,cloudPending=false,recoveryFailed=false;
+  let resolveLocal=null,localWaiter=Promise.resolve();
   let watchdog=null,lastOverflow='',lastFocus=null;
   function open(){
     if(!dialog.hidden)return;
@@ -3643,7 +3644,8 @@ const sriBootRecovery=(()=>{
     actions.hidden=false;
     document.getElementById('sri-boot-retry')?.focus();
   }
-  function beginLocal(){localPending=true;open()}
+  function beginLocal(){localPending=true;localWaiter=new Promise(resolve=>{resolveLocal=resolve});open()}
+  function waitForLocal(){return localWaiter}
   function beginCloud(){
     cloudPending=true;open();
     if(!localPending){
@@ -3666,12 +3668,14 @@ const sriBootRecovery=(()=>{
     }catch(err){
       console.warn('[Inicialização] Falha durante a recuperação',err);fail();
     }finally{
-      localPending=false;loading=false;keepOpen();
+      localPending=false;loading=false;
+      if(resolveLocal){resolveLocal();resolveLocal=null}
+      keepOpen();
     }
   }
   document.getElementById('sri-boot-retry').addEventListener('click',()=>{void run()});
   document.getElementById('sri-boot-continue').addEventListener('click',close);
-  return {beginLocal,beginCloud,endCloud,run,close};
+  return {beginLocal,waitForLocal,beginCloud,endCloud,run,close};
 })();
 const sriBootHasLocalCopy=!!v42SafeGet(V42_CURRENT_KEY);
 if(sriBootHasLocalCopy)sriBootRecovery.beginLocal();
@@ -5741,6 +5745,7 @@ async function sriAuthorizeUser(authUser){
  sriBootRecovery.beginCloud();
  queueMicrotask(async()=>{
    try{
+     await sriBootRecovery.waitForLocal();
      await window.sriSnapshotAfterAuth?.();
      await Promise.allSettled([
        Promise.resolve().then(()=>window.sriOperatorAfterAuth?.()),
