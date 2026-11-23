@@ -35,7 +35,7 @@ const state={snapshotId:'original',revision:3,busy:false,restoring:false,saveTim
   client:null,profile:{role:'supervisor'},user:{id:'x'}};
 let assignments={};let loaded=[];
 const context={
- ctx:state,ui:{busy:false},$: $,status:()=>{},console,document:{hidden:false,
+ ctx:state,ui:{busy:false},$: $,status:()=>{},syncShift:()=>({day:"2026-11-23",shift:"Manhã"}),console,document:{hidden:false,
  activeElement:{closest:()=>null},addEventListener:()=>{}},
  window:{addEventListener:()=>{}},setInterval:()=>100,clearTimeout:()=>{},
  localStorage:{getItem:()=>'',setItem:()=>{}},
