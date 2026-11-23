@@ -54,6 +54,20 @@ assert.ok(!visualV2Css.includes('#v20-login')&&!visualV2Css.includes('.sri-login
 assert.ok(!visualV2Css.includes('!important;display:none'),'O CSS operacional não deve suprimir elementos do sistema');
 assert.equal(visualV2Css.split('{').length,visualV2Css.split('}').length,'Blocos CSS da etapa 2 devem estar balanceados');
 
+const visualV3Css=fs.readFileSync(new URL('../assets/refinamento-analitico-relatorios-etapa3.css',import.meta.url),'utf8');
+const visualLinks=['gestao-operacional-refinado.css?v=1.0.0','refinamento-operacional-etapa2.css?v=1.0.0','refinamento-analitico-relatorios-etapa3.css?v=1.0.0'];
+for(const ref of visualLinks)assert.ok(html.includes('/assets/'+ref),'CSS de refinamento não carregado: '+ref);
+assert.ok(html.indexOf(visualLinks[0])<html.indexOf(visualLinks[1])&&html.indexOf(visualLinks[1])<html.indexOf(visualLinks[2]),'A ordem de cascata visual deve permanecer 1, 2, 3');
+assert.equal(html.split('class="v49-kpi-gap"').length-1,1,'Espaçamento da área analítica deve ter um único marcador');
+for(const id of ['intelligence','v49-pane-bko','v49-pane-evolucao','v49-pane-comparativo','bko-kpis','bko-bars','v49-compare-chart','reports','v55-report-kinds','v55-source','v55-history-fields','v55-extraction-meta','v55-generate','v194-from-reports'])
+ assert.ok(html.includes('id="'+id+'"'),'Controle analítico/relatório ausente: '+id);
+for(const selector of ['#intelligence .v49-tabs','#intelligence .v2-kpi','#intelligence :is(.v3-controls,.v49-compare-filters)','#reports .v55-shell','#reports .v55-report-option','#reports #v55-generate'])
+ assert.ok(visualV3Css.includes(selector),'Refinamento de apresentação ausente: '+selector);
+assert.equal(visualV3Css.split('{').length,visualV3Css.split('}').length,'Blocos CSS da etapa 3 devem estar balanceados');
+assert.ok(!visualV3Css.includes('#v20-login')&&!visualV3Css.includes('.sri-login-'),'A etapa 3 não pode alterar a autenticação');
+assert.ok(!visualV3Css.includes('.v55-pdf-source')&&!visualV3Css.includes('.v51-pdf-page'),'A etapa 3 não pode alterar o conteúdo impresso de PDFs');
+
+
 
 assert.match(html,/src="\/assets\/foto-atendimento-hd\.webp"/);
 assert.match(html,/src="\/assets\/hapvida-logo\.svg"/);
