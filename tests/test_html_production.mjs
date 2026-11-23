@@ -15,7 +15,7 @@ assert.doesNotMatch(html,/Resultados por equipe e operador aguardando apuração
 assert.match(html,/Nenhuma meta configurada\. Defina metas para iniciar o acompanhamento/);
 assert.match(html,/meta\(s\) em rascunho neste navegador/);
 assert.match(html,/Os rascunhos de metas são salvos apenas neste navegador/);
-assert.match(html,/VERSÃO 2\.0 · PRODUÇÃO · AUTENTICAÇÃO CORPORATIVA/);
+assert.match(html,/Ambiente de Produção/);
 assert.match(html,/document\.body\.dataset\.sriVersion='sac-retorno-2\.0-prod-20261123'/);
 assert.match(html,/src="\/sri-prd-painel\.js\?v=2\.0-prod-20261123"/);
 assert.match(html,/https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2\.119\.1/);
@@ -25,7 +25,7 @@ assert.match(html,/function seed\(\)\{return \{users:\[\],access:\[\]/);
 assert.match(html,/if\(location\.protocol==='https:'\)throw Error\('Carga fictícia desabilitada/);
 assert.match(html,/data-v20="loadSample" disabled/);
 assert.match(html,/Cadastro local legado:/);
-assert.match(html,/O encerramento dos protocolos permanece no SIGO/);
+assert.match(html,/O SIGO permanece como sistema oficial dos protocolos/);
 assert.match(html,/id="sri-login-humanizado-20261123"/);
 assert.match(html,/src="\/assets\/sri-login-atendente\.webp"/);
 assert.match(html,/class="sri-login-art"/);
