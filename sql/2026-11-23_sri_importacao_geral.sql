@@ -234,6 +234,9 @@ BEGIN
   WHERE tm.user_id=v_user;
   IF v_num_teams>1 THEN
     RAISE EXCEPTION 'Operador possui mais de uma equipe ativa; revise vínculo antes de distribuir'; END IF;
+  IF EXISTS(SELECT 1 FROM public.operator_links ol WHERE ol.user_id=v_user
+    AND ol.team_id IS DISTINCT FROM v_team) THEN
+    RAISE EXCEPTION 'Operador possui vínculo conflitante; a gestão deve revisar antes de distribuir'; END IF;
   IF NOT (private.is_manager() OR v_supervisor=(SELECT auth.uid())
    OR (v_team IS NOT NULL AND private.is_supervisor_of(v_team))) THEN
     RAISE EXCEPTION 'Operador fora da equipe sob responsabilidade da supervisão';END IF;
