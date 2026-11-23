@@ -2816,10 +2816,10 @@ window.sriSyncDistributionCandidates=function(candidates,selectedTeamId){
   const previous=window.sriUnifiedCloudEligibleIds||new Set(),next=new Set(),teamMap=new Map();let changed=false;
   for(const candidate of candidates||[]){
     if(!candidate?.user_id||!['Ativo','Promovido'].includes(candidate.operational_status))continue;
-    if(candidate.team_id&&candidate.team_id!==selectedTeamId)continue;
+    // Equipe não é requisito para recebimento de protocolos na base geral.
     const id='acct:'+candidate.user_id,name=String(candidate.full_name||'Operador sem nome');
     const status=candidate.operational_status,supervisor=String(candidate.supervisor_name||'Sem supervisor');
-    next.add(id);teamMap.set(id,selectedTeamId);
+    next.add(id);teamMap.set(id,candidate.team_id||null);
     const op=distRoster.find(x=>x.id===id);
     if(!op){distRoster.push({id,name,supervisor,situation:status,active:true});changed=true;}
     else if(op.name!==name||op.supervisor!==supervisor||op.situation!==status||!op.active){
@@ -6243,7 +6243,7 @@ function v20EligibleUser(u){return u?.role==='operator'&&u.active&&['Ativo','Pro
 // Cadastros da homologação são a fonte oficial dos elegíveis. Registros legados não vinculados
 // permanecem para consulta e migração, porém não recebem novas atribuições.
 const v20LegacyEligible=distEligible;
-distEligible=function(r){if(String(r?.id||'').startsWith('acct:')){const teamId=document.getElementById('sri-daily-team')?.value;return !!(teamId&&window.sriUnifiedCloudRosterTeams?.get(r.id)===teamId&&window.sriUnifiedCloudEligibleIds?.has(r.id)&&v20LegacyEligible(r));}return false;};
+distEligible=function(r){if(String(r?.id||'').startsWith('acct:'))return Boolean(window.sriUnifiedCloudEligibleIds?.has(r.id)&&v20LegacyEligible(r));return false;};
 function syncRoster(){if(window.sriGetSupabaseClient)return;
  let changed=false;
  for(const u of data.users.filter(x=>x.role==='operator')){
@@ -7273,7 +7273,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if ($('sri33-links')) $('sri33-links').style.display=visible?'block':'none';
     if (!visible) return;
     const team=$('sri-daily-team')?.value;
-    if(!team){stateMsg('sri33-link-status','Selecione uma equipe no resultado diário.');return;}
+    if(!team){stateMsg('sri33-link-status','A importação é geral. A conciliação de nomes legados continua exclusiva da Gestão de Usuários.');return;}
     const roster=window.sriGetDistributionRoster?.()||[];
     // Formulário excepcional: contas acct:uuid são vinculadas diretamente ao cadastro.
     const uniqueRoster=[...new Map(roster.filter(x=>x&&x.id&&x.name&&!String(x.id).startsWith('acct:')).map(x=>[normalize(x.name),x])).values()];
@@ -7311,12 +7311,10 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const {client,profile}=await session();
     if(!['manager','admin','supervisor'].includes(profile.role))throw Error('Publicação restrita à gestão/supervisão.');
     if(!snapshotId||!revision)throw Error('A distribuição precisa estar salva primeiro.');
-    // Somente operadores já atribuídos recebem vínculo automático à equipe da apuração.
-    // A RPC valida, no banco, a função Operador, a situação Ativo/Promovido e conflitos de equipe.
-    const {error:linkError}=await client.rpc('sri_activate_assigned_operator_accounts',{p_snapshot:snapshotId,p_revision:revision});
-    if(linkError)throw Error('Habilitação dos operadores: '+linkError.message);
+    // Conta existente recebe protocolos diretamente. O banco resolve equipe apenas
+    // se existir vínculo único e válido, sem segundo cadastro de operador.
     const details=window.sriGetDistributionDetails?.()||{};
-    const {data,error}=await client.rpc('publish_daily_operator_tasks',{p_snapshot:snapshotId,p_revision:revision,p_details:details});
+    const {data,error}=await client.rpc('publish_general_operator_tasks',{p_snapshot:snapshotId,p_revision:revision,p_details:details});
     if(error)throw Error('Publicação das carteiras: '+error.message+'. Confira se o SQL da Etapa 3.3 foi executado.');
     if(Number(data?.unlinked)>0)throw Error(`${Number(data.unlinked)} atribuição(ões) sem carteira publicada. Verifique os vínculos de operadores legados antes de prosseguir.`);
     const info=`${Number(data?.published)||0} protocolo(s) publicados; ${Number(data?.unlinked)||0} aguardando vínculo de operador.`;
@@ -7550,17 +7548,13 @@ window.sriUnifiedUsersRender=el=>{el.innerHTML='<div class="v20-panel" style="pa
 window.sriRefreshDistributionCandidates=async()=>{
  const client=await window.sriGetSupabaseClient?.();
  if(!client)throw Error('Conexão Supabase indisponível para consultar operadores.');
- const team=document.getElementById('sri-daily-team')?.value;
- if(!team){window.sriSyncDistributionCandidates?.([],null);return;}
- const {data,error}=await client.rpc('sri_distribution_operator_candidates',{p_team:team});
+ const {data,error}=await client.rpc('sri_general_distribution_candidates');
  if(error){
-   window.sriSyncDistributionCandidates?.([],null);
-   const message='Não foi possível consultar os operadores cadastrados: '+error.message;
+   const message='Não foi possível consultar operadores cadastrados: '+error.message;
    const note=document.getElementById('dist-persist-warning');if(note)note.textContent=message;
    throw Error(message);
  }
- if(document.getElementById('sri-daily-team')?.value!==team)return;
- window.sriSyncDistributionCandidates?.(data||[],team);
+ window.sriSyncDistributionCandidates?.(data||[],null);
 };
 window.sriUnifiedAfterAuth=async()=>{try{
  const c=await window.sriGetSupabaseClient?.();if(!c)return;const {data}=await c.auth.getUser();if(!data?.user)return;
