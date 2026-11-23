@@ -24,7 +24,8 @@ assert.match(html,/window\.sriGetSupabaseClient/);
 assert.match(html,/function seed\(\)\{return \{users:\[\],access:\[\]/);
 // Restaurar o snapshot ao abrir não equivale a executar nova apuração.
 assert.match(html,/if\(!v42Restoring\)v2Toast\('Apuração concluída\. Painel atualizado\.'\)/);
-assert.match(html,/requestAnimationFrame\(\(\)=>setTimeout\(\(\)=>\{void v42RestoreSavedOnOpen\(\)\},0\)\)/);
+assert.match(html,/if\(sriBootHasLocalCopy\)sriBootRecovery\.beginLocal\(\)/);
+assert.match(html,/requestAnimationFrame\(\(\)=>setTimeout\(\(\)=>\{if\(sriBootHasLocalCopy\)void sriBootRecovery\.run\(\);else void v42RestoreSavedOnOpen\(\)\},0\)\)/);
 assert.match(html,/if\(location\.protocol==='https:'\)throw Error\('Carga fictícia desabilitada/);
 assert.match(html,/data-v20="loadSample" disabled/);
 assert.match(html,/Cadastro local legado:/);
