@@ -8,11 +8,12 @@ mustContain('window.sriCanAutoPublish&&!window.sriCanAutoPublish()');
 mustContain('postLoad();setTimeout(()=>window.sriShareProcessedResult?.(),0)');
 mustContain("window.sriShareProcessedResult=()=>{");
 mustContain("void safe(saveResult)");
-mustContain("Turno (automático)");
+mustContain('id="sri-daily-shift" type="hidden"');
+mustContain('sriOperationalContext=operationalContext');
 mustContain("Reenviar apuração pendente");
 mustContain("sri_auto_publish_target_v1_");
 mustContain("const heading=root.querySelector('.section-heading')");
-mustContain("a apuração consolidada, seus indicadores e a distribuição");
+mustContain("As importações atualizam automaticamente");
 mustContain("ctx.pendingSnapshot={key,id:snapshotId}");
 mustContain("throw Error('Distribuição salva, mas a carteira dos operadores NÃO foi sincronizada: '");
 const startMeta=html.indexOf('  // O destino é escolhido UMA vez');
@@ -28,16 +29,16 @@ function runMetadata(){
  const context={ctx,$,window:{},managerRoles:new Set(['admin','manager','supervisor']),
   localStorage:{getItem:k=>saves.get(k)||null,setItem:(k,v)=>saves.set(k,v)},
   status:()=>{},esc:s=>s};
- vm.runInNewContext(html.slice(startMeta,endMeta)+'\n;globalThis.meta={inferredShift,setTeams,loadMetadata,publishingContextValid,rememberPublishingTarget};',context);
- assert.equal(context.meta.inferredShift(),'','Operação não selecionada não pode ter turno inferido');
+ vm.runInNewContext(html.slice(startMeta,endMeta)+'\n;globalThis.meta={inferredShift,operationalContext,setTeams,loadMetadata,publishingContextValid,rememberPublishingTarget};',context);
+ assert.equal(context.meta.inferredShift(),context.meta.operationalContext().shift,'Turno independe da operação');
  assert.equal(context.meta.publishingContextValid(),false,'Não salvar em equipe padrão arbitrária');
  $('sri-daily-operation').value='r1';context.meta.setTeams();
  assert.equal($('sri-daily-team').value,'t1','Equipe única da operação escolhida deve ser inferida');
- assert.equal(context.meta.inferredShift(),'Manhã');
+ assert.equal(context.meta.inferredShift(),context.meta.operationalContext().shift);
  assert.equal(context.meta.publishingContextValid(),true);
  context.meta.rememberPublishingTarget();
  $('sri-daily-operation').value='r2';context.meta.setTeams();
- assert.equal(context.meta.inferredShift(),'Tarde');
+ assert.equal(context.meta.inferredShift(),context.meta.operationalContext().shift);
  assert.equal($('sri-daily-team').value,'t2');
  return true;
 }
@@ -66,7 +67,7 @@ const $=id=>inputs[id]||(inputs[id]={value:''});
 const state={user:{id:'mgr'},profile:{role:'manager'},teams:[{id:'t1',name:'Equipe'}],
  snapshotId:null,revision:0,localDataUnsaved:true,fileStaged:false,pendingSnapshot:null};
 const ctx={
- auth:async()=>client,ctx:state,$,inferredShift:()=> 'Manhã',
+ auth:async()=>client,ctx:state,$,syncShift:()=>({day:'2026-11-23',shift:'Manhã'}),carryForwardDistribution:async()=>{},
  publishingContextValid:()=>true,
  resultPayload:()=>({schema:1,reference:20000,importedAt:'2026-11-23T17:30:00Z',source:[{id:'1234567',status:'12'}]}),
  summarize:()=>({protocolos_consolidados:1,protocolos_monitorados:1}),
@@ -74,7 +75,7 @@ const ctx={
  hash:async()=> 'a'.repeat(64),v42Compress:async()=> 'gzip-consolidated-only',
  status:(m,t)=>statusLog.push({m,t}),
  saveDistribution:async()=>{if(failDist)throw Error('Conectividade temporariamente indisponível');},
- markSharedDigest:()=>{},clearSharedNotice:()=>{},esc:s=>s,
+ markSharedDigest:()=>{},clearSharedNotice:()=>{},esc:s=>s,localStorage:{setItem:()=>{}},
  loadSnapshot:async()=>{throw Error('Não deve carregar snapshot em inserção nova');},
  console
 };
@@ -92,4 +93,4 @@ assert.equal(rows[0].payload_gzip,'gzip-consolidated-only');
 assert.equal(Object.prototype.hasOwnProperty.call(rows[0],'sacCsv'),false);
 assert.equal(Object.prototype.hasOwnProperty.call(rows[0],'ativoCsv'),false);
 assert.equal(statusLog.at(-1).t,'success');
-console.log('PASS: operação/turno sem confirmação, publicação consolidada e reenvio idempotente em falhas de distribuição.');
+console.log('PASS: turno por horário de Brasília, publicação sem confirmação e reenvio idempotente em falhas.');
