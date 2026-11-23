@@ -20,6 +20,18 @@ jobs:
           node tests/test_p1_pdf_reports.mjs
           node tests/test_p2_retention.mjs
           node tests/test_homologacao_integrada.mjs
+      - name: Validar layout do login e cadastro no Chromium
+        env:
+          SRI_CAPTURE_LOGIN_SCREENSHOT: '1'
+        run: node tests/test_login_signup_layout.mjs
+      - name: Anexar capturas do cadastro responsivo
+        uses: actions/upload-artifact@v4
+        with:
+          name: login-cadastro-layout-sintetico
+          path: .tmp/login-signup-*.png
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7
       - name: Instalar verificadores A4
         run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
       - name: Gerar e validar PDFs sintéticos
