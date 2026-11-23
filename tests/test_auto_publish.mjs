@@ -13,7 +13,9 @@ mustContain('sriOperationalContext=operationalContext');
 mustContain("Reenviar apuração pendente");
 mustContain("sri_auto_publish_target_v1_");
 mustContain("const heading=root.querySelector('.section-heading')");
-mustContain("As importações atualizam automaticamente");
+mustContain('id="sri-import-context"');
+mustContain('id="sri-daily-panel" hidden style="display:none"');
+mustContain('selectAutomaticDestination()');
 mustContain("ctx.pendingSnapshot={key,id:snapshotId}");
 mustContain("throw Error('Distribuição salva, mas a carteira dos operadores NÃO foi sincronizada: '");
 const startMeta=html.indexOf('  // O destino é escolhido UMA vez');
@@ -21,7 +23,7 @@ const endMeta=html.indexOf('  function resultPayload(){',startMeta);
 assert.ok(startMeta>0&&endMeta>startMeta,'Metadados do fluxo automático');
 function runMetadata(){
  const nodes={};
- const $=id=>nodes[id]||(nodes[id]={value:'',innerHTML:'',scrollIntoView(){},addEventListener(){}});
+ const $=id=>nodes[id]||(nodes[id]={value:'',innerHTML:'',dataset:{},hidden:false,scrollIntoView(){},addEventListener(){}});
  const saves=new Map();
  const ctx={operations:[{id:'r1',name:'R1'},{id:'r2',name:'R2'}],
   teams:[{id:'t1',name:'R1 Equipe',operation_id:'r1'},{id:'t2',name:'R2 Equipe',operation_id:'r2'}],
