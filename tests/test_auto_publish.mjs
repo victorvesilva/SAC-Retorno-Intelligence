@@ -30,7 +30,7 @@ function runMetadata(){
   profile:{role:'manager'},user:{id:'u'}};
  const context={ctx,$,window:{},ui:{live:false},managerRoles:new Set(['admin','manager','supervisor']),
   localStorage:{getItem:k=>saves.get(k)||null,setItem:(k,v)=>saves.set(k,v)},
-  status:()=>{},esc:s=>s};
+  status:()=>{},renderImportContext:()=>{},esc:s=>s};
  vm.runInNewContext(html.slice(startMeta,endMeta)+'\n;globalThis.meta={inferredShift,operationalContext,setTeams,loadMetadata,publishingContextValid,rememberPublishingTarget};',context);
  assert.equal(context.meta.inferredShift(),context.meta.operationalContext().shift,'Turno independe da operação');
  assert.equal(context.meta.publishingContextValid(),false,'Não salvar em equipe padrão arbitrária');
