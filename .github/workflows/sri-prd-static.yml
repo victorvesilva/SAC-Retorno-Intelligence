@@ -1,4 +1,4 @@
-name: SAC PRD - testes estaticos
+name: SAC Retorno Intelligence - Homologacao Integrada
 on:
   pull_request:
   push:
@@ -6,9 +6,29 @@ on:
 permissions:
   contents: read
 jobs:
-  smoke:
+  homologacao:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - name: Validar JavaScript, HTML e SQL nao destrutivo
-        run: node tests/test_prd_static.mjs
+      - name: Testar todas as frentes sem dados sensiveis
+        run: |
+          node tests/test_prd_static.mjs
+          node tests/test_csv_integrity.mjs
+          node tests/test_p1_authorization.mjs
+          node tests/test_p1_closure_guard.mjs
+          node tests/test_p1_pdf_reports.mjs
+          node tests/test_p2_retention.mjs
+          node tests/test_homologacao_integrada.mjs
+      - name: Instalar verificadores A4
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
+      - name: Gerar e validar PDFs sintéticos
+        env:
+          SRI_RENDER_PDF_FIXTURES: '1'
+        run: node tests/test_p1_pdf_reports.mjs
+      - name: Anexar amostras A4 para inspecao
+        uses: actions/upload-artifact@v4
+        with:
+          name: homologacao-integrada-relatorios-a4-sinteticos
+          path: .tmp/p1-pdf/*.pdf
+          if-no-files-found: error
+          retention-days: 7
