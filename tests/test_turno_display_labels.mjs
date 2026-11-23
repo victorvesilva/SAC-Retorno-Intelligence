@@ -22,7 +22,7 @@ for(const [input,expected] of [
 ])assert.equal(name(input),expected,'Rotulagem incorreta de '+input);
 
 // A alteração não pode trocar os valores internos usados nas relações e registros.
-assert.match(html,/ctx\.operations\.map\(o=>`<option value="\$\{esc\(o\.id\)\}">\$\{esc\(sriOperationLabel\(o\.name\)\)\}<\/option>`\)/);
+assert.match(html,/ctx\.operations\.map\(o=>`<option value="\$\{esc\(o\.id\)\}">\$\{esc\(o\.name\)\}<\/option>`\)/,'Operação não deve ser confundida com o turno');
 assert.match(html,/state\.operations\.filter\(x=>x\.active\)\.map\(o=>`<option value="\$\{esc\(o\.id\)\}">\$\{esc\(window\.sriDisplayTurnoLabel\(o\.name\)\)\}<\/option>`\)/);
 assert.match(html,/shift_label:shift,/,'Gravação de turno no banco deve preservar seu código original');
 assert.match(html,/shift:r\.shift_label,/,'Conferência de fechamento deve manter valor bruto para lógica interna');
@@ -31,4 +31,4 @@ assert.match(html,/window\.sriDisplayTurnoLabel\(r\.shift_label\)/,'Fechamento d
 assert.match(html,/esc\(sriOperationLabel\(data\.shift_label\)\)/,'Leitura do resultado deve exibir rótulo amigável');
 assert.doesNotMatch(html,/R1:'R1 - Manhã'|R2:'R2 - Tarde'/,'Rótulos mistos antigos ainda presentes');
 
-console.log('PASS: R1 → Manhã; R2 → Tarde nos textos de interface, sem alterar valores internos do Supabase.');
+console.log('PASS: labels legados preservados em consultas e operação separada do turno automático.');
