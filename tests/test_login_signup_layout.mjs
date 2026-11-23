@@ -70,7 +70,7 @@ const fixtureHtml =
 '<style>*,*::before,*::after{box-sizing:border-box}html,body{margin:0;padding:0;max-width:100%;}</style><style>' +
 css + '</style></head><body>' + withLocalAssets +
 '<script>let sriRegisterMode=false; const $=id=>document.getElementById(id);' +
-toggle + ';(' + probe.toString() + ')();</script></body></html>';
+toggle + ';window.addEventListener("load",(' + probe.toString() + '));</script></body></html>';
 fs.writeFileSync(fixture, fixtureHtml, 'utf8');
 const sizes = [[1440,900],[1440,690],[1024,768],[800,690],[390,844],[390,640]];
 for (const [width,height] of sizes) {
