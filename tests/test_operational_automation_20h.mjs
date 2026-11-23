@@ -35,7 +35,7 @@ assert.match(html,/await carryForwardDistribution\(client,team,day,shift\)/);
 assert.match(html,/eq\('team_id',team\)\.eq\('operational_day',day\)\.eq\('shift_label',shift\)/);
 assert.match(html,/function notify\(message,kind='success'\)/);
 assert.match(html,/window\.sriToast=notify/);
-assert.match(html,/id='sri-auto-toast-root'/);
+assert.match(html,/root\.id='sri-auto-toast-root'/);
 assert.match(html,/sri-retry-show/);
 assert.match(sql,/private\.sri_close_due_days/);
 assert.match(sql,/AT TIME ZONE 'America\/Sao_Paulo'/);
