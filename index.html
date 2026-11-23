@@ -2383,7 +2383,7 @@ const sleep=()=>new Promise(r=>setTimeout(r,25));
 async function process(){if(ui.busy||!ui.files.sac||!ui.files.ativo)return;if(!v52ValidatePairBeforeProcess())return;await v113Ready;v52CaptureBefore();v53CaptureBefore();ui.busy=true;const btn=document.getElementById('process-btn');btn.disabled=true;try{setProgress('Lendo os arquivos CSV no navegador...',12);await sleep();const [atxt,stxt]=await Promise.all([decoded(ui.files.ativo),decoded(ui.files.sac)]);setProgress('Indexando protocolos da base ATIVO...',34);await sleep();const a=parseAtivo(atxt);setProgress('Mesclando SAC + ATIVO e classificando filiais...',57);await sleep();const s=parseSac(stxt,a.map);for(const r of s.rows){const match=a.map.get(r.id);if(match){r.ativoConflito=!!match.conflict;r.ativoDuplicado=!!match.duplicate;r.ativoOcorrencias=match.occurrences||1;r.ativoCriterio=match.conflict?'CONFLITO':match.duplicate?'MAIS_RECENTE':'UNICO';}}
  if(!a.valid||!s.rows.length)throw Error('Uma das bases não contém protocolos válidos. A carteira anterior será preservada.');v113Pending=v113Stage(stxt,a.map);if(!v113ConfirmCompleteness(v113Pending)){v113Pending=null;return}window.sriMarkLocalImportPending?.();ui.source=s.rows;ui.quality={sacName:ui.files.sac.name,ativoName:ui.files.ativo.name,sacValid:s.valid,ativoValid:a.valid,merged:s.rows.length,missingFilial:s.missingFilial,noJoin:s.noJoin,duplicateSac:s.repeated,duplicateAtivo:a.repeated,ativoDuplicateProtocols:a.duplicateProtocols,ativoConflictingAgents:a.conflictingAgents,ativoLatestSelected:a.latestSelected,ativoDuplicateCases:a.duplicates,ativoTailWarnings:a.extraTailWarnings,ativoContinuationLines:a.continuations,sacSemicolonRepairs:s.semicolonRepairs,fix:s.fix,bad:s.bad+a.bad,unknownBko:s.unknownBko};let dates=ui.source.map(r=>r.atribuicao).filter(x=>x!==null);ui.reference=(dates.length?Math.max(...dates):epoch(new Date().toISOString().slice(0,10)));document.getElementById('ref-date').value='';document.getElementById('ref-date').disabled=true;setProgress('Aplicando regras de APURAÇÃO e montando indicadores...',78);await sleep();recalc();ui.selected={bko:[],area:[],canal:[],fila:[]};setProgress('Dashboard atualizado com sucesso.',100);await sleep();postLoad();setTimeout(()=>window.sriShareProcessedResult?.(),0);setTimeout(()=>{document.getElementById('progress-box').style.display='none'},1200)}catch(err){console.error(err);setProgress('Falha na leitura: '+(err&&err.message?err.message:err),0);alert('Não foi possível processar os arquivos. Verifique se os dois arquivos são as extrações CSV esperadas.\n\n'+(err.message||err))}finally{ui.busy=false;btn.disabled=!(ui.files.sac&&ui.files.ativo);renderExtractionManager();v52RefreshPair()}}
 function setupDrop(which){let node=document.getElementById('drop-'+which),input=document.getElementById('file-'+which);input.addEventListener('change',e=>loadFile(which,e.target.files?.[0]));node.addEventListener('dragover',e=>{e.preventDefault();node.classList.add('drag')});node.addEventListener('dragleave',()=>node.classList.remove('drag'));node.addEventListener('drop',e=>{e.preventDefault();node.classList.remove('drag');loadFile(which,e.dataTransfer.files?.[0])})}
-function loadFile(type,f){if(!f)return;if(!/\.csv$/i.test(f.name)){alert('Selecione um arquivo CSV.');return}ui.files[type]=f;const node=document.getElementById('drop-'+type);node.classList.add('file-ok');node.querySelector('strong').textContent=(type==='sac'?'01 · Base SAC':'02 · Base ATIVO')+' ✓';document.getElementById('filename-'+type).textContent=f.name+' · '+(f.size/1024/1024).toFixed(1)+' MB';document.getElementById('process-btn').disabled=!(ui.files.sac&&ui.files.ativo)}
+function loadFile(type,f){if(!f)return;if(!/\.csv$/i.test(f.name)){alert('Selecione um arquivo CSV.');return}window.sriMarkLocalUploadStaged?.();ui.files[type]=f;const node=document.getElementById('drop-'+type);node.classList.add('file-ok');node.querySelector('strong').textContent=(type==='sac'?'01 · Base SAC':'02 · Base ATIVO')+' ✓';document.getElementById('filename-'+type).textContent=f.name+' · '+(f.size/1024/1024).toFixed(1)+' MB';document.getElementById('process-btn').disabled=!(ui.files.sac&&ui.files.ativo)}
 function v46SetPane(pane){const requested=['quality','reconcile'].includes(pane)?pane:'records';document.querySelectorAll('.v46-subtab').forEach(btn=>{const active=btn.dataset.v46Pane===requested;btn.classList.toggle('active',active);btn.setAttribute('aria-selected',String(active))});document.querySelectorAll('.v46-pane').forEach(el=>el.classList.toggle('active',el.id==='v46-pane-'+requested));if(ui.tab==='details')document.getElementById('global-controls').hidden=(requested==='quality'||requested==='reconcile');}
 function switchTab(tab){const requestedQuality=tab==='quality';if(tab==='operations')tab='overview';if(tab==='bko'||tab==='compare') {v49Pane=tab==='bko'?'bko':'evolucao';tab='intelligence'}if(requestedQuality)tab='details';ui.tab=tab;document.querySelectorAll('.nav-link').forEach(x=>x.classList.toggle('active',x.dataset.tab===tab));document.querySelectorAll('.tab-content').forEach(x=>x.classList.toggle('active',x.id===tab));const analytical=new Set(['overview','operations','priorities','agents','intelligence','details']).has(tab);document.getElementById('global-controls').hidden=!analytical;document.getElementById('state-banner').hidden=(tab!=='overview'||ui.live);if(tab==='details')v46SetPane(requestedQuality?'quality':'records');if(tab==='intelligence'){v49SetPane(v49Pane);v49Render()}window.scrollTo({top:0,behavior:'smooth'})}
 document.querySelectorAll('.v46-subtab').forEach(btn=>btn.addEventListener('click',()=>v46SetPane(btn.dataset.v46Pane)));
@@ -6645,7 +6645,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   const $ = id => document.getElementById(id);
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const managerRoles = new Set(['admin','manager','supervisor']);
-  const ctx = {client:null,user:null,profile:null,teams:[],operations:[],snapshotId:null,revision:0,busy:false,restoring:false,saveTimer:null,initialized:false,localDataUnsaved:false,syncedDistributionState:null,syncedPayloadHash:null,cloudTimer:null,cloudChecking:false,cloudPendingId:null};
+  const ctx = {client:null,user:null,profile:null,teams:[],operations:[],snapshotId:null,revision:0,busy:false,restoring:false,saveTimer:null,initialized:false,fileStaged:false,localDataUnsaved:false,syncedDistributionState:null,syncedPayloadHash:null,cloudTimer:null,cloudChecking:false,cloudPendingId:null};
   window.sriGetSavedDistributionContext=()=>({snapshotId:ctx.snapshotId,revision:ctx.revision,teamId:ctx.teamId});
   const today = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const status = (message, type='normal') => {const el=$('sri-daily-status');if(el){el.textContent=message;el.dataset.status=type;} };
@@ -6758,7 +6758,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     status('Resultado do dia salvo no Supabase com sucesso. CSVs originais não enviados.','success');
     $('sri-daily-result').innerHTML=`<p><strong>Resultado confirmado.</strong> ${indicator.protocolos_consolidados} protocolos consolidados; ${indicator.protocolos_monitorados} na carteira de monitoramento. Equipe: ${esc(ctx.teams.find(t=>t.id===team)?.name)}. Divergências: ${warnings.divergencias_informativas} alerta(s), sem bloqueio.</p>`;
     await saveDistribution();
-    ctx.localDataUnsaved=false;markSharedDigest(digest);ctx.syncedDistributionState=JSON.stringify(distributionState());clearSharedNotice();
+    ctx.localDataUnsaved=false;ctx.fileStaged=false;markSharedDigest(digest);ctx.syncedDistributionState=JSON.stringify(distributionState());clearSharedNotice();
   }
   function distributionState(){
     if(!ui.live)return {};
@@ -6830,7 +6830,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       if(t){$('sri-daily-operation').value=t.operation_id;setTeams();$('sri-daily-team').value=t.id;}
       $('sri-daily-day').value=data.operational_day;$('sri-daily-shift').value=data.shift_label;
       $('sri-daily-result').innerHTML=`<p><strong>Apuração recuperada do Supabase.</strong> ${Number(data.indicators?.protocolos_consolidados)||0} protocolos consolidados. Equipe: ${esc(t?.name||'Equipe autorizada')}. Data ${esc(data.operational_day)} · ${esc(sriOperationLabel(data.shift_label))}. Alertas informativos: ${Number(data.warnings?.divergencias_informativas)||0}.</p>`;
-      ctx.localDataUnsaved=false;markSharedDigest(data.payload_sha256);ctx.syncedDistributionState=JSON.stringify(distributionState());clearSharedNotice();
+      ctx.localDataUnsaved=false;ctx.fileStaged=false;markSharedDigest(data.payload_sha256);ctx.syncedDistributionState=JSON.stringify(distributionState());clearSharedNotice();
       status('Indicadores e carteira de distribuição carregados do Supabase. Os arquivos SAC/ATIVO não são necessários neste navegador.','success');window.sriUnifiedAfterSnapshot?.();
     }finally{ctx.restoring=false;}
   }
@@ -6846,7 +6846,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     await loadSnapshot(latest);
   }
   function queueDistributionSave(){
-    if(ctx.restoring||ctx.localDataUnsaved||!ctx.snapshotId||!ctx.profile||!managerRoles.has(ctx.profile.role))return;
+    if(ctx.restoring||ctx.fileStaged||ctx.localDataUnsaved||!ctx.snapshotId||!ctx.profile||!managerRoles.has(ctx.profile.role))return;
     clearTimeout(ctx.saveTimer);
     ctx.saveTimer=setTimeout(()=>safe(saveDistribution),1200);
   }
@@ -6857,7 +6857,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   function readSharedDigest(){try{return localStorage.getItem(sharedDigestKey)||''}catch(_){return ''}}
   function markSharedDigest(digest){ctx.syncedPayloadHash=digest||'';try{if(digest)localStorage.setItem(sharedDigestKey,digest)}catch(_){}}
   function hasLocalChanges(){
-    if(ctx.localDataUnsaved||ui.busy||ctx.saveTimer)return true;
+    if(ctx.fileStaged||ctx.localDataUnsaved||ui.busy||ctx.saveTimer)return true;
     if(ctx.syncedDistributionState===null)return false;
     try{return JSON.stringify(distributionState())!==ctx.syncedDistributionState}catch(_){return true}
   }
@@ -6869,6 +6869,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(notice)notice.hidden=false;
   }
   function clearSharedNotice(){ctx.cloudPendingId=null;const notice=$('sri-shared-notice');if(notice)notice.hidden=true;}
+  window.sriMarkLocalUploadStaged=()=>{ctx.fileStaged=true;status('Arquivos SAC/ATIVO selecionados para conferência. Nenhuma atualização externa substituirá esta seleção.','warning');};
   window.sriMarkLocalImportPending=()=>{
     clearTimeout(ctx.saveTimer);ctx.saveTimer=null;
     ctx.localDataUnsaved=true;ctx.snapshotId=null;ctx.revision=0;

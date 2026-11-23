@@ -5,6 +5,7 @@ import vm from 'node:vm';
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const markers=[
  'window.sriMarkLocalImportPending?.();ui.source=s.rows;',
+ 'window.sriMarkLocalUploadStaged?.();ui.files[type]=f;',
  'postLoad();setTimeout(()=>window.sriShareProcessedResult?.(),0)',
  "ctx.localDataUnsaved=true;ctx.snapshotId=null;ctx.revision=0;",
  "ctx.localDataUnsaved||!ctx.snapshotId",
@@ -46,6 +47,9 @@ const context={
 vm.runInNewContext(html.slice(start,end)+'\n;globalThis.testSync={hasLocalChanges,showSharedNotice,clearSharedNotice,checkSharedUpdates}',context,{timeout:2000});
 const sync=context.testSync;
 assert.equal(sync.hasLocalChanges(),false);
+context.window.sriMarkLocalUploadStaged();
+assert.equal(sync.hasLocalChanges(),true,'CSV selecionado não deve ser sobrescrito');
+state.fileStaged=false;
 assignments={P1:{opId:'O1'}};
 assert.equal(sync.hasLocalChanges(),true,'Distribuição alterada deve impedir atualização automática');
 assignments={};context.window.sriMarkLocalImportPending();
@@ -68,7 +72,7 @@ context.ctx.client={from:table=>{
 await sync.checkSharedUpdates();
 assert.equal(loaded.length,0,'Importação local não pode ser sobrescrita');
 assert.equal(state.cloudPendingId,'new','Aviso deve apontar para a nova versão');
-state.localDataUnsaved=false;state.syncedDistributionState=JSON.stringify({assignments:{}});
+state.localDataUnsaved=false;state.fileStaged=false;state.syncedDistributionState=JSON.stringify({assignments:{}});
 await sync.checkSharedUpdates();
 assert.deepEqual(loaded,['new'],'Sessão limpa deve receber nova versão automaticamente');
 console.log('PASS: publicação após apuração, polling gerencial/operador e bloqueio de sobrescrita local.');
