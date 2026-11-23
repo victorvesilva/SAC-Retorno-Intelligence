@@ -78,9 +78,11 @@ BEGIN
     RAISE EXCEPTION 'Acesso negado à tarefa';
   END IF;
 
+  -- Compatibilidade temporaria: telas antigas podem enviar os quatro valores tecnicos.
   IF p_action IS NULL OR p_action NOT IN (
     'E-MAIL','LIGAÇÃO','ASCSAC','RECUSOU','ACEITOU','ASSOCIADO',
-    'OUTROS','FILIAL','DÚVIDA','OUVIDORIA','PENDENTE','MÍDIAS NE','CARTA AR'
+    'OUTROS','FILIAL','DÚVIDA','OUVIDORIA','PENDENTE','MÍDIAS NE','CARTA AR',
+    'note','in_progress','awaiting','completed_in_tool'
   ) THEN
     RAISE EXCEPTION 'Selecione um dos 13 status de tratativa';
   END IF;
@@ -92,6 +94,8 @@ BEGIN
   -- Work_status mantém o contrato das métricas existentes.
   -- Tratativa original é independente do status do SIGO.
   v_work_status:=CASE
+    WHEN p_action='note' THEN v_task.work_status
+    WHEN p_action IN ('in_progress','awaiting','completed_in_tool') THEN p_action
     WHEN p_action IN ('E-MAIL','LIGAÇÃO','ASCSAC','MÍDIAS NE','CARTA AR')
       THEN 'completed_in_tool'
     WHEN p_action IN ('RECUSOU','ASSOCIADO','FILIAL')
@@ -104,7 +108,10 @@ BEGIN
     RETURNING id INTO v_id;
 
   UPDATE public.daily_operator_tasks
-     SET treatment_status=p_action,
+     SET treatment_status=CASE
+           WHEN p_action IN ('note','in_progress','awaiting','completed_in_tool')
+             THEN v_task.treatment_status
+           ELSE p_action END,
          work_status=v_work_status,
          updated_at=now()
    WHERE id=v_task.id;
