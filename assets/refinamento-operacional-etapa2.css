@@ -1,0 +1,266 @@
+/* SAC Retorno Intelligence 2.0 — Evolução Visual, etapa 2 (2026-11-23).
+ * Escopo: navegação e componentes de Prioridades, Distribuição e Carteira por Operador.
+ * Preserva cálculos, dados, eventos, permissões e login.
+ */
+@media screen {
+  /* Navegação gerencial: hierarquia explícita com a identidade Híbrido Moderno. */
+  .v5-app #nav .v20-nav-group{margin:2px 0 9px}
+  .v5-app #nav .v20-nav-group-title{
+    min-height:37px;padding:9px 10px;border-radius:9px;
+    font-size:10.5px!important;line-height:1.3;font-weight:750!important;
+    color:#546b86;letter-spacing:.035em;text-transform:uppercase;
+    transition:background-color .15s ease,color .15s ease
+  }
+  .v5-app #nav .v20-nav-group-title:hover{background:#edf3fc;color:#0b45b7}
+  .v5-app #nav .v20-nav-group-title[aria-expanded="true"]{color:#285891}
+  .v5-app #nav .v20-nav-group:has(.v20-nav-entry.active)>.v20-nav-group-title{
+    color:#0b45b7;background:#f0f5ff
+  }
+  .v5-app #nav .v20-nav-group-items{gap:3px;padding:3px 0 0}
+  .v5-app #nav .v20-nav-entry{
+    min-height:40px;gap:10px;padding:9px 11px!important;
+    border:1px solid transparent;border-radius:9px;
+    color:#485f7c!important;font-size:12.5px!important;
+    font-weight:560!important;line-height:1.4;
+    transition:background-color .15s ease,color .15s ease,border-color .15s ease
+  }
+  .v5-app #nav .v20-nav-entry .v20-nav-icon{width:18px;height:18px;color:#7388a1}
+  .v5-app #nav .v20-nav-entry:hover{
+    background:#f0f5ff!important;border-color:#e1eafa;color:#0b45b7!important
+  }
+  .v5-app #nav .v20-nav-entry.active{
+    background:#eaf2ff!important;border-color:#cfe0fb!important;
+    color:#0b45b7!important;box-shadow:inset 3px 0 #0b45b7!important;
+    font-weight:750!important
+  }
+  .v5-app #nav .v20-nav-entry.active .v20-nav-icon{color:#0b45b7}
+  .v5-app .v5-rail-link.active{
+    background:#2d66ca!important;color:#fff!important;
+    box-shadow:inset 3px 0 #ffbf39,0 2px 9px rgba(3,27,84,.18)!important
+  }
+
+  /* Cabeçalhos dos módulos: títulos e ações com mesmo ritmo visual. */
+  .v5-app #distribution>.section-heading,
+  .v5-app #priorities>.section-heading,
+  .v5-app #agents>.section-heading{margin:5px 0 14px;gap:12px}
+  .v5-app #distribution>.section-heading h2,
+  .v5-app #priorities>.section-heading h2,
+  .v5-app #agents>.section-heading h2{
+    font-size:clamp(21px,2vw,26px);line-height:1.2;
+    font-weight:780;letter-spacing:-.55px;color:#15365d
+  }
+  .v5-app #distribution>.section-heading p,
+  .v5-app #priorities>.section-heading p,
+  .v5-app #agents>.section-heading p{
+    margin:5px 0 0;color:#647b97!important;font-size:12.5px!important;line-height:1.5
+  }
+  .v5-app #distribution>.section-heading>.mini-pill{
+    color:#23518e;background:#eef4ff;border-color:#d9e6f9;font-size:10px;font-weight:750
+  }
+
+  /* Métricas da distribuição: leitura rápida da carteira sem depender de cor. */
+  .v5-app #distribution .dist-kpis{gap:10px;margin:9px 0 11px}
+  .v5-app #distribution .dist-kpi{
+    position:relative;overflow:hidden;min-height:91px;
+    border:1px solid #e0e8f4!important;background:#fff!important;
+    border-radius:12px!important;padding:13px 16px 12px!important
+  }
+  .v5-app #distribution .dist-kpi:before{
+    content:"";position:absolute;top:0;left:0;bottom:0;width:3px;
+    background:#3872d6
+  }
+  .v5-app #distribution .dist-kpi:nth-child(2):before{background:#1f9c83}
+  .v5-app #distribution .dist-kpi:nth-child(3):before{background:#e69a29}
+  .v5-app #distribution .dist-kpi:nth-child(4):before{background:#6281b9}
+  .v5-app #distribution .dist-kpi span{
+    font-size:10.5px!important;line-height:1.35;
+    letter-spacing:.03em;font-weight:740;color:#5e7490!important
+  }
+  .v5-app #distribution .dist-kpi strong{
+    font-size:clamp(22px,2.2vw,28px);line-height:1.18;
+    margin-top:8px;font-weight:780;font-variant-numeric:tabular-nums;color:#183b65
+  }
+
+  /* Controles operacionais: agrupar filtros e ações com títulos legíveis. */
+  .v5-app #distribution .dist-panel{padding:15px 17px 18px!important}
+  .v5-app #distribution .dist-panel>h3{
+    font-size:15px!important;line-height:1.3;color:#173b68;
+    font-weight:750;margin:0 0 10px
+  }
+  .v5-app #distribution .dist-filter-group{
+    padding:11px;background:#f8fafd;
+    border:1px solid #e3eaf4;border-radius:11px;
+    gap:9px;margin:9px 0 7px
+  }
+  .v5-app #distribution .dist-filter-wrap>label,
+  .v5-app #distribution .dist-field label{font-size:11px!important;font-weight:700;color:#516985!important}
+  .v5-app #distribution .dist-filter-trigger,
+  .v5-app #distribution .dist-field input,
+  .v5-app #priorities .v3-controls input,
+  .v5-app #priorities .v3-controls select,
+  .v5-app #agents .v3-controls input,
+  .v5-app #agents .v3-controls select{
+    min-height:38px;border:1px solid #d6e2f1;border-radius:9px;
+    background:#fff;color:#2c4d72;font-size:12px;line-height:1.4
+  }
+  .v5-app #distribution .dist-filter-trigger:hover,
+  .v5-app #distribution .dist-field input:hover,
+  .v5-app #priorities .v3-controls select:hover,
+  .v5-app #agents .v3-controls select:hover{border-color:#a5bee8}
+  .v5-app #distribution .ux-dist-filter-actions{gap:10px;margin:8px 0}
+  .v5-app #distribution #ux-dist-filter-summary{
+    font-size:11.5px;line-height:1.45;overflow-wrap:anywhere
+  }
+  .v5-app #distribution .dist-controls{gap:10px;margin:10px 0}
+  .v5-app #distribution .dist-row{gap:7px}
+  .v5-app #distribution .dist-btn{
+    min-height:35px;border-radius:9px;
+    font-size:11.5px;font-weight:710;line-height:1.35;
+    transition:background-color .15s ease,border-color .15s ease
+  }
+  .v5-app #distribution #v199-launch{
+    min-width:148px;min-height:42px;font-size:12px;
+    background:#0b45b7;border-color:#0b45b7;color:#fff
+  }
+  .v5-app #distribution #v199-launch:not(:disabled):hover{background:#083a99}
+  .v5-app #distribution .v110-entry{
+    padding:13px 15px!important;margin:10px 0 12px!important;
+    background:#f8fbff!important;border-color:#d9e5f4!important;
+    border-radius:11px
+  }
+  .v5-app #distribution .v110-entry strong{font-size:12.5px;font-weight:750;color:#173c70}
+  .v5-app #distribution .v110-entry p{font-size:11.5px;line-height:1.5;color:#597391}
+
+  /* Abas e barra da carteira: navegação operacional sem sobrecarga visual. */
+  .v5-app #distribution .dist-tabbar{
+    gap:5px!important;padding:5px!important;margin:13px 0 16px!important;
+    border:1px solid #dce6f2;border-radius:12px;
+    background:#eef3fa!important
+  }
+  .v5-app #distribution .dist-tab{
+    min-height:38px;padding:9px 13px!important;
+    font-size:11.5px!important;font-weight:700!important;
+    border-radius:9px!important
+  }
+  .v5-app #distribution .dist-tab.active{
+    background:#fff!important;color:#0b45b7!important;
+    box-shadow:0 2px 7px rgba(20,53,95,.08)!important
+  }
+  .v5-app #distribution .v116-tablebar{
+    margin:11px 0 0;background:#f6f9fe;border-color:#dce7f4;
+    padding:11px 13px
+  }
+  .v5-app #distribution .v116-tablebar strong{font-size:12.5px;color:#173e75}
+  .v5-app #distribution .v116-tablebar span{font-size:11.5px;line-height:1.45;color:#617995}
+  .v5-app #distribution .dist-table-wrap{border:1px solid #dae5f2;border-radius:0 0 10px 10px}
+  .v5-app #distribution .dist-table th{
+    font-size:11px!important;color:#3a597a!important;
+    background:#eef3fa!important;letter-spacing:.01em;
+    font-weight:750;padding:11px 9px;line-height:1.45
+  }
+  .v5-app #distribution .dist-table td{
+    padding:10px 9px;font-size:11.75px;line-height:1.45;
+    color:#304d6c;vertical-align:middle
+  }
+  .v5-app #distribution .dist-table .dist-pill{
+    padding:4px 8px;border-radius:7px;
+    font-size:10.5px;font-weight:750;white-space:nowrap
+  }
+  .v5-app #distribution .dist-table .dist-pill.warn{background:#fff4de;color:#946007}
+  .v5-app #distribution .dist-table .dist-pill.danger{background:#ffeaee;color:#af2e45}
+
+  /* Prioridades e carteira: sistema único de cartões e filtros. */
+  .v5-app #priorities .v3-grid,
+  .v5-app #agents .v3-grid{gap:11px;margin:9px 0 16px}
+  .v5-app #priorities .v3-stat,
+  .v5-app #agents .v3-stat{
+    border:1px solid #e0e8f4;border-radius:12px;
+    background:#fff;padding:14px 15px;
+    box-shadow:0 2px 12px rgba(25,53,92,.045)
+  }
+  .v5-app #priorities .v3-stat small,
+  .v5-app #agents .v3-stat small{font-size:11.25px;line-height:1.4;font-weight:700;color:#657b96}
+  .v5-app #priorities .v3-stat strong,
+  .v5-app #agents .v3-stat strong{
+    font-size:27px;font-weight:780;font-variant-numeric:tabular-nums;
+    line-height:1.15;margin-top:7px;color:#183d6b
+  }
+  .v5-app #priorities .v3-card,
+  .v5-app #agents .v3-card{
+    border:1px solid #e0e7f2;border-radius:13px;
+    padding:16px 17px;box-shadow:0 3px 13px rgba(23,52,86,.045)
+  }
+  .v5-app #priorities .v3-card h3,
+  .v5-app #agents .v3-card h3{font-size:14.5px;color:#183b65;font-weight:750}
+  .v5-app #priorities .v3-controls,
+  .v5-app #agents .v3-controls{
+    align-items:end;gap:10px;
+    padding:10px 12px;background:#f7faff;
+    border:1px solid #e0e9f5;border-radius:10px
+  }
+  .v5-app #priorities .v3-controls label,
+  .v5-app #agents .v3-controls label{font-size:11.5px;font-weight:700;line-height:1.35;color:#526e8c}
+  .v5-app #priorities .v3-controls input,
+  .v5-app #priorities .v3-controls select,
+  .v5-app #agents .v3-controls input,
+  .v5-app #agents .v3-controls select{max-width:260px;min-width:145px}
+  .v5-app #priorities .v3-tablewrap,
+  .v5-app #agents .v3-tablewrap{
+    border:1px solid #e0e8f2;border-radius:10px;
+    scrollbar-gutter:stable;overflow:auto
+  }
+  .v5-app #priorities .v3-table th,
+  .v5-app #agents .v3-table th{padding:11px 12px;font-size:11px!important;font-weight:750}
+  .v5-app #priorities .v3-table td,
+  .v5-app #agents .v3-table td{padding:10px 12px;font-size:11.75px;line-height:1.45}
+  .v5-app #priorities .v3-table tr[data-record]:hover,
+  .v5-app #agents .v3-table tr[data-agent]:hover{background:#eaf2ff!important}
+  .v5-app #priorities .v3-table tr[data-record]:focus-within,
+  .v5-app #agents .v3-table tr[data-agent]:focus-within{background:#edf4ff}
+  .v5-app #agents .v3-layout{gap:12px}
+
+  /* Foco acessível em elementos operacionais. */
+  .v5-app #nav button:focus-visible,
+  .v5-app #distribution button:focus-visible,
+  .v5-app #distribution input:focus-visible,
+  .v5-app #distribution select:focus-visible,
+  .v5-app #priorities :is(button,input,select):focus-visible,
+  .v5-app #agents :is(button,input,select):focus-visible{
+    outline:3px solid #f8ad30!important;outline-offset:2px
+  }
+}
+@media screen and (max-width:1050px){
+  .v5-app #distribution .dist-filter-group{padding:9px}
+  .v5-app #distribution .dist-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .v5-app #priorities .v3-controls input,
+  .v5-app #priorities .v3-controls select,
+  .v5-app #agents .v3-controls input,
+  .v5-app #agents .v3-controls select{max-width:100%;min-width:0}
+}
+@media screen and (max-width:760px){
+  .v5-app #distribution .dist-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .v5-app #distribution .dist-panel{padding:12px!important}
+  .v5-app #distribution .dist-tabbar{overflow-x:auto;flex-wrap:nowrap}
+  .v5-app #distribution .dist-tab{flex:0 0 auto}
+  .v5-app #distribution .v110-entry{align-items:flex-start;flex-direction:column;gap:10px}
+  .v5-app #distribution .v110-entry-buttons{width:100%}
+  .v5-app #priorities .v3-controls,
+  .v5-app #agents .v3-controls{padding:9px}
+  .v5-app #priorities .v3-grid,
+  .v5-app #agents .v3-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media screen and (max-width:460px){
+  .v5-app #distribution .dist-kpi{min-height:84px;padding:11px!important}
+  .v5-app #distribution .dist-kpi strong{font-size:22px}
+  .v5-app #distribution .dist-kpi span{font-size:10px!important}
+  .v5-app #priorities .v3-controls label,
+  .v5-app #agents .v3-controls label{flex:1 1 100%}
+  .v5-app #priorities .v3-controls input,
+  .v5-app #priorities .v3-controls select,
+  .v5-app #agents .v3-controls input,
+  .v5-app #agents .v3-controls select{width:100%}
+}
+@media (prefers-reduced-motion:reduce){
+  .v5-app #nav .v20-nav-entry,.v5-app #nav .v20-nav-group-title,
+  .v5-app #distribution .dist-btn{transition:none!important}
+}
