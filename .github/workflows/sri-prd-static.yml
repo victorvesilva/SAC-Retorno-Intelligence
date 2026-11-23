@@ -20,6 +20,17 @@ jobs:
           node tests/test_p1_pdf_reports.mjs
           node tests/test_p2_retention.mjs
           node tests/test_homologacao_integrada.mjs
+      - name: Verificar layouts integrados de todos os modulos em dados sinteticos
+        env:
+          SRI_CAPTURE_INTEGRATED_SCREENSHOT: '1'
+        run: node tests/test_visual_integrated_layout.mjs
+      - name: Anexar capturas de revisao visual integrada
+        uses: actions/upload-artifact@v4
+        with:
+          name: revisao-visual-integrada-dados-sinteticos
+          path: .tmp/visual-integrada/*.png
+          if-no-files-found: error
+          retention-days: 7
       - name: Validar layout do login e cadastro no Chromium
         env:
           SRI_CAPTURE_LOGIN_SCREENSHOT: '1'
