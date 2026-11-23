@@ -67,6 +67,21 @@ assert.equal(visualV3Css.split('{').length,visualV3Css.split('}').length,'Blocos
 assert.ok(!visualV3Css.includes('#v20-login')&&!visualV3Css.includes('.sri-login-'),'A etapa 3 não pode alterar a autenticação');
 assert.ok(!visualV3Css.includes('.v55-pdf-source')&&!visualV3Css.includes('.v51-pdf-page'),'A etapa 3 não pode alterar o conteúdo impresso de PDFs');
 
+const visualV4Css=fs.readFileSync(new URL('../assets/refinamento-bases-qualidade-etapa4.css',import.meta.url),'utf8');
+const styleV4='refinamento-bases-qualidade-etapa4.css?v=1.0.0';
+assert.ok(html.includes('/assets/'+styleV4),'CSS visual de Base e Qualidade deve estar carregado');
+assert.ok(html.indexOf(visualLinks[2])<html.indexOf(styleV4),'CSS etapa 4 deve carregar após a etapa 3');
+for(const id of ['import','details','file-sac','file-ativo','process-btn','progress-box','v57-last-import','v195-open','v42-vault','v42-backup-all','v42-restore-all','v42-forget-current','v46-pane-records','v46-pane-quality','v46-pane-reconcile','search-record','details-body','v57-audit-body','v3-advanced-checks','v195-file','v195-import','v195-duplicate-body']){
+  assert.ok(html.includes('id="'+id+'"'),'Elemento de dados/importação ausente: '+id);
+}
+for(const target of ['#import .source-unified','#import .source-upload .dropzone','#import #process-btn','#import .v42-vault','#details .v46-subtab','#details .data-table','#details #v46-pane-reconcile .v195-header']){
+  assert.ok(visualV4Css.includes(target),'Refinamento visual de dados não encontrado: '+target);
+}
+assert.equal(visualV4Css.split('{').length,visualV4Css.split('}').length,'Blocos CSS da etapa 4 devem estar balanceados');
+assert.ok(!visualV4Css.includes('#v20-login')&&!visualV4Css.includes('.sri-login-'),'Estilos de Base e Qualidade não devem modificar login');
+assert.ok(!visualV4Css.includes('.v55-pdf-source')&&!visualV4Css.includes('.v51-pdf-page'),'Estilos de Base e Qualidade não devem modificar PDFs');
+
+
 
 
 assert.match(html,/src="\/assets\/foto-atendimento-hd\.webp"/);
