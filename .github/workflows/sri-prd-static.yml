@@ -21,6 +21,7 @@ jobs:
           node --check assets/sri-connection-status.js
           node tests/test_connection_status.mjs
           node tests/test_auto_publish.mjs
+          node tests/test_auto_import_context.mjs
           node tests/test_operational_automation_20h.mjs
           node tests/test_prd_reset.mjs
           node tests/test_import_timestamp.mjs
