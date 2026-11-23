@@ -7190,7 +7190,23 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 })();
 
 </script>
-<style>body.sri33-operator-cloud #v20-mine-body{display:none!important} #sri33-mine [data-state="error"],#sri33-links [data-state="error"]{color:#b42318} #sri33-mine [data-state="success"],#sri33-links [data-state="success"]{color:#16703e} #sri33-links [data-state="warning"]{color:#80531a} #sri33-mine .v20-panel{max-width:100%}</style>
+<style>body.sri33-operator-cloud #v20-mine-body{display:none!important} #sri33-mine [data-state="error"],#sri33-links [data-state="error"]{color:#b42318} #sri33-mine [data-state="success"],#sri33-links [data-state="success"]{color:#16703e} #sri33-links [data-state="warning"]{color:#80531a} #sri33-mine .v20-panel{max-width:100%}
+#sri33-treatment[hidden]{display:none!important}
+#sri33-treatment:not([hidden]){position:fixed!important;inset:0!important;z-index:3300!important;display:flex!important;justify-content:center;align-items:center;padding:16px;background:rgba(7,26,58,.68);backdrop-filter:blur(3px)}
+#sri33-treatment .sri33-dialog{width:min(590px,100%);max-height:min(92dvh,850px);overflow:auto;background:#fff;border:1px solid #cfddee;border-radius:16px;box-shadow:0 28px 80px rgba(7,24,52,.32);padding:25px;color:#123c70}
+#sri33-treatment .sri33-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border-bottom:1px solid #e1eaf5;padding-bottom:12px;margin-bottom:18px}
+#sri33-treatment .sri33-head h3{font-size:20px;margin:3px 0 0;color:#103c86}
+#sri33-treatment .sri33-head small{color:#637a98}
+#sri33-treatment .sri33-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;flex-wrap:wrap}
+#sri33-treatment .sri33-actions button{min-height:40px}
+#sri33-treatment .v20-field{display:block;margin:12px 0}
+#sri33-treatment select,#sri33-treatment textarea{width:100%;max-width:100%;box-sizing:border-box}
+#sri33-treatment textarea{min-height:104px;resize:vertical}
+#sri33-treatment-status[data-state="error"]{color:#b42318}
+#sri33-treatment-status{min-height:20px;font-size:12px}
+body.sri33-modal-open{overflow:hidden}
+@media(max-width:640px){#sri33-treatment{padding:8px!important}#sri33-treatment .sri33-dialog{padding:18px;border-radius:12px;max-height:96dvh}#sri33-treatment .sri33-actions button{flex:1}}
+</style>
 <script id="sri-operator-cloud-stage33">
 /* SAC Retorno Intelligence 2.0 — Etapa 3.3: carteiras por login e tratativas (sem dados brutos). */
 (function () {
@@ -7198,6 +7214,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   const $ = id => document.getElementById(id);
   const h = v => String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const label = a => ({pending:'Pendente',in_progress:'Em tratamento',awaiting:'Aguardando retorno',completed_in_tool:'Tratativa concluída na ferramenta',note:'Anotação'}[a] || a || '—');
+  const TREATMENT_STATUSES=['E-MAIL','LIGAÇÃO','ASCSAC','RECUSOU','ACEITOU','ASSOCIADO','OUTROS','FILIAL','DÚVIDA','OUVIDORIA','PENDENTE','MÍDIAS NE','CARTA AR'];
   const normalize = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toUpperCase();
   let logged = null, taskRows=[], currentTask=null, inProgress=false;
   const stateMsg = (id,msg,kind='') => {const el=$(id);if(el){el.textContent=msg;el.dataset.state=kind;}if(kind==='error'||(kind==='success'&&/salv|registr|atualiz|vinculad|conclu|publicad|fechad/i.test(msg)))window.sriToast?.(msg,kind);};
@@ -7256,7 +7273,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(!team)throw Error('Selecione uma equipe para acompanhar.');
     const countQuery=client.from('daily_operator_tasks').select('id',{head:true,count:'exact'}).eq('team_id',team).eq('active',true);
     const dataQuery=client.from('daily_operator_tasks')
-       .select('id,protocol_number,operator_user_id,work_status,criticality,due_situation,updated_at')
+       .select('id,protocol_number,operator_user_id,work_status,treatment_status,criticality,due_situation,updated_at')
        .eq('team_id',team).eq('active',true).order('updated_at',{ascending:false}).limit(100);
     const [tot,rows]=await Promise.all([countQuery,dataQuery]);
     if(tot.error)throw Error('Total da carteira: '+tot.error.message);
@@ -7264,7 +7281,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const tasks=rows.data||[];
     const statuses={};for(const t of tasks)statuses[t.work_status]=(statuses[t.work_status]||0)+1;
     stateMsg('sri33-progress-status',`${tot.count||0} protocolo(s) distribuídos na equipe. Exibindo as 100 atualizações mais recentes.`,'success');
-    $('sri33-progress-table').innerHTML=tasks.length?`<table class="v20-table" style="min-width:650px;width:100%"><thead><tr><th>Protocolo</th><th>Situação</th><th>Criticidade</th><th>Última atualização</th></tr></thead><tbody>${tasks.map(t=>`<tr><td>${h(t.protocol_number)}</td><td>${h(label(t.work_status))}</td><td>${h(t.criticality||'—')}</td><td>${h(new Date(t.updated_at).toLocaleString('pt-BR'))}</td></tr>`).join('')}</tbody></table>`:'<p>Nenhuma tarefa publicada nesta equipe. Confirme a equipe e publique a distribuição; somente carteiras legadas podem precisar de conciliação.</p>';
+    $('sri33-progress-table').innerHTML=tasks.length?`<table class="v20-table" style="min-width:650px;width:100%"><thead><tr><th>Protocolo</th><th>Situação</th><th>Criticidade</th><th>Última atualização</th></tr></thead><tbody>${tasks.map(t=>`<tr><td>${h(t.protocol_number)}</td><td>${h(t.treatment_status||'SEM STATUS')}</td><td>${h(t.criticality||'—')}</td><td>${h(new Date(t.updated_at).toLocaleString('pt-BR'))}</td></tr>`).join('')}</tbody></table>`:'<p>Nenhuma tarefa publicada nesta equipe. Confirme a equipe e publique a distribuição; somente carteiras legadas podem precisar de conciliação.</p>';
   }
   async function safeLink(fn) {try {await fn();}catch(e) {stateMsg('sri33-link-status',e.message||String(e),'error');}}
   async function refreshLinks() {
@@ -7333,35 +7350,61 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
        <div id="sri33-task-table" style="overflow-x:auto"></div>
        <h3 style="margin-top:18px">Minhas Prioridades</h3><div id="sri33-priority"></div>
        <h3 style="margin-top:18px">Meu Histórico</h3><div id="sri33-history"></div>
-       <div id="sri33-treatment" hidden style="margin-top:16px;padding:14px;border:1px solid #d6e1ef;border-radius:10px">
-         <h4 id="sri33-treatment-title">Registrar tratativa</h4>
-         <label class="v20-field">Ação<select id="sri33-treatment-kind">
-           <option value="in_progress">Iniciar tratamento</option><option value="awaiting">Aguardando retorno</option>
-           <option value="note">Adicionar anotação</option><option value="completed_in_tool">Concluir tratativa interna (não encerra no SIGO)</option>
-         </select></label>
-         <label class="v20-field">Descrição da tratativa<textarea id="sri33-treatment-notes" rows="3" maxlength="1500" style="width:100%;max-width:720px" placeholder="Registre objetivamente o que foi feito e a próxima ação"></textarea></label>
-         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="v20-button" type="button" id="sri33-treatment-save">Salvar tratativa</button><button class="v20-button secondary" type="button" id="sri33-treatment-cancel">Cancelar</button></div>
-         <p id="sri33-treatment-status" role="status" aria-live="polite"></p>
+       <div id="sri33-treatment" hidden role="presentation">
+         <div class="sri33-dialog" role="dialog" aria-modal="true" aria-labelledby="sri33-treatment-title" aria-describedby="sri33-treatment-owner" tabindex="-1">
+           <div class="sri33-head"><div><small>SAC RETORNO INTELLIGENCE · MINHA CARTEIRA</small><h3 id="sri33-treatment-title">Registrar tratativa</h3><p id="sri33-treatment-owner" class="v20-muted"></p></div><button type="button" class="v20-button secondary" id="sri33-treatment-close" aria-label="Fechar janela de tratativa">✕</button></div>
+           <label class="v20-field" for="sri33-treatment-kind">Status da tratativa * <select id="sri33-treatment-kind" required>
+             <option value="">Selecione um status...</option>
+             <option>E-MAIL</option><option>LIGAÇÃO</option><option>ASCSAC</option><option>RECUSOU</option>
+             <option>ACEITOU</option><option>ASSOCIADO</option><option>OUTROS</option><option>FILIAL</option>
+             <option>DÚVIDA</option><option>OUVIDORIA</option><option>PENDENTE</option><option>MÍDIAS NE</option><option>CARTA AR</option>
+           </select></label>
+           <label class="v20-field" for="sri33-treatment-notes">Justificativa / Observação (opcional)
+             <textarea id="sri33-treatment-notes" rows="3" maxlength="1500" placeholder="Descreva a tratativa, se desejar."></textarea>
+           </label>
+           <p id="sri33-treatment-status" role="status" aria-live="polite"></p>
+           <div class="sri33-actions"><button class="v20-button secondary" type="button" id="sri33-treatment-cancel">Cancelar</button><button class="v20-button" type="button" id="sri33-treatment-save" disabled>Salvar tratativa</button></div>
+         </div>
        </div>
       </section>`);
+    document.body.appendChild($('sri33-treatment'));
     $('sri33-mine-refresh').addEventListener('click',()=>safeMine(loadTasks));
-    $('sri33-treatment-cancel').addEventListener('click',()=>{$('sri33-treatment').hidden=true;currentTask=null});
+    let modalOpener=null;
+    function closeTreatment(force=false){
+      if(inProgress&&!force)return;
+      $('sri33-treatment').hidden=true;document.body.classList.remove('sri33-modal-open');
+      $('sri33-treatment-status').textContent='';currentTask=null;
+      if(modalOpener?.isConnected)modalOpener.focus();modalOpener=null;
+    }
+    function openTreatment(row,button){
+      if(!row||inProgress)return;currentTask=row;modalOpener=button;
+      $('sri33-treatment-title').textContent='Registrar tratativa · '+row.protocol_number;
+      $('sri33-treatment-owner').textContent='Protocolo '+row.protocol_number+' · Operador: '+(logged?.profile?.full_name||'Conta autenticada');
+      $('sri33-treatment-kind').value='';$('sri33-treatment-notes').value='';
+      $('sri33-treatment-status').textContent='';$('sri33-treatment-status').dataset.state='';
+      $('sri33-treatment-save').disabled=true;
+      $('sri33-treatment').hidden=false;document.body.classList.add('sri33-modal-open');$('sri33-treatment-kind').focus();
+    }
+    $('sri33-treatment-kind').addEventListener('change',()=>{$('sri33-treatment-save').disabled=!TREATMENT_STATUSES.includes($('sri33-treatment-kind').value)});
+    $('sri33-treatment-close').addEventListener('click',()=>closeTreatment());
+    $('sri33-treatment-cancel').addEventListener('click',()=>closeTreatment());
+    $('sri33-treatment').addEventListener('click',e=>{if(e.target===$('sri33-treatment'))closeTreatment()});
+    $('sri33-treatment').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();closeTreatment()}});
     $('sri33-treatment-save').addEventListener('click',()=>safeMine(saveTreatment));
     $('sri33-task-table').addEventListener('click',e=>{
       const btn=e.target.closest('[data-sri33-task]');if(!btn)return;
       const row=taskRows.find(t=>t.id===btn.dataset.sri33Task);if(!row)return;
-      currentTask=row;$('sri33-treatment-title').textContent='Registrar tratativa — '+row.protocol_number;
-      $('sri33-treatment-notes').value='';$('sri33-treatment-status').textContent='';$('sri33-treatment').hidden=false;
+      openTreatment(row,btn);
     });
   }
-  async function safeMine(fn){if(inProgress)return;inProgress=true;try{await fn()}catch(e){stateMsg('sri33-mine-status',e.message||String(e),'error')}finally{inProgress=false}}
+  async function safeMine(fn){if(inProgress)return;inProgress=true;const save=$('sri33-treatment-save');if(save&&!$('sri33-treatment').hidden)save.disabled=true;try{await fn()}catch(e){const m=e.message||String(e);stateMsg('sri33-mine-status',m,'error');if(!$('sri33-treatment').hidden){$('sri33-treatment-status').textContent=m;$('sri33-treatment-status').dataset.state='error'}}finally{inProgress=false;if(save&&!$('sri33-treatment').hidden)save.disabled=!TREATMENT_STATUSES.includes($('sri33-treatment-kind').value)}}
   async function loadTasks(){
     const {client,profile,user}=await session();
     if(profile.role!=='operator')return;
     const rows=[];let from=0;
     for(let round=0;round<20;round++){
       const {data,error}=await client.from('daily_operator_tasks')
-        .select('id,protocol_number,criticality,due_situation,sla_band,channel,source_status,work_status,operational_day,shift_label,updated_at')
+        .select('id,protocol_number,criticality,due_situation,sla_band,channel,source_status,work_status,treatment_status,operational_day,shift_label,updated_at')
         .eq('operator_user_id',user.id).eq('active',true)
         .order('operational_day',{ascending:false}).order('updated_at',{ascending:false})
         .range(from,from+199);
@@ -7371,7 +7414,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     taskRows=rows;
     const rank=r=>{return /BACKLOG/i.test(r.due_situation||'')?0:/VENCE HOJE|VENCENDO HOJE/i.test(r.due_situation||'')?1:/D6/i.test(r.sla_band||'')?2:3};
     taskRows.sort((a,b)=>rank(a)-rank(b));
-    $('sri33-task-table').innerHTML=rows.length?`<table class="v20-table" style="min-width:670px;width:100%"><thead><tr><th>Protocolo</th><th>Prioridade</th><th>Prazo</th><th>Situação</th><th>Ação</th></tr></thead><tbody>${taskRows.map(r=>`<tr><td>${h(r.protocol_number)}</td><td>${h(r.criticality||'Não informada')}</td><td>${h(r.due_situation||r.sla_band||'—')}</td><td>${h(label(r.work_status))}</td><td><button class="v20-button secondary" type="button" data-sri33-task="${h(r.id)}">Tratar</button></td></tr>`).join('')}</tbody></table>`:'<p>Sua carteira ainda não possui protocolos atribuídos. Solicite à supervisão a vinculação de sua conta e a publicação da distribuição.</p>';
+    $('sri33-task-table').innerHTML=rows.length?`<table class="v20-table" style="min-width:670px;width:100%"><thead><tr><th>Protocolo</th><th>Prioridade</th><th>Prazo</th><th>Status da tratativa</th><th>Ação</th></tr></thead><tbody>${taskRows.map(r=>`<tr><td>${h(r.protocol_number)}</td><td>${h(r.criticality||'Não informada')}</td><td>${h(r.due_situation||r.sla_band||'—')}</td><td>${h(r.treatment_status||'SEM STATUS')}</td><td><button class="v20-button secondary" type="button" data-sri33-task="${h(r.id)}">Tratar</button></td></tr>`).join('')}</tbody></table>`:'<p>Sua carteira ainda não possui protocolos atribuídos. Solicite à supervisão a vinculação de sua conta e a publicação da distribuição.</p>';
     const priority=taskRows.filter(r=>rank(r)<3);
     $('sri33-priority').innerHTML=priority.length?`<p>${priority.length} protocolo(s) com prazo prioritário:</p><p>${priority.slice(0,20).map(r=>h(r.protocol_number)+' ('+h(r.due_situation||r.sla_band||'')+')').join(' · ')}${priority.length>20?' · ...':''}</p>`:'<p>Nenhuma prioridade de prazo identificada na carteira publicada.</p>';
     stateMsg('sri33-mine-status',`${rows.length} protocolo(s) carregado(s) da sua conta Supabase.`,'success');
@@ -7383,18 +7426,22 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
        .order('created_at',{ascending:false}).limit(50);
     if(error)throw Error('Histórico: '+error.message);
     const map=new Map(taskRows.map(r=>[r.id,r.protocol_number]));
-    $('sri33-history').innerHTML=(data||[]).length?`<div style="display:grid;gap:8px">${data.map(t=>`<div style="padding:10px;border:1px solid #dde4ef;border-radius:8px"><strong>${h(label(t.action))}</strong> · ${h(map.get(t.task_id)||'Protocolo anterior')} <small>${h(new Date(t.created_at).toLocaleString('pt-BR'))}</small><div>${h(t.notes)}</div></div>`).join('')}</div>`:'<p>Você ainda não registrou nenhuma tratativa.</p>';
+    $('sri33-history').innerHTML=(data||[]).length?`<div style="display:grid;gap:8px">${data.map(t=>`<div style="padding:10px;border:1px solid #dde4ef;border-radius:8px"><strong>${h(label(t.action))}</strong> · ${h(map.get(t.task_id)||'Protocolo anterior')} <small>${h(new Date(t.created_at).toLocaleString('pt-BR'))}</small><div>${h(t.notes||'Justificativa não informada')}</div></div>`).join('')}</div>`:'<p>Você ainda não registrou nenhuma tratativa.</p>';
   }
   async function saveTreatment(){
-    if(!currentTask)throw Error('Selecione um protocolo.');
+    if(!currentTask)throw Error('Selecione um protocolo da sua carteira.');
     const notes=$('sri33-treatment-notes').value.trim();
-    const action=$('sri33-treatment-kind').value;
-    if(notes.length<3)throw Error('Descreva a tratativa com pelo menos 3 caracteres.');
-    const {client}=await session();
-    const {error}=await client.rpc('record_daily_operator_treatment',{p_task:currentTask.id,p_action:action,p_notes:notes});
-    if(error)throw Error('Tratativa: '+error.message);
-    $('sri33-treatment').hidden=true;currentTask=null;
-    await loadTasks();stateMsg('sri33-mine-status','Tratativa registrada no Supabase, sem finalizar o protocolo no SIGO.','success');
+    const status=$('sri33-treatment-kind').value;
+    if(!TREATMENT_STATUSES.includes(status))throw Error('Selecione um dos 13 status válidos.');
+    if(notes.length>1500)throw Error('A justificativa deve ter no máximo 1.500 caracteres.');
+    const {client,profile}=await session();
+    if(profile.role!=='operator')throw Error('Registro disponível somente para operadores.');
+    const task=currentTask;
+    if(!taskRows.some(r=>r.id===task.id))throw Error('Esta demanda não consta mais na sua carteira.');
+    const {error}=await client.rpc('record_daily_operator_treatment',{p_task:task.id,p_action:status,p_notes:notes});
+    if(error)throw Error('Não foi possível gravar a tratativa: '+error.message);
+    closeTreatment(true);
+    await loadTasks();stateMsg('sri33-mine-status','Status '+status+' gravado no Supabase, com histórico e data/hora.','success');
   }
 
   // Ao publicar uma nova distribuição, o operador recebe sua carteira atualizada
