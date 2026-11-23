@@ -50,7 +50,7 @@ VALUES
 
 SET LOCAL ROLE authenticated;
 DO $hml$
-DECLARE r jsonb; n int; tid uuid; denied text; cid uuid; revision bigint;
+DECLARE r jsonb; n int; tid uuid; denied text; cid uuid;
 BEGIN
  PERFORM set_config('request.jwt.claim.sub',current_setting('hml.manager'),true);
  SELECT public.publish_daily_operator_tasks(current_setting('hml.snap_a')::uuid,1,'{}'::jsonb) INTO r;
