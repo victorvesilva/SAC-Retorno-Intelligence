@@ -3610,13 +3610,12 @@ const sriBootRecovery=(()=>{
   const message=document.getElementById('sri-boot-message');
   const help=document.getElementById('sri-boot-help');
   const actions=document.getElementById('sri-boot-actions');
-  let loading=false,watchdog=null,lastOverflow='',lastFocus=null;
+  let loading=false,localPending=false,cloudPending=false,recoveryFailed=false;
+  let watchdog=null,lastOverflow='',lastFocus=null;
   function open(){
     if(!dialog.hidden)return;
     lastFocus=document.activeElement;lastOverflow=document.body.style.overflow;
     dialog.hidden=false;dialog.dataset.state='loading';actions.hidden=true;
-    message.textContent='Recuperando as informações e atualizando os dados operacionais.';
-    help.textContent='A navegação será liberada após concluir a recuperação.';
     if(app)app.inert=true;
     document.body.style.overflow='hidden';
     dialog.focus();
@@ -3624,34 +3623,58 @@ const sriBootRecovery=(()=>{
   function close(){
     if(watchdog){clearTimeout(watchdog);watchdog=null}
     dialog.hidden=true;actions.hidden=true;
+    recoveryFailed=false;
     if(app)app.inert=false;
     document.body.style.overflow=lastOverflow;
     if(lastFocus&&lastFocus.isConnected&&typeof lastFocus.focus==='function')lastFocus.focus({preventScroll:true});
   }
+  function keepOpen(){
+    if(!localPending&&!cloudPending&&!recoveryFailed)close();
+    else if(cloudPending&&!recoveryFailed&&!localPending){
+      message.textContent='Sincronizando o resultado e a distribuição da equipe...';
+      help.textContent='Conferindo as informações após o login, antes de liberar a navegação.';
+    }
+  }
   function fail(){
     if(watchdog){clearTimeout(watchdog);watchdog=null}
-    dialog.dataset.state='error';
+    recoveryFailed=true;dialog.dataset.state='error';
     message.textContent='Não foi possível recuperar a última base automaticamente.';
     help.textContent='Você pode tentar novamente ou continuar e importar SAC + ATIVO / restaurar um backup manualmente.';
     actions.hidden=false;
     document.getElementById('sri-boot-retry')?.focus();
   }
+  function beginLocal(){localPending=true;open()}
+  function beginCloud(){
+    cloudPending=true;open();
+    if(!localPending){
+      message.textContent='Sincronizando o resultado e a distribuição da equipe...';
+      help.textContent='Conferindo as informações após o login, antes de liberar a navegação.';
+    }
+  }
+  function endCloud(){cloudPending=false;keepOpen()}
   async function run(){
     if(loading)return;
-    loading=true;open();dialog.dataset.state='loading';actions.hidden=true;
+    loading=true;localPending=true;recoveryFailed=false;open();
+    dialog.dataset.state='loading';actions.hidden=true;
     message.textContent='Recuperando as informações e atualizando os dados operacionais.';
     help.textContent='A navegação será liberada após concluir a recuperação.';
-    watchdog=setTimeout(()=>{if(loading)help.textContent='O processamento está demorando mais que o habitual. A base ainda está sendo conferida.'},25000);
-    try{const result=await v42RestoreSavedOnOpen();if(result===false)fail();else close()}
-    catch(err){console.warn('[Inicialização] Falha durante a recuperação',err);fail()}
-    finally{loading=false}
+    if(watchdog)clearTimeout(watchdog);
+    watchdog=setTimeout(()=>{if(localPending||cloudPending)help.textContent='O processamento está demorando mais que o habitual. A base ainda está sendo conferida.'},25000);
+    try{
+      const result=await v42RestoreSavedOnOpen();
+      if(result===false)fail();
+    }catch(err){
+      console.warn('[Inicialização] Falha durante a recuperação',err);fail();
+    }finally{
+      localPending=false;loading=false;keepOpen();
+    }
   }
   document.getElementById('sri-boot-retry').addEventListener('click',()=>{void run()});
   document.getElementById('sri-boot-continue').addEventListener('click',close);
-  return {open,run,close};
+  return {beginLocal,beginCloud,endCloud,run,close};
 })();
 const sriBootHasLocalCopy=!!v42SafeGet(V42_CURRENT_KEY);
-if(sriBootHasLocalCopy)sriBootRecovery.open();
+if(sriBootHasLocalCopy)sriBootRecovery.beginLocal();
 requestAnimationFrame(()=>setTimeout(()=>{if(sriBootHasLocalCopy)void sriBootRecovery.run();else void v42RestoreSavedOnOpen()},0));
 
 /* SAC Retorno Intelligence 4.6 · Indicadores gráficos de Gestão Operacional */
@@ -5714,7 +5737,19 @@ async function sriAuthorizeUser(authUser){
    team:'Não vinculada',active:true,importAuthorized:false,supervisorId:null,rosterId:null};
  $('v20-login').hidden=true;document.body.classList.remove('v20-not-logged');document.body.classList.add('v20-active');
  visibleNavigation();switchTab(uiRole==='operator'?'v20-mine':'overview');
- const warn=document.getElementById('sri-stage2-warning');if(warn)warn.hidden=false;queueMicrotask(()=>{window.sriSnapshotAfterAuth?.();window.sriOperatorAfterAuth?.();window.sriUnifiedAfterAuth?.();window.sriClosureAfterAuth?.();});
+ const warn=document.getElementById('sri-stage2-warning');if(warn)warn.hidden=false;
+ sriBootRecovery.beginCloud();
+ queueMicrotask(async()=>{
+   try{
+     await window.sriSnapshotAfterAuth?.();
+     await Promise.allSettled([
+       Promise.resolve().then(()=>window.sriOperatorAfterAuth?.()),
+       Promise.resolve().then(()=>window.sriUnifiedAfterAuth?.()),
+       Promise.resolve().then(()=>window.sriClosureAfterAuth?.())
+     ]);
+   }catch(err){console.warn('[Inicialização] Falha de sincronização da equipe',err);}
+   finally{sriBootRecovery.endCloud();}
+ });
 }
 async function doLogin(email,password){
  const client=await sriClient();
@@ -6805,7 +6840,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   window.sriQueueDistributionSave=queueDistributionSave;
   window.sriSnapshotAfterAuth=()=>{
     if(!ctx.initialized)makePanel();
-    safe(async()=>{const client=await window.sriGetSupabaseClient();const {data}=await client.auth.getUser();
+    return safe(async()=>{const client=await window.sriGetSupabaseClient();const {data}=await client.auth.getUser();
       if(!data?.user)return;const {data:p}=await client.from('profiles').select('role').eq('id',data.user.id).single();
       if(!managerRoles.has(p?.role))return;
       await loadMetadata();await loadLast().catch(e=>{if(/Nenhum resultado/.test(String(e)))status('Nenhum resultado salvo ainda. Processe SAC + ATIVO e clique em Salvar resultado do dia.');else throw e;});
