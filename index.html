@@ -2448,7 +2448,7 @@ v2SetupDrillChart('chart-priority','.legend-item','fila',el=>el.querySelector('s
 v2SetupDrillChart('chart-filial','.bar-row','filial',el=>el.querySelector('.bar-name')?.textContent.trim());
 // O filtro de operador é criado após a importação; recalcular e importar novos arquivos não modifica o histórico salvo.
 const v2PostLoad=postLoad;
-postLoad=function(){ui.drill=null;ui.detailFilters={situacao:[],sla:[],operador:[],age:[]};v2PostLoad();populate('detail-operador',[...new Set(ui.apured.filter(r=>['SAC RETORNO','WHATSSAC'].includes(r.where)).map(r=>r.agente).filter(Boolean))],'Todos');multiClear(['detail-situacao','detail-sla','detail-operador','detail-age']);v2Toast('Apuração concluída. Painel atualizado.')};
+postLoad=function(){ui.drill=null;ui.detailFilters={situacao:[],sla:[],operador:[],age:[]};v2PostLoad();populate('detail-operador',[...new Set(ui.apured.filter(r=>['SAC RETORNO','WHATSSAC'].includes(r.where)).map(r=>r.agente).filter(Boolean))],'Todos');multiClear(['detail-situacao','detail-sla','detail-operador','detail-age']);if(!v42Restoring)v2Toast('Apuração concluída. Painel atualizado.')};
 // Exportar linhas efetivamente filtradas pela tabela, não apenas pelos filtros globais.
 exportDetails=function(){if(!ui.live){v2Toast('Importe as bases para exportar.');return}const head=['Protocolo','Operadora','Filial','Área','Status','Responsável ATIVO','Envio','Dias no agente','Data limite','SLA','Situação','Canal','Fila','Priorização NIP','SLA Retorno'];csvDownload([head,...v2MatchingRows().map(r=>[r.id,r.bko,r.filial,r.area,r.statusDesc,r.agente,iso(r.envio),r.diasAgente??'',iso(r.limite),r.sla,r.situacao,r.where,r.fila,r.nip,r.slaRetorno])],'protocolos_filtrados_'+iso(ui.reference)+'.csv')};
 
@@ -3568,7 +3568,8 @@ document.getElementById('v42-backup-all').addEventListener('click',v42ExportFull
 document.getElementById('v42-restore-all').addEventListener('change',e=>v42ImportFull(e.target.files?.[0]));
 document.getElementById('v42-forget-current').addEventListener('click',()=>{if(!v42SafeGet(V42_CURRENT_KEY)){v2Toast('Não há cópia local persistida.');return}if(!confirm('Apagar somente a cópia recuperável da base atual? O painel aberto, o histórico e as atribuições serão mantidos.'))return;v42SafeDel(V42_CURRENT_KEY);v42SetStatus('Cópia removida',true,'A cópia local foi apagada. O painel atual continua aberto; faça backup completo para não perder os registros.');v2Toast('Cópia local removida.')});
 // A última base é recuperada apenas após todos os componentes terem sido inicializados.
-void v42RestoreSavedOnOpen();
+// Permite a primeira pintura da interface antes de restaurar a base local compactada.
+requestAnimationFrame(()=>setTimeout(()=>{void v42RestoreSavedOnOpen()},0));
 
 /* SAC Retorno Intelligence 4.6 · Indicadores gráficos de Gestão Operacional */
 const GO45_RISK_TYPES=[
