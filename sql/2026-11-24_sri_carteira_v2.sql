@@ -386,6 +386,8 @@ CREATE TABLE IF NOT EXISTS private.sri_status_reconciliation(
  base_name text, area_name text, previous_source text NOT NULL, current_source text NOT NULL,
  manual_status text NOT NULL, observed_at timestamptz NOT NULL DEFAULT now(),
  decision text, justification text, decided_by uuid, decided_at timestamptz,
+ event_kind text NOT NULL DEFAULT 'status_changed', extracted_at timestamptz,
+ review_response text, review_responded_at timestamptz,return_reason text,return_requested_by uuid,return_requested_at timestamptz,
  UNIQUE(task_id,previous_source,current_source,manual_status)
 );
 ALTER TABLE private.sri_status_reconciliation ENABLE ROW LEVEL SECURITY;
@@ -463,11 +465,14 @@ BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Sessão obrigatória';END IF;
  SELECT * INTO r FROM private.sri_status_reconciliation WHERE id=p_id FOR UPDATE;
  IF NOT FOUND OR NOT (private.is_manager() OR (r.team_id IS NOT NULL AND private.is_supervisor_of(r.team_id))) THEN RAISE EXCEPTION 'Conciliação indisponível';END IF;
- IF r.decision IS NOT NULL THEN RAISE EXCEPTION 'Conciliação já analisada';END IF;
+ IF r.decision IS NOT NULL AND NOT (r.decision='return' AND r.review_responded_at IS NOT NULL AND p_decision<>'return') THEN RAISE EXCEPTION 'Conciliação já analisada ou aguardando resposta';END IF;
  IF p_decision='return' AND NOT EXISTS(SELECT 1 FROM public.profiles p WHERE p.id=r.operator_id AND p.role='operator' AND p.operational_status IN ('Ativo','Promovido')) THEN RAISE EXCEPTION 'Operador indisponível; valide pela supervisão';END IF;
  IF p_decision IS NULL OR p_decision NOT IN ('base','manual','both','return') OR length(btrim(coalesce(p_justification,''))) NOT BETWEEN 1 AND 1500 THEN RAISE EXCEPTION 'Selecione a decisão e informe a justificativa';END IF;
- UPDATE private.sri_status_reconciliation SET decision=p_decision,justification=btrim(p_justification),decided_by=auth.uid(),decided_at=now() WHERE id=p_id;
- INSERT INTO public.audit_events(user_id,action,object_type,object_id,details) VALUES(auth.uid(),'STATUS_RECONCILIATION','daily_operator_task',r.task_id::text,jsonb_build_object('reconciliation_id',r.id,'decision',p_decision,'justification',p_justification,'previous_source',r.previous_source,'current_source',r.current_source,'manual_status',r.manual_status));
+ UPDATE private.sri_status_reconciliation SET decision=p_decision,justification=btrim(p_justification),decided_by=auth.uid(),decided_at=now(),
+ return_reason=CASE WHEN p_decision='return' THEN btrim(p_justification) ELSE return_reason END,
+ return_requested_by=CASE WHEN p_decision='return' THEN auth.uid() ELSE return_requested_by END,
+ return_requested_at=CASE WHEN p_decision='return' THEN now() ELSE return_requested_at END WHERE id=p_id;
+ INSERT INTO public.audit_events(user_id,action,object_type,object_id,details) VALUES(auth.uid(),'STATUS_RECONCILIATION','daily_operator_task',r.task_id::text,jsonb_build_object('reconciliation_id',r.id,'decision',p_decision,'justification',p_justification,'previous_source',r.previous_source,'current_source',r.current_source,'manual_status',r.manual_status,'previous_decision',r.decision,'review_response',r.review_response));
 END;
 $dec$;
 REVOKE ALL ON FUNCTION private.sri_list_reconciliation(date),private.sri_decide_reconciliation(bigint,text,text) FROM PUBLIC,anon;
@@ -478,7 +483,7 @@ REVOKE ALL ON FUNCTION public.sri_list_reconciliation(date),public.sri_decide_re
 GRANT EXECUTE ON FUNCTION public.sri_list_reconciliation(date),public.sri_decide_reconciliation(bigint,text,text) TO authenticated;
 
 -- Evidência mínima da comparação entre os dois arquivos completos.
-ALTER TABLE private.sri_status_reconciliation ADD COLUMN IF NOT EXISTS event_kind text NOT NULL DEFAULT 'status_changed', ADD COLUMN IF NOT EXISTS extracted_at timestamptz, ADD COLUMN IF NOT EXISTS review_response text, ADD COLUMN IF NOT EXISTS review_responded_at timestamptz;
+
 CREATE TABLE IF NOT EXISTS private.sri_presence_rounds(snapshot_id uuid PRIMARY KEY, operational_day date NOT NULL, shift_label text NOT NULL, extracted_at timestamptz NOT NULL, registered_by uuid NOT NULL, registered_at timestamptz NOT NULL DEFAULT now());
 ALTER TABLE private.sri_presence_rounds ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON private.sri_presence_rounds FROM PUBLIC,anon,authenticated;
@@ -554,5 +559,17 @@ GRANT EXECUTE ON FUNCTION private.sri_list_status_compatibility() TO authenticat
 CREATE OR REPLACE FUNCTION public.sri_list_status_compatibility() RETURNS SETOF jsonb LANGUAGE sql STABLE SECURITY INVOKER SET search_path='' AS $rules$ SELECT * FROM private.sri_list_status_compatibility(); $rules$;
 REVOKE ALL ON FUNCTION public.sri_list_status_compatibility() FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.sri_list_status_compatibility() TO authenticated;
+
+
+CREATE OR REPLACE FUNCTION private.sri_reconciliation_counts(p_day date) RETURNS jsonb
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $counts$
+ SELECT jsonb_build_object('pending',count(*) FILTER(WHERE decision IS NULL OR decision='return'),'waiting_operator',count(*) FILTER(WHERE decision='return' AND review_responded_at IS NULL),'awaiting_supervisor',count(*) FILTER(WHERE decision='return' AND review_responded_at IS NOT NULL),'resolved',count(*) FILTER(WHERE decision IN ('base','manual','both')))
+ FROM private.sri_status_reconciliation r WHERE r.operational_day=p_day AND auth.uid() IS NOT NULL AND (private.is_manager() OR (r.team_id IS NOT NULL AND private.is_supervisor_of(r.team_id)))
+$counts$;
+REVOKE ALL ON FUNCTION private.sri_reconciliation_counts(date) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION private.sri_reconciliation_counts(date) TO authenticated;
+CREATE OR REPLACE FUNCTION public.sri_reconciliation_counts(p_day date) RETURNS jsonb LANGUAGE sql STABLE SECURITY INVOKER SET search_path='' AS $c$ SELECT private.sri_reconciliation_counts(p_day); $c$;
+REVOKE ALL ON FUNCTION public.sri_reconciliation_counts(date) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.sri_reconciliation_counts(date) TO authenticated;
 
 COMMIT;
