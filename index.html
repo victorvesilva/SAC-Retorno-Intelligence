@@ -4422,7 +4422,8 @@ const V55_KINDS={completo:'Relatório completo',gestao:'Gestão Operacional',pri
 const V55_HIST_KINDS=new Set(['completo','gestao','inteligencia','historico']);
 const v55Elements={source:document.getElementById('v55-source'),day:document.getElementById('v55-day'),snapshot:document.getElementById('v55-snapshot'),format:document.getElementById('v55-format'),warning:document.getElementById('v55-history-warning'),meta:document.getElementById('v55-extraction-meta'),run:document.getElementById('v55-generate')};
 
-let v55CloudHistory=[],v55CloudError='',v55CloudPromise=null,v55CloudActor=null;
+let v55CloudHistory=[],v55CloudError='',v55CloudPromise=null,v55CloudActor=null,v55CloudEpoch=0;
+window.sriClearHistoricalSession=()=>{v55CloudEpoch++;v55CloudHistory=[];v55CloudError='';v55CloudActor=null;v55CloudPromise=null;v55RefreshDays();};
 function v55CloudSummary(s){
  const m=s.indicators||{},finite=k=>m[k]==null||m[k]===''?null:Number.isFinite(Number(m[k]))?Number(m[k]):null;
  const ret=finite('sac_retorno'),what=finite('whatssac');
@@ -4432,10 +4433,12 @@ function v55CloudSummary(s){
 function v55LoadCloudHistory(){
  if(v55CloudPromise)return v55CloudPromise;
  v55CloudPromise=(async()=>{
+ const epoch=v55CloudEpoch;
  try{
   if(typeof window.sriGetSupabaseClient!=='function')throw Error('Conexão indisponível');
   const client=await window.sriGetSupabaseClient();
   const {data:auth,error:authError}=await client.auth.getUser();
+  if(epoch!==v55CloudEpoch)return;
   if(authError||!auth?.user){v55CloudHistory=[];v55CloudActor=null;return;}
   if(v55CloudActor!==auth.user.id){v55CloudHistory=[];v55CloudActor=auth.user.id;}
   const {data:profile,error:profileError}=await client.from('profiles').select('role').eq('id',auth.user.id).single();
@@ -4443,10 +4446,11 @@ function v55LoadCloudHistory(){
   const {data,error}=await client.from('daily_result_snapshots').select('id,operational_day,shift_label,reference_serial,indicators,created_at,team_id')
    .is('team_id',null).order('created_at',{ascending:false}).limit(500);
   if(error)throw Error('Consulta histórica indisponível');
+  if(epoch!==v55CloudEpoch)return;
   v55CloudHistory=(data||[]).filter(x=>x?.id&&x?.operational_day&&x?.created_at).map(v55CloudSummary);
   v55CloudError=(data||[]).length===500?'Limite de 500 extrações carregadas; datas mais antigas exigem paginação.':'';
- }catch(e){v55CloudError='Histórico do Supabase indisponível. Verifique a conexão e o perfil.';v55CloudHistory=[];}
- finally{v55RefreshDays();}
+ }catch(e){if(epoch===v55CloudEpoch){v55CloudError='Histórico do Supabase indisponível. Verifique a conexão e o perfil.';v55CloudHistory=[];}}
+ finally{if(epoch===v55CloudEpoch)v55RefreshDays();}
  })().finally(()=>{v55CloudPromise=null;v55RefreshView()});
  return v55CloudPromise;
 }
@@ -4481,7 +4485,7 @@ function v55RefreshDays(){const list=v55AvailableHistory(),days=[...new Set(list
 }
 function v55RefreshSnapshots(){const chosen=v55Elements.day.value,prior=v55Elements.snapshot.value;
  const matches=v55AvailableHistory().filter(x=>v55HistoryDay(x.h)===chosen).reverse();
- v55Elements.snapshot.innerHTML=matches.map(x=>`<option value="${x.index}">${safe(new Date(x.h.timestamp).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}))} · ${v55Value(x.h.unique??x.h.total)} protocolos</option>`).join('');
+ v55Elements.snapshot.innerHTML=matches.map(x=>`<option value="${x.index}">${safe(new Date(x.h.timestamp).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}))} · ${v55Value(x.h.unique??x.h.total)} protocolos · ${x.h.cloud?'Supabase / '+safe(x.h.shiftLabel):'Navegador'}</option>`).join('');
  if(prior&&matches.some(x=>String(x.index)===prior))v55Elements.snapshot.value=prior;
  v55RefreshView();
 }
@@ -4501,7 +4505,7 @@ function v55RefreshView(){const historic=v55Elements.source.value==='history',av
  document.getElementById('sri-p03-report-preview-body').hidden=true;
  v55Elements.warning.classList.toggle('is-warning',historic);
  v55Elements.warning.innerHTML=historic?
- (available?'<b>Histórico agregado:</b> esta rodada guarda indicadores, volumes por BKO e variações, mas não o detalhamento antigo de operadores, status ou auditoria. O relatório informará os limites disponíveis.':'<b>Nenhum histórico salvo.</b> Importe SAC + ATIVO para registrar as rodadas.'):
+ (snap?.cloud?'<b>Histórico recuperado do Supabase:</b> indicadores consolidados da data operacional e turno. Não há detalhes individuais nem confirmação de encerramento no SIGO.':'<b>Histórico agregado:</b> apenas os indicadores efetivamente preservados estão disponíveis.')+(v55CloudError?' '+safe(v55CloudError):''):
  '<b>Carteira atual:</b> PDFs individuais e completo com gráficos e informações disponíveis. Os filtros gerais aplicados à análise serão respeitados quando houver detalhamento da carteira.';
 }
 function v55GetRows(){const rows=v3LiveRows(),unique=[...new Map(rows.map(r=>[String(r.id),r])).values()];return {rows,unique};}
@@ -4519,9 +4523,9 @@ function v55Carteira(){const {unique}=v55GetRows();const assigned=unique.filter(
 function v55Returns(){const events=[...v53Events].sort((a,b)=>String(b.at).localeCompare(String(a.at)));const pending=events.filter(e=>!e.reviewed),verified=events.filter(e=>e.verified);const displayed=events.slice(0,9);
  return v55Page('Retornos da Filial','Monitoramento de mudanças após a tratativa FILIAL',`<div class="v51-kpis">${v51Kpi('Eventos monitorados',events.length)}${v51Kpi('Aguardando revisão',pending.length,'#FF7800')}${v51Kpi('Mudança confirmada',verified.length,'#24A18C')}${v51Kpi('Eventos revisados',events.length-pending.length)}</div><div class="v51-panel"><h3>Últimos eventos identificados</h3><table class="v55-matrix"><thead><tr><th>Protocolo</th><th>Detectado em</th><th>Responsável</th><th>Situação</th></tr></thead><tbody>${displayed.map(e=>`<tr><td>${safe(e.id)}</td><td>${safe(v55When(e.at))}</td><td>${safe(e.operator||'Não informado')}</td><td>${e.reviewed?'Revisado':'Pendente'}</td></tr>`).join('')||'<tr><td colspan="4">Nenhum retorno registrado.</td></tr>'}</tbody></table></div><div class="v51-insight">Regra operacional: tratativa anterior FILIAL + CD_STATUS 12 (descrição sistêmica AGENTE) = retorno sinalizado. A classificação original FILIAL é preservada. O quadro mostra o histórico de eventos local, não somente os protocolos da extração atual.</div>`);
 }
-function v55HistoryPage(day){const records=v55AvailableHistory().filter(x=>v55HistoryDay(x.h)===day).map(x=>x.h),latest=records.at(-1),previous=records.length>1?records.at(-2):null;const count=k=>records.reduce((sum,h)=>sum+Math.max(0,Number(h[k])||0),0);const fmtDay=day?new Date(day+'T12:00:00').toLocaleDateString('pt-BR'):'Não informada';
+function v55HistoryPage(day){const records=v55AvailableHistory().filter(x=>v55HistoryDay(x.h)===day).map(x=>x.h),latest=records.at(-1),previous=records.length>1?records.at(-2):null;const count=k=>records.some(h=>h[k]!=null&&Number.isFinite(Number(h[k])))?records.reduce((sum,h)=>sum+Math.max(0,Number(h[k])||0),0):null;const fmtDay=day?new Date(day+'T12:00:00').toLocaleDateString('pt-BR'):'Não informada';
  const rows=records.slice(-10).map((h,i)=>`<tr><td>${safe(new Date(h.timestamp).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}))}</td><td>${v55Value(h.unique??h.total)}</td><td>${v55Value(h.added)}</td><td>${v55Value(h.missing)}</td><td>${v55Value(h.changed)}</td><td>${v55Value(h.filialReturns)}</td></tr>`).join('');
- return v55Page('Histórico do Dia',`Importações SAC + ATIVO de ${fmtDay}`,`<div class="v51-kpis">${v51Kpi('Rodadas registradas',records.length)}${v51Kpi('Última carteira única',latest?.unique??latest?.total??0)}${v51Kpi('Novos nas rodadas',count('added'),'#24A18C')}${v51Kpi('Alterados nas rodadas',count('changed'),'#FF7800')}</div><div class="v51-two"><div class="v51-panel"><h3>Variação de linhas monitoradas</h3>${v51TrendSvg(records)}<p>As rodadas do dia são fotografias independentes da operação.</p></div><div class="v51-panel"><h3>Importações por horário</h3><table class="v55-matrix"><thead><tr><th>Hora</th><th>Únicos</th><th>Novos</th><th>Ausentes</th><th>Alterados</th><th>Ret. filial</th></tr></thead><tbody>${rows||'<tr><td colspan="6">Nenhuma rodada registrada.</td></tr>'}</tbody></table></div></div><div class="v51-insight">Os números por importação não devem ser somados como carteira única. Ausência no recorte não comprova conclusão; as listas históricas detalhadas são limitadas.</div>`);
+ const optionalKpi=(label,value,tone)=>'<div class="v51-kpi" style="--tone:'+tone+'"><small>'+safe(label)+'</small><b>'+v55Value(value)+'</b></div>';return v55Page('Histórico do Dia',`Importações SAC + ATIVO de ${fmtDay}`,`<div class="v51-kpis">${v51Kpi('Rodadas registradas',records.length)}${v51Kpi('Última carteira única',latest?.unique??latest?.total??0)}${optionalKpi('Novos nas rodadas',count('added'),'#24A18C')}${optionalKpi('Alterados nas rodadas',count('changed'),'#FF7800')}</div><div class="v51-two"><div class="v51-panel"><h3>Variação de linhas monitoradas</h3>${v51TrendSvg(records)}<p>As rodadas do dia são fotografias independentes da operação.</p></div><div class="v51-panel"><h3>Importações por horário</h3><table class="v55-matrix"><thead><tr><th>Hora</th><th>Únicos</th><th>Novos</th><th>Ausentes</th><th>Alterados</th><th>Ret. filial</th></tr></thead><tbody>${rows||'<tr><td colspan="6">Nenhuma rodada registrada.</td></tr>'}</tbody></table></div></div><div class="v51-insight">Os números por importação não devem ser somados como carteira única. Ausência no recorte não comprova conclusão; as listas históricas detalhadas são limitadas.</div>`);
 }
 function v55HistoricSummary(snapshot){const first=[['Linhas monitoradas',snapshot.total],['Protocolos únicos',snapshot.unique],['SAC Retorno',snapshot.ret],['WhatsSAC',snapshot.what]];const second=[['Vence hoje',snapshot.d7],['D6',snapshot.d6],['Backlog',snapshot.backlog],['Fila crítica',snapshot.crit]];
  const stat=([title,value],color)=>`<div class="v51-kpi" style="--tone:${color||'#0b45b7'}"><small>${safe(title)}</small><b>${v55Value(value)}</b></div>`;
@@ -5898,7 +5902,7 @@ function sriToggleSignup(value){sriRegisterMode=!!value;$('sri-signup-fields').h
  $('v20-login-error').textContent='';$('sri-auth-info').textContent='';
 }
 async function sriAuthorizeUser(authUser){
- window.sriPackResetOperator?.();window.sriCloudTreatmentReset?.();window.sriOperatorReviewReset?.();
+ window.sriClearHistoricalSession?.();window.sriPackResetOperator?.();window.sriCloudTreatmentReset?.();window.sriOperatorReviewReset?.();
  const client=await sriClient();
  const {data:result,error}=await client.from('profiles').select('id,full_name,role').eq('id',authUser.id).single();
  if(error||!result)throw Error('Seu perfil ainda não está disponível. Procure a gestão para verificar seu cadastro.');
@@ -5954,7 +5958,7 @@ async function sriRestoreSession(){
  }catch(e){console.warn('Autenticação não disponível:',e.message);$('v20-login-error').textContent='Não foi possível conectar ao sistema: '+(window.sriFriendly?.(sriAuthMessage(e),'error')||sriAuthMessage(e));}
 }
 async function logout(){try{const client=await sriClient();await client.auth.signOut()}catch(e){console.warn('Não foi possível encerrar sessão remota',e)}
- window.sriPackLogout?.();window.sriPackResetOperator?.();window.sriCloudTreatmentReset?.();window.sriOperatorReviewReset?.();document.body.classList.remove('sri33-operator-cloud');current=null;$('v20-email').value='';$('v20-pass').value='';$('v20-login').hidden=false;
+ window.sriClearHistoricalSession?.();window.sriPackLogout?.();window.sriPackResetOperator?.();window.sriCloudTreatmentReset?.();window.sriOperatorReviewReset?.();document.body.classList.remove('sri33-operator-cloud');current=null;$('v20-email').value='';$('v20-pass').value='';$('v20-login').hidden=false;
  document.body.classList.add('v20-not-logged');document.body.classList.remove('v20-active');
  closeModal();$('v20-login-error').textContent='';
 }
