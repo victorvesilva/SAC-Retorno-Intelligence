@@ -35,3 +35,26 @@ Análise de sintaxe: 8 scripts clássicos inline do index.html e assets/sri-paco
 - Relatórios especializados e metas, exportações XLSX/PDF específicas, gráficos e indicadores restantes.
 - Testes integrados, auditoria de segurança e desempenho.
 - As 120 MEL não estão integralmente concluídas. Não tratar esta branch como release pronta.
+
+## 24/11 — candidato para homologação funcional em produção
+O solicitante autorizou homologação de interface e jornada em produção. Isso não dispensa testes técnicos prévios de sintaxe, acesso, migrações, RLS e integridade de dados; não autoriza publicação parcial com falhas conhecidas.
+
+Novas implementações candidatas:
+- BUG-GO-001 (#37): Gestão Operacional com seleção de data e snapshot persistido, sem fallback para dados de hoje, e CSV da consulta. Limite: detalhes apenas de protocolos atribuídos no snapshot; não reconstruir extrações completas.
+- MEL-EXTRA-002 (#38): histórico do operador filtrado no servidor pela data real da tratativa, com paginação e fuso America/Sao_Paulo.
+- MEL-EXTRA-003 (#39): suporte a papel assistant, gestão de papéis e migração de permissões/RLS por equipe, pendente de testes comparativos.
+- MEL-EXTRA-004 (#40): notificações em cima por até 4s e navegação Voltar interna.
+- MEL-EXTRA-005 (#41): tabela dos 13 status e proteção de protocolo tratado; históricos legados precisam de conciliação manual.
+
+Sequência SQL após conferir dependências:
+1. sql/2026-11-24_sri_pacote03_historico_carteira.sql
+2. sql/2026-11-24_sri_pacote03_produtividade.sql
+3. sql/2026-11-24_sri_pacote03_protecao_incidentes.sql
+4. sql/2026-11-24_sri_criticos_persistencia_status.sql
+5. sql/2026-11-24_sri_p03_historico_datas.sql
+6. sql/2026-11-24_sri_p03_perfil_assistente.sql
+
+Portões pré-produção: backup verificável; revisar grants, RLS, SECURITY DEFINER e proteção contra reatribuição de carteiras; executar CI e testes sintéticos; preparar rollback; confirmar versão do commit antes de um único deploy e smoke test em produção.
+Os previews automáticos estão desativados para evitar consumo da cota.
+
+Limitação: não se comprovou ainda a conclusão das 120 MEL-071 a MEL-190; permanecer com bloqueio de liberação integral do Pacote 03 até auditoria do escopo.
