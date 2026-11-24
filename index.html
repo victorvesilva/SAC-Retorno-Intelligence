@@ -7472,7 +7472,7 @@ body.sri33-modal-open{overflow:hidden}
   }
   async function publishTasks(snapshotId,revision){
     const {client,profile}=await session();
-    if(!['manager','admin','supervisor'].includes(profile.role))throw Error('Publicação restrita à gestão/supervisão.');
+    if(!['manager','admin','supervisor','assistant'].includes(profile.role))throw Error('Publicação restrita à gestão/supervisão.');
     if(!snapshotId||!revision)throw Error('A distribuição precisa estar salva primeiro.');
     // Conta existente recebe protocolos diretamente. O banco resolve equipe apenas
     // se existir vínculo único e válido, sem segundo cadastro de operador.
@@ -7715,7 +7715,7 @@ body.sri33-modal-open{overflow:hidden}
       if(profile.role==='operator')await safeMine(loadTasks);
       if(profile.role==='operator'){startOperatorTaskRefresh();await checkOperatorTaskRefresh();}
       else if(['manager','admin'].includes(profile.role))await safeLink(refreshLinks);
-      if(['manager','admin','supervisor'].includes(profile.role)){
+      if(['manager','admin','supervisor','assistant'].includes(profile.role)){
         void window.sriCloudTreatmentInit?.();
         if($('sri-daily-team')?.value)await safeProgress(loadProgress);
         else stateMsg('sri33-progress-status','Selecione a equipe no resultado diário e clique Atualizar acompanhamento.');
@@ -7889,7 +7889,7 @@ document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.tar
   const today = () => new Intl.DateTimeFormat('en-CA', {timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const state = {client:null,profile:null,overview:null,prepared:null,busy:false,availableTeams:[]};
   const canManage = role => ['admin','manager'].includes(role);
-  const isSupervisor = role => ['admin','manager','supervisor'].includes(role);
+  const isSupervisor = role => ['admin','manager','supervisor','assistant'].includes(role);
   function message(s,kind='normal') {const el=$('sri34-status'); if(el){el.textContent=s;el.dataset.state=kind;}if(kind==='error'||(kind==='success'&&/salv|registr|atualiz|vinculad|conclu|publicad|fechad|encerrad/i.test(s)))window.sriToast?.(s,kind);}
   function resetPreview() {state.prepared=null;const e=$('sri34-preview');if(e)e.innerHTML='Confira uma equipe e turno antes de confirmar o encerramento.';const b=$('sri34-confirm-shift');if(b)b.disabled=true;}
   function makePanel(){

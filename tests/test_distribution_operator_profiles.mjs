@@ -45,15 +45,26 @@ assert.equal(window.sriUnifiedCloudEligibleIds.size,0,'Lista autenticada atualiz
 const begin=html.indexOf('  async function publishTasks(snapshotId,revision){');
 const finish=html.indexOf('  window.sriSyncOperatorTasks=publishTasks;',begin);
 assert.ok(begin>0&&finish>begin);
-let unlinked=0;const calls=[];
-const client={rpc:async(name,args)=>{calls.push({name,args});return {data:{published:2,unlinked},error:null}}};
+let unlinked=0,revision=2;const calls=[];
+const client={
+ from:table=>({
+   select:()=>({eq:()=>({single:async()=>table==='daily_result_snapshots'
+     ?{data:{payload_gzip:'fixture-only'},error:null}
+     :{data:{revision,state:{assignments:{'10000001':{opId:'acct:fixture'}}}},error:null}
+   })})
+ }),
+ rpc:async(name,args)=>{calls.push({name,args});return {data:{published:2,unlinked},error:null}}
+};
 const runtime={session:async()=>({client,profile:{role:'manager'}}),
+ v42Uncompress:async()=>({source:[{id:'10000001',bko:'SAC',area:'Atendimento'}]}),
  window:{sriGetDistributionDetails:()=>({})},stateMsg:()=>{},console};
 vm.runInNewContext(html.slice(begin,finish)+'\n;globalThis.publish=publishTasks;',runtime);
 await runtime.publish('snap',2);
 assert.equal(calls.length,1,'Não exigir cadastro adicional de vínculo para publicação global');
 assert.equal(calls[0].name,'publish_general_operator_tasks');
 assert.equal(calls[0].args.p_snapshot,'snap');
-unlinked=1;
+assert.equal(calls[0].args.p_details['10000001'].base,'SAC');
+assert.equal(calls[0].args.p_details['10000001'].area,'Atendimento');
+unlinked=1;revision=3;
 await assert.rejects(runtime.publish('snap',3),/sem carteira publicada/);
 console.log('PASS: operadores cadastrados e ativos recebem distribuição geral mesmo sem equipe; segurança mantida no banco.');
