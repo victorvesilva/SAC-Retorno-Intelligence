@@ -1823,7 +1823,7 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
 </nav></div>
 </aside>
 <main class="main">
-<header class="topbar" role="banner"><div class="v5-top-identity"><div><div class="v5-top-name">SAC Retorno Intelligence</div><div class="v5-top-subtitle" id="v5-active-context">Gestão Operacional · acompanhamento consolidado</div></div></div><div class="top-right"><button class="v54-clear-all" id="v54-clear-all" title="Remover todos os filtros de visualização do sistema" type="button"><span class="i" data-icon="refresh"></span><span>Limpar todos os filtros</span></button><div class="top-chip" id="sri-connection-chip" data-connection="checking" title="Verificando a comunicação com o Supabase"><span class="privacy-dot" style="margin-right:0"></span><span id="connection-text" role="status" aria-live="polite">Verificando...</span></div><div class="top-chip" title="Data e hora do processamento SAC + ATIVO, no horário de Brasília">ÚLTIMA IMPORTAÇÃO SAC + ATIVO <strong id="update-clock">—</strong></div></div></header>
+<header class="topbar" role="banner"><div class="v5-top-identity"><div><div class="v5-top-name">SAC Retorno Intelligence</div><div class="v5-top-subtitle" id="v5-active-context">Gestão Operacional · acompanhamento consolidado</div></div></div><div class="top-right"><button class="v54-clear-all" id="v54-clear-all" title="Remover todos os filtros de visualização do sistema" type="button"><span class="i" data-icon="refresh"></span><span>Limpar todos os filtros</span></button><div class="top-chip" id="sri-connection-chip" data-connection="checking" title="Verificando a conexão com o sistema"><span class="privacy-dot" style="margin-right:0"></span><span id="connection-text" role="status" aria-live="polite">Verificando...</span></div><div class="top-chip" title="Data e hora do processamento SAC + ATIVO, no horário de Brasília">ÚLTIMA IMPORTAÇÃO SAC + ATIVO <strong id="update-clock">—</strong></div></div></header>
 <section class="hero"><div class="hero-copy"><div class="eyebrow">CENTRAL DE MONITORAMENTO • HAPVIDA</div><h1>SAC Retorno Intelligence</h1><p>SAC + ATIVO: indicadores, prioridades e distribuição em uma única ferramenta.</p></div><div class="hero-actions" id="hero-actions"><button class="btn btn-white" id="hero-upload"><span class="i" data-icon="upload"></span> Importar novas bases</button></div></section>
 <div aria-label="Filtros e ações dos painéis analíticos" id="global-controls">
 <div class="toolbar v114-toolbar"><div class="toolbar-left"><span class="mini-pill demo" id="source-pill">SEM DADOS</span><div class="summary-status" id="status-text">Nenhuma extração processada</div></div><details class="v114-filter-details" id="v114-filter-details"><summary><span class="v114-filter-summary">Filtros gerais <span aria-hidden="true" class="v114-filter-chevron">⌄</span></span><span class="v114-filter-description">Operadora · Área · Canal · Fila</span></summary><div class="toolbar-right"><div class="field multi-field"><label>Operadora</label><div class="multi-select" data-placeholder="Todas as operadoras" id="f-bko"></div></div><div class="field multi-field"><label>Área</label><div class="multi-select" data-placeholder="Todas as áreas" id="f-area"></div></div><div class="field multi-field"><label>Canal</label><div class="multi-select" data-placeholder="Todos os canais" id="f-canal"></div></div><div class="field multi-field"><label>Fila</label><div class="multi-select" data-placeholder="Todas as filas" id="f-fila"></div></div><div class="field-date"><label for="ref-date">Data-base</label><input disabled="" id="ref-date" type="date"/></div><button class="btn btn-ghost" id="clear-filters" title="Limpar todos os filtros do sistema"><span class="i" data-icon="refresh"></span> Limpar filtros gerais</button></div></details></div>
@@ -2437,7 +2437,7 @@ function jsonLocalSet(key,value){try{localStorage.setItem(key,JSON.stringify(val
 let v2History=jsonLocalGet(V2_STORE_HISTORY,[]);if(!Array.isArray(v2History))v2History=[];
 let v2AlertConfig=jsonLocalGet(V2_STORE_ALERTS,V2_ALERTS.map(a=>a.id));if(!Array.isArray(v2AlertConfig))v2AlertConfig=V2_ALERTS.map(a=>a.id);
 let toastTimer=null;
-function v2Toast(msg){const el=document.getElementById('toast-v2');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3100)}
+function v2Toast(msg){if(window.sriPackNotify){window.sriPackNotify(msg,'info');return;}const el=document.getElementById('toast-v2');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3100)}
 const v2DayLabel=(d)=>new Date(d*86400000).toLocaleDateString('pt-BR',{timeZone:'UTC',day:'2-digit',month:'2-digit'});
 function v2Scoped(){return ui.live?ui.filtered:[]}
 const previousCurrentData=currentData;
@@ -2841,7 +2841,7 @@ window.sriGetDistributionDetails = () => {
   const details={}; const assigned=distAssignments||{};
   for(const r of (ui.apured||[])){
     const id=String(r.id||'');if(!assigned[id]||details[id])continue;
-    details[id]={criticality:String(distCriticities?.[id]?.value||r.criticidade||'').slice(0,80),
+    details[id]={criticality:String(distCriticity(r).name).slice(0,80),
       situation:String(r.situacao||'').slice(0,80),sla:String(r.sla||'').slice(0,50),
       channel:String(r.where||'').slice(0,80),status:String(r.status||'').slice(0,80)};
   }
@@ -5793,7 +5793,7 @@ async function sriClient(){
 window.sriGetSupabaseClient = sriClient;
 function sriAuthMessage(err){const message=String(err?.message||err||'Falha de autenticação');
  if(/invalid login credentials/i.test(message))return 'E-mail ou senha incorretos.';
- if(/email not confirmed/i.test(message))return 'Sua conta exige confirmação por e-mail. Verifique a configuração de confirmação no Supabase Auth.';
+ if(/email not confirmed/i.test(message))return 'Confirme seu e-mail antes de entrar.';
  if(/user already registered/i.test(message))return 'Este e-mail já está cadastrado.';
  return message;
 }
@@ -5810,9 +5810,10 @@ function sriToggleSignup(value){sriRegisterMode=!!value;$('sri-signup-fields').h
  $('v20-login-error').textContent='';$('sri-auth-info').textContent='';
 }
 async function sriAuthorizeUser(authUser){
+ window.sriPackResetOperator?.();
  const client=await sriClient();
  const {data:result,error}=await client.from('profiles').select('id,full_name,role').eq('id',authUser.id).single();
- if(error||!result)throw Error('Conta autenticada, mas o perfil ainda não está disponível no banco. Confira a criação de public.profiles.');
+ if(error||!result)throw Error('Seu perfil ainda não está disponível. Procure a gestão para verificar seu cadastro.');
  const valid=new Set(['operator','supervisor','manager','admin','viewer']);
  if(!valid.has(result.role))throw Error('Perfil sem autorização de acesso.');
  // manager shares gerencial dashboard with admin UI, but ADMIN-only database RPC still validates role=admin.
@@ -5854,7 +5855,7 @@ async function sriSignUp(){
  const {data:result,error}=await client.auth.signUp({email,password,options:{data:{full_name:fullName}}});
  if(error)throw Error(sriAuthMessage(error));
  if(result.session&&result.user){await sriAuthorizeUser(result.user);return;}
- $('sri-auth-info').textContent='Cadastro recebido. Para entrar sem e-mail de confirmação, desative Confirm email em Supabase → Authentication → Providers → Email; caso contrário, confirme seu e-mail.';
+ $('sri-auth-info').textContent='Cadastro recebido. Verifique sua caixa de e-mail para confirmar o acesso.';
 }
 async function sriRestoreSession(){
  try{const client=await sriClient();const {data:{session},error}=await client.auth.getSession();
@@ -5862,10 +5863,10 @@ async function sriRestoreSession(){
   const validated=await client.auth.getUser();
   if(validated.error||!validated.data.user){await client.auth.signOut();return;}
   await sriAuthorizeUser(validated.data.user);
- }catch(e){console.warn('Autenticação não disponível:',e.message);$('v20-login-error').textContent='Supabase não conectado: '+sriAuthMessage(e);}
+ }catch(e){console.warn('Autenticação não disponível:',e.message);$('v20-login-error').textContent='Não foi possível conectar ao sistema: '+(window.sriFriendly?.(sriAuthMessage(e),'error')||sriAuthMessage(e));}
 }
 async function logout(){try{const client=await sriClient();await client.auth.signOut()}catch(e){console.warn('Não foi possível encerrar sessão remota',e)}
- current=null;$('v20-email').value='';$('v20-pass').value='';$('v20-login').hidden=false;
+ window.sriPackLogout?.();window.sriPackResetOperator?.();document.body.classList.remove('sri33-operator-cloud');current=null;$('v20-email').value='';$('v20-pass').value='';$('v20-login').hidden=false;
  document.body.classList.add('v20-not-logged');document.body.classList.remove('v20-active');
  closeModal();$('v20-login-error').textContent='';
 }
@@ -7419,6 +7420,7 @@ body.sri33-modal-open{overflow:hidden}
     $('sri-pack-summary').addEventListener('click',e=>{const b=e.target.closest('[data-level]');if(!b)return;const f=$('sri-pack-filter');f.value=f.value===b.dataset.level?'all':b.dataset.level;renderPackTasks()});
     window.sriPackOperatorView=mode=>{const history=mode==='history';$('sri-pack-carteira').hidden=history;$('sri-pack-history').hidden=!history;};
     window.sriPackOperatorView(document.body.dataset.sriOperatorView||'active');
+    window.sriPackResetOperator=()=>{taskRows=[];currentTask=null;operatorFingerprint='';for(const id of ['sri33-task-table','sri33-history','sri33-mine-status','sri-pack-summary'])if($(id))$(id).textContent='';if($('sri33-treatment'))$('sri33-treatment').hidden=true;document.body.classList.remove('sri33-modal-open');};
     let modalOpener=null;
     function closeTreatment(force=false){
       if(inProgress&&!force)return;
@@ -7447,7 +7449,7 @@ body.sri33-modal-open{overflow:hidden}
       openTreatment(row,btn);
     });
   }
-  async function safeMine(fn){if(inProgress)return;inProgress=true;const save=$('sri33-treatment-save');if(save&&!$('sri33-treatment').hidden)save.disabled=true;try{await fn()}catch(e){const m=e.message||String(e);stateMsg('sri33-mine-status',m,'error');if(!$('sri33-treatment').hidden){$('sri33-treatment-status').textContent=m;$('sri33-treatment-status').dataset.state='error'}}finally{inProgress=false;if(save&&!$('sri33-treatment').hidden)save.disabled=!TREATMENT_STATUSES.includes($('sri33-treatment-kind').value)}}
+  async function safeMine(fn){if(inProgress)return;inProgress=true;const save=$('sri33-treatment-save');if(save&&!$('sri33-treatment').hidden)save.disabled=true;try{await fn()}catch(e){const m=window.sriFriendly?.(e.message||String(e),'error')||e.message||String(e);stateMsg('sri33-mine-status',m,'error');if(!$('sri33-treatment').hidden){$('sri33-treatment-status').textContent=m;$('sri33-treatment-status').dataset.state='error'}}finally{inProgress=false;if(save&&!$('sri33-treatment').hidden)save.disabled=!TREATMENT_STATUSES.includes($('sri33-treatment-kind').value)}}
   async function loadTasks(){
     const {client,profile,user}=await session();
     if(profile.role!=='operator')return;
@@ -7498,7 +7500,7 @@ body.sri33-modal-open{overflow:hidden}
     const task=currentTask;
     if(!taskRows.some(r=>r.id===task.id))throw Error('Esta demanda não consta mais na sua carteira.');
     const {error}=await client.rpc('record_daily_operator_treatment',{p_task:task.id,p_action:status,p_notes:notes});
-    if(error)throw Error('Não foi possível gravar a tratativa: '+error.message);
+    if(error)throw Error(window.sriFriendly?.('Não foi possível gravar a tratativa: '+error.message,'error')||'Não foi possível gravar a tratativa. Tente novamente.');
     closeTreatment(true);
     await loadTasks();stateMsg('sri33-mine-status','Tratativa registrada com sucesso!','success');
   }
@@ -7568,7 +7570,7 @@ const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const roles={operator:'Operador',supervisor:'Supervisor',manager:'Gestor',admin:'Administrador',viewer:'Consulta'};
 const avail=['Ativo','Promovido','Férias','Afastamento','Desligado'];
-const state={rows:[],teams:[],operations:[],memberships:[],user:null,role:null,client:null,filter:'',viewRole:'all',viewTeam:'all',editing:null,loading:false};
+const state={rows:[],teams:[],operations:[],memberships:[],user:null,role:null,client:null,filter:'',viewRole:'all',viewTeam:'all',viewStatus:'all',editing:null,loading:false};
 const defaultTeamOf=id=>state.memberships.filter(m=>m.user_id===id).map(m=>state.teams.find(t=>t.id===m.team_id)).filter(Boolean)[0]||null;
 const teamName=id=>state.teams.find(t=>t.id===id)?.name||'Sem equipe';
 const supervisorName=id=>state.rows.find(u=>u.id===id)?.full_name||'—';
@@ -7598,7 +7600,7 @@ async function refresh(){
 function selectUsers(){return state.rows.filter(u=>{
  const term=state.filter.trim().toLocaleLowerCase('pt-BR');
  const match=(!term||[u.full_name,u.contact_email,u.id,teamName(defaultTeamOf(u.id)?.id)].some(x=>String(x||'').toLocaleLowerCase('pt-BR').includes(term)));
- return match&&(state.viewRole==='all'||u.role===state.viewRole)&&(state.viewTeam==='all'||(state.viewTeam==='none'?!defaultTeamOf(u.id):defaultTeamOf(u.id)?.id===state.viewTeam));
+ return match&&(state.viewStatus==='all'||(u.operational_status||'Ativo')===state.viewStatus)&&(state.viewRole==='all'||u.role===state.viewRole)&&(state.viewTeam==='all'||(state.viewTeam==='none'?!defaultTeamOf(u.id):defaultTeamOf(u.id)?.id===state.viewTeam));
  });}
 function stats(){const ops=state.rows.filter(u=>u.role==='operator');return `<div class="v20-grid">
  <div class="v20-stat"><span>Contas cadastradas</span><b>${state.rows.length}</b></div>
@@ -7636,7 +7638,7 @@ async function changeRole(id){const u=state.rows.find(x=>x.id===id);const role=$
 async function createTeam(){const op=$('sri-new-team-operation')?.value;const name=$('sri-new-team-name')?.value?.trim();if(!op||!name||name.length<2){msg('Selecione uma operação e informe o nome da equipe.','error');return;}msg('Criando equipe...');try{const client=await session();const {error}=await client.rpc('create_import_team',{p_operation:op,p_name:name});if(error)throw Error(error.message);await refresh();render($('v20-settings-body'));msg('Equipe criada no banco. Agora atribua os operadores.','success');}catch(e){msg('Não foi possível criar a equipe: '+e.message,'error');}}
 function render(root){if(!root)return;root.innerHTML=`<div class="v20-panel sri-unified-users" style="padding:18px"><div class="v20-between"><div><h3>Gestão de Usuários</h3><p class="v20-muted">Um cadastro por pessoa. Perfil automático Operador; equipe e carteira definidas pela gestão.</p></div><button type="button" class="v20-button secondary" id="sri-unified-refresh">Atualizar</button></div>
  <div id="sri-unified-stats"></div>
- <div class="v20-row" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:14px 0"><label class="v20-field">Pesquisar<input id="sri-unified-search" type="search" placeholder="Nome ou e-mail" value="${esc(state.filter)}"></label><label class="v20-field">Perfil<select id="sri-unified-role"><option value="all">Todos</option>${Object.entries(roles).map(([key,label])=>`<option value="${key}" ${state.viewRole===key?'selected':''}>${label}</option>`).join('')}</select></label><label class="v20-field">Equipe<select id="sri-unified-team"><option value="all">Todas</option><option value="none">Sem equipe</option>${state.teams.map(t=>`<option value="${esc(t.id)}" ${state.viewTeam===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select></label></div>
+ <div class="v20-row" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:14px 0"><label class="v20-field">Pesquisar<input id="sri-unified-search" type="search" placeholder="Nome ou e-mail" value="${esc(state.filter)}"></label><label class="v20-field">Perfil<select id="sri-unified-role"><option value="all">Todos</option>${Object.entries(roles).map(([key,label])=>`<option value="${key}" ${state.viewRole===key?'selected':''}>${label}</option>`).join('')}</select></label><label class="v20-field">Situação<select id="sri-unified-status"><option value="all">Todas</option>${avail.map(v=>`<option value="${esc(v)}" ${state.viewStatus===v?'selected':''}>${esc(v)}</option>`).join('')}</select></label><label class="v20-field">Equipe<select id="sri-unified-team"><option value="all">Todas</option><option value="none">Sem equipe</option>${state.teams.map(t=>`<option value="${esc(t.id)}" ${state.viewTeam===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select></label></div>
  <p id="sri-unified-message" role="status" aria-live="polite" class="v20-muted"></p>
  <div id="sri-unified-table"></div><div id="sri-unified-detail"></div>
  <details style="margin-top:16px"><summary>Criar equipe</summary><div class="v20-row" style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0"><label class="v20-field">Operação<select id="sri-new-team-operation">${state.operations.filter(x=>x.active).map(o=>`<option value="${esc(o.id)}">${esc(window.sriDisplayTurnoLabel(o.name))}</option>`).join('')}</select></label><label class="v20-field">Nome da equipe<input id="sri-new-team-name" maxlength="80" placeholder="Ex.: Equipe manhã"></label><button class="v20-button secondary" type="button" id="sri-create-team">Criar equipe</button></div></details>
@@ -7647,12 +7649,13 @@ function render(root){if(!root)return;root.innerHTML=`<div class="v20-panel sri-
  $('sri-unified-refresh').addEventListener('click',()=>reload(root));
  $('sri-unified-search').addEventListener('input',e=>{state.filter=e.target.value;setTable()});
  $('sri-unified-role').addEventListener('change',e=>{state.viewRole=e.target.value;setTable()});
+ $('sri-unified-status').addEventListener('change',e=>{state.viewStatus=e.target.value;setTable()});
  $('sri-unified-team').addEventListener('change',e=>{state.viewTeam=e.target.value;setTable()});
  $('sri-create-team').addEventListener('click',createTeam);
  const linkPanel=$('sri33-links'),legacyTarget=$('sri-unified-legacy-target');if(linkPanel&&legacyTarget){legacyTarget.appendChild(linkPanel);}
  $('sri-unified-legacy-wrap').addEventListener('toggle',e=>{if(e.target.open){document.body.classList.add('sri-unified-legacy-visible');window.sri33LegacyRefresh?.();}else document.body.classList.remove('sri-unified-legacy-visible')});
 }
-async function reload(root){if(state.loading)return;state.loading=true;try{await refresh();render(root);msg('Cadastro de usuários atualizado.','success')}catch(e){if(root)root.innerHTML='<div class="v20-panel" style="padding:18px"><h3>Gestão de Usuários</h3><p role="alert">Não foi possível carregar o diretório do Supabase: '+esc(e.message)+'</p><button id="sri-unified-retry" class="v20-button secondary" type="button">Tentar novamente</button></div>';$('sri-unified-retry')?.addEventListener('click',()=>reload(root));}finally{state.loading=false;}}
+async function reload(root){if(state.loading)return;state.loading=true;try{await refresh();render(root);msg('Cadastro de usuários atualizado.','success')}catch(e){if(root)root.innerHTML='<div class="v20-panel" style="padding:18px"><h3>Gestão de Usuários</h3><p role="alert">Não foi possível carregar os usuários: '+esc(window.sriFriendly?.(e.message,'error')||e.message)+'</p><button id="sri-unified-retry" class="v20-button secondary" type="button">Tentar novamente</button></div>';$('sri-unified-retry')?.addEventListener('click',()=>reload(root));}finally{state.loading=false;}}
 window.sriUnifiedUsersRender=el=>{el.innerHTML='<div class="v20-panel" style="padding:18px"><h3>Gestão de Usuários</h3><p>Carregando usuários...</p></div>';reload(el)};
 window.sriRefreshDistributionCandidates=async()=>{
  const client=await window.sriGetSupabaseClient?.();
