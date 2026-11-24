@@ -1788,6 +1788,38 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
  }catch(err){console.warn('[SRI PRD] Limpeza local indisponível neste navegador:',err?.message||String(err));}
 })();
 </script>
+<style id="sri-mobile-accessibility-20261124">
+#sri-mobile-nav-backdrop[hidden]{display:none!important}
+@media(max-width:760px){
+ html,body{max-width:100%;overflow-x:clip}
+ .v5-app .sidebar{overflow:visible!important;z-index:110!important}
+ .v5-app .v5-rail{position:relative;z-index:2;min-width:0}
+ .v5-app #v5-menu-toggle{flex:0 0 42px!important;min-width:42px!important;height:42px!important;background:#215ac4!important;color:#fff!important}
+ .v5-app .v5-rail-links{min-width:0;flex:1;scrollbar-width:thin}
+ .v5-app.sri-mobile-nav-open .v5-nav-panel{display:flex!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important;position:fixed!important;top:56px;left:0;bottom:0;z-index:115!important;width:min(88vw,350px)!important;max-width:350px!important;height:calc(100dvh - 56px)!important;box-shadow:12px 15px 40px #09265150!important;overflow-y:auto!important;overflow-x:hidden!important;padding-bottom:max(24px,env(safe-area-inset-bottom))!important}
+ .v5-app.sri-mobile-nav-open .v5-nav-panel .side-nav{padding-bottom:24px!important}
+ #sri-mobile-nav-backdrop:not([hidden]){display:block;position:fixed;inset:56px 0 0;z-index:109;background:rgba(6,24,51,.53);border:0;width:100%;height:calc(100dvh - 56px);cursor:pointer}
+ .v5-app .main,.v5-app .main>*{min-width:0;max-width:100%}
+ .v5-app .topbar{box-sizing:border-box;max-width:calc(100% + 26px)}
+ .v5-app .v20-module-tabs,.v5-app .dist-tabbar,.v5-app .v49-tabs,.v5-app .v46-subtabs{overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;justify-content:flex-start;max-width:100%;-webkit-overflow-scrolling:touch}
+ .v5-app .v20-module-tab,.v5-app .dist-tab,.v5-app .v49-tab,.v5-app .v46-subtab{flex-shrink:0}
+ .v5-app .v20-grid,.v5-app .dist-kpis,.v5-app .v3-grid,.v5-app .v49-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ .v5-app .dist-row,.v5-app .dist-controls,.v5-app .v3-controls,.v5-app .v20-controls{flex-wrap:wrap!important;max-width:100%}
+ .v5-app .v20-panel,.v5-app .dist-panel,.v5-app .card{max-width:100%;min-width:0;box-sizing:border-box}
+ .v5-app table{max-width:none}
+ .v5-app .v20-table-wrap,.v5-app .v3-tablewrap,.v5-app .dist-table-wrap,.v5-app .table-wrap,.v5-app .v115-review-tablewrap,#sri33-task-table,#sri33-progress-table{overflow-x:auto!important;max-width:100%;-webkit-overflow-scrolling:touch}
+ .v5-app .v20-field,.v5-app input,.v5-app select,.v5-app textarea{max-width:100%;min-width:0;box-sizing:border-box}
+ .v5-app .v20-button,.v5-app .dist-btn,.v5-app .btn{min-height:42px}
+ #v20-modal .v20-modal-card,.v51-dialog,.v199-dialog,.v115-result-dialog{max-width:calc(100vw - 16px)!important;max-height:94dvh!important;overflow:auto}
+}
+@media(max-width:450px){
+ .v5-app .top-right{max-width:48%}
+ .v5-app .v20-profile-user{max-width:78px}
+ .v5-app .v20-module-tabs{display:flex!important;flex-wrap:nowrap!important}
+ .v5-app .dist-kpi{padding:10px!important}
+ .v5-app .dist-kpi strong{font-size:21px!important}
+}
+</style>
 </head>
 <body>
 <div id="sri-boot-modal" role="dialog" aria-modal="true" aria-labelledby="sri-boot-title" aria-describedby="sri-boot-message" tabindex="-1" data-state="loading" hidden>
@@ -4131,6 +4163,30 @@ switchTab=function(tab){v5OriginalSwitchTab(tab);v5SyncNav()};
 const v5OriginalPostLoad=postLoad;
 postLoad=function(...args){const result=v5OriginalPostLoad.apply(this,args);v5SyncNav();return result};
 v5ApplyMenu(v5ReadMenu());v5SyncNav();
+
+/* Mobile: menu de categorias completo acessível por botão e teclado. */
+(function(){
+ const app=document.querySelector('.v5-app'),toggle=document.getElementById('v5-menu-toggle');
+ if(!app||!toggle)return;
+ const backdrop=document.createElement('button');backdrop.type='button';backdrop.id='sri-mobile-nav-backdrop';backdrop.hidden=true;
+ backdrop.setAttribute('aria-label','Fechar menu de navegação');document.body.appendChild(backdrop);
+ const mobile=()=>window.matchMedia('(max-width:760px)').matches;
+ function close(restoreFocus=false){app.classList.remove('sri-mobile-nav-open');backdrop.hidden=true;
+   if(mobile()){toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-label','Abrir menu completo');}
+   if(restoreFocus)toggle.focus();}
+ function open(){app.classList.add('sri-mobile-nav-open');backdrop.hidden=false;
+   toggle.setAttribute('aria-expanded','true');toggle.setAttribute('aria-label','Fechar menu completo');
+   const first=app.querySelector('.v5-nav-panel .v20-nav-entry, .v5-nav-panel .nav-link');first?.focus();}
+ toggle.addEventListener('click',e=>{if(!mobile())return;e.preventDefault();e.stopImmediatePropagation();
+   app.classList.contains('sri-mobile-nav-open')?close(true):open();},true);
+ backdrop.addEventListener('click',()=>close(true));
+ document.addEventListener('click',e=>{if(!mobile()||!app.classList.contains('sri-mobile-nav-open'))return;
+   if(e.target.closest('.v5-nav-panel .v20-nav-entry, .v5-nav-panel [data-tab], .v5-nav-panel [data-v20-go]'))close();});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&app.classList.contains('sri-mobile-nav-open'))close(true)});
+ window.addEventListener('resize',()=>{if(!mobile())close();else if(!app.classList.contains('sri-mobile-nav-open'))toggle.setAttribute('aria-expanded','false')});
+ if(mobile()){toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-label','Abrir menu completo');}
+})();
+
 
 /* v5.1 — relatórios configuráveis, impressão isolada e versão consistente */
 const V51_VERSION='5.5';
