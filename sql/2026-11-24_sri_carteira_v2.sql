@@ -563,8 +563,9 @@ GRANT EXECUTE ON FUNCTION public.sri_list_status_compatibility() TO authenticate
 
 CREATE OR REPLACE FUNCTION private.sri_reconciliation_counts(p_day date) RETURNS jsonb
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $counts$
- SELECT jsonb_build_object('pending',count(*) FILTER(WHERE decision IS NULL OR decision='return'),'waiting_operator',count(*) FILTER(WHERE decision='return' AND review_responded_at IS NULL),'awaiting_supervisor',count(*) FILTER(WHERE decision='return' AND review_responded_at IS NOT NULL),'resolved',count(*) FILTER(WHERE decision IN ('base','manual','both')))
- FROM private.sri_status_reconciliation r WHERE r.operational_day=p_day AND auth.uid() IS NOT NULL AND (private.is_manager() OR (r.team_id IS NOT NULL AND private.is_supervisor_of(r.team_id)))
+ WITH scoped AS (SELECT r.* FROM private.sri_status_reconciliation r WHERE r.operational_day=p_day AND auth.uid() IS NOT NULL AND (private.is_manager() OR (r.team_id IS NOT NULL AND private.is_supervisor_of(r.team_id)))),
+ latest AS (SELECT DISTINCT ON(protocol_number) protocol_number,CASE WHEN decision IS NULL THEN 'Em análise' WHEN decision='return' AND review_responded_at IS NULL THEN 'Aguardando operador' WHEN decision='return' THEN 'Aguardando decisão final' WHEN decision='base' THEN 'Origem validada' WHEN decision='manual' THEN 'Tratativa mantida' WHEN decision='both' THEN 'Ambas válidas' END AS label FROM scoped ORDER BY protocol_number,observed_at DESC,id DESC)
+ SELECT jsonb_build_object('pending',count(*) FILTER(WHERE decision IS NULL OR decision='return'),'waiting_operator',count(*) FILTER(WHERE decision='return' AND review_responded_at IS NULL),'awaiting_supervisor',count(*) FILTER(WHERE decision='return' AND review_responded_at IS NOT NULL),'resolved',count(*) FILTER(WHERE decision IN ('base','manual','both')),'labels',(SELECT coalesce(jsonb_object_agg(protocol_number,label),'{}'::jsonb) FROM latest)) FROM scoped
 $counts$;
 REVOKE ALL ON FUNCTION private.sri_reconciliation_counts(date) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION private.sri_reconciliation_counts(date) TO authenticated;
