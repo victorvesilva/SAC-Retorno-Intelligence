@@ -7155,7 +7155,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   window.sriMarkLocalUploadStaged=()=>{clearTimeout(ctx.saveTimer);ctx.saveTimer=null;ctx.fileStaged=true;status('Arquivos SAC/ATIVO selecionados para conferência. Nenhuma atualização externa substituirá esta seleção.','warning');};
   window.sriMarkLocalImportPending=()=>{
     clearTimeout(ctx.saveTimer);ctx.saveTimer=null;
-    ctx.localDataUnsaved=true;ctx.snapshotId=null;ctx.revision=0;ctx.pendingSnapshot=null;
+    ctx.localDataUnsaved=true;ctx.snapshotId=null;ctx.snapshotDay=null;ctx.revision=0;ctx.pendingSnapshot=null;
     syncShift();status('Apuração processada. Salvando e compartilhando automaticamente...','pending');
   };
   window.sriShareProcessedResult=()=>{
@@ -7163,7 +7163,41 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(!publishingContextValid({showError:true}))return;
     void safe(saveResult);
   };
-  async function checkSharedUpdates(){
+  // A virada de 00:00 é independente do fechamento de turnos.
+  // Nenhuma base, evento, snapshot ou fechamento histórico é excluído.
+  function ensureOperationalDay(){
+    const next=operationalContext().day;
+    if(!ctx.operationalDay){ctx.operationalDay=next;return;}
+    if(ctx.operationalDay===next)return;
+    if(ctx.busy||ctx.restoring||ui.busy)return; // Não interromper uma transação em execução.
+    const previous=ctx.operationalDay;
+    ctx.operationalDay=next;
+    clearTimeout(ctx.saveTimer);ctx.saveTimer=null;
+    // Manter cópia volátil para consulta no navegador, se havia trabalho local não publicado.
+    if(ui.live&&(ctx.fileStaged||ctx.localDataUnsaved)){
+      try{window.sriPreviousDayPending={day:previous,payload:v42CurrentPayload()};}catch(_){}
+    }
+    if(ui.live)resetLoadedData();
+    ui.files={sac:null,ativo:null};
+    for(const source of ['sac','ativo']){
+      const inp=$('file-'+source),drop=$('drop-'+source),name=$('filename-'+source);
+      if(inp)inp.value='';
+      drop?.classList.remove('file-ok');
+      if(name)name.textContent='Nenhum arquivo selecionado';
+      const title=drop?.querySelector('strong');
+      if(title)title.textContent=(source==='sac'?'01 · Base SAC':'02 · Base ATIVO');
+    }
+    if($('process-btn'))$('process-btn').disabled=true;
+    ctx.snapshotId=null;ctx.snapshotDay=null;ctx.teamId=null;ctx.revision=0;
+    ctx.fileStaged=false;ctx.localDataUnsaved=false;ctx.pendingSnapshot=null;
+    ctx.syncedDistributionState=null;ctx.syncedPayloadHash=null;
+    clearSharedNotice();syncShift();renderImportContext();
+    v42RenderStats();
+    status('Novo dia '+next+': indicadores zerados. Aguarde a primeira importação SAC + ATIVO a partir das 07h. Histórico preservado.','normal');
+  }
+  window.sriEnsureOperationalDay=ensureOperationalDay;
+    async function checkSharedUpdates(){
+    ensureOperationalDay();
     if(ctx.cloudChecking||ctx.busy||ctx.restoring||!ctx.client||!managerRoles.has(ctx.profile?.role)||document.hidden)return;
     ctx.cloudChecking=true;
     try{
@@ -7190,16 +7224,17 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   }
   function startSharedUpdates(){
     if(ctx.cloudTimer||!managerRoles.has(ctx.profile?.role))return;
-    ctx.cloudTimer=setInterval(()=>{void checkSharedUpdates()},25000);
-    window.addEventListener('focus',()=>{void checkSharedUpdates()});
-    document.addEventListener('visibilitychange',()=>{if(!document.hidden)void checkSharedUpdates()});
+    ctx.cloudTimer=setInterval(()=>{ensureOperationalDay();void checkSharedUpdates()},15000);
+    window.addEventListener('focus',()=>{ensureOperationalDay();void checkSharedUpdates()});
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden){ensureOperationalDay();void checkSharedUpdates()}});
   }
   window.sriSnapshotAfterAuth=()=>{
     if(!ctx.initialized)makePanel();
     return safe(async()=>{const client=await window.sriGetSupabaseClient();const {data}=await client.auth.getUser();
       if(!data?.user)return;const {data:p}=await client.from('profiles').select('role').eq('id',data.user.id).single();
       if(!managerRoles.has(p?.role))return;
-      await loadMetadata();await loadLast({startup:true}).catch(e=>{if(/Nenhum resultado/.test(String(e)))status('Aguardando primeira importação. Os resultados serão carregados automaticamente.','normal');else throw e;});
+      ctx.operationalDay=operationalContext().day;
+      await loadMetadata();await loadLast({startup:true}).catch(e=>{if(/Nenhum resultado/.test(String(e)))status('Hoje começa com 0 protocolos. Aguardando primeira importação SAC + ATIVO.','normal');else throw e;});
     }).then(()=>startSharedUpdates());
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',makePanel);else makePanel();
