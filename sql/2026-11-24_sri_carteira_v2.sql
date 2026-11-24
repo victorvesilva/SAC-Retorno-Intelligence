@@ -3,9 +3,108 @@ ALTER TABLE public.daily_operator_tasks ADD COLUMN IF NOT EXISTS base_name text,
 CREATE TABLE IF NOT EXISTS private.sri_treatment_requests(actor_id uuid NOT NULL, request_id uuid NOT NULL, task_id uuid NOT NULL, action text NOT NULL, notes text NOT NULL, result jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(actor_id,request_id));
 ALTER TABLE private.sri_treatment_requests ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON private.sri_treatment_requests FROM PUBLIC,anon,authenticated;
+CREATE OR REPLACE FUNCTION public.record_daily_operator_treatment(p_task uuid, p_action text, p_notes text)
+ RETURNS bigint
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE
+  v_task public.daily_operator_tasks%rowtype;
+  v_day date;
+  v_id bigint;
+  v_allowed boolean:=false;
+  v_note text;
+  v_work_status text;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Sessão obrigatória';
+  END IF;
+
+  SELECT operational_day INTO v_day FROM public.daily_operator_tasks WHERE id=p_task;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Tarefa indisponível ou inativa'; END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended('sri-result-day:'||v_day::text,0));
+  SELECT * INTO v_task
+    FROM public.daily_operator_tasks
+   WHERE id=p_task FOR UPDATE;
+  IF NOT FOUND OR NOT v_task.active THEN
+    RAISE EXCEPTION 'Tarefa indisponível ou inativa';
+  END IF;
+
+  -- Mantém autorização por responsável, equipe, vínculo e situação operacional.
+  IF v_task.operator_user_id=auth.uid() THEN
+    SELECT EXISTS(
+      SELECT 1 FROM public.profiles p
+      WHERE p.id=auth.uid() AND p.role='operator'
+        AND p.operational_status IN ('Ativo','Promovido')
+        AND (v_task.team_id IS NULL OR EXISTS (
+          SELECT 1 FROM public.team_memberships tm
+          JOIN public.operator_links ol
+            ON ol.user_id=tm.user_id AND ol.team_id=tm.team_id
+          WHERE tm.user_id=p.id AND tm.team_id=v_task.team_id
+        ))
+    ) INTO v_allowed;
+  END IF;
+  IF NOT (v_allowed OR private.is_manager() OR
+          (v_task.team_id IS NOT NULL AND private.is_supervisor_of(v_task.team_id))) THEN
+    RAISE EXCEPTION 'Acesso negado à tarefa';
+  END IF;
+
+  -- Compatibilidade temporaria: telas antigas podem enviar os quatro valores tecnicos.
+  IF p_action IS NULL OR p_action NOT IN (
+    'E-MAIL','LIGAÇÃO','ASCSAC','RECUSOU','ACEITOU','ASSOCIADO',
+    'OUTROS','FILIAL','DÚVIDA','OUVIDORIA','PENDENTE','MÍDIAS NE','CARTA AR',
+    'note','in_progress','awaiting','completed_in_tool'
+  ) THEN
+    RAISE EXCEPTION 'Selecione um dos 13 status de tratativa';
+  END IF;
+  v_note:=btrim(COALESCE(p_notes,''));
+  IF length(v_note)>1500 THEN
+    RAISE EXCEPTION 'Justificativa deve ter até 1.500 caracteres';
+  END IF;
+
+  -- Work_status mantém o contrato das métricas existentes.
+  -- Tratativa original é independente do status do SIGO.
+  v_work_status:=CASE
+    WHEN p_action='note' THEN v_task.work_status
+    WHEN p_action IN ('in_progress','awaiting','completed_in_tool') THEN p_action
+    WHEN p_action IN ('E-MAIL','LIGAÇÃO','ASCSAC','MÍDIAS NE','CARTA AR')
+      THEN 'completed_in_tool'
+    WHEN p_action IN ('RECUSOU','ASSOCIADO','FILIAL')
+      THEN 'awaiting'
+    ELSE 'in_progress'
+  END;
+
+  INSERT INTO public.daily_operator_treatments(task_id,actor_id,action,notes)
+    VALUES(v_task.id,auth.uid(),p_action,v_note)
+    RETURNING id INTO v_id;
+
+  UPDATE public.daily_operator_tasks
+     SET treatment_status=CASE
+           WHEN p_action IN ('note','in_progress','awaiting','completed_in_tool')
+             THEN v_task.treatment_status
+           ELSE p_action END,
+         work_status=v_work_status,
+         updated_at=now()
+   WHERE id=v_task.id;
+
+  INSERT INTO public.audit_events(user_id,action,object_type,object_id,details)
+  VALUES (
+    auth.uid(),'DAY_TASK_TREATMENT','daily_operator_task',v_task.id::text,
+    jsonb_build_object(
+      'team_id',v_task.team_id,
+      'previous_treatment_status',v_task.treatment_status,
+      'treatment_status',p_action,
+      'work_status',v_work_status,
+      'treatment_id',v_id
+    )
+  );
+  RETURN v_id;
+END;
+$function$;
 CREATE OR REPLACE FUNCTION private.sri_record_treatment_v2(p_task uuid,p_action text,p_notes text,p_expected timestamptz,p_request uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $v2$
-DECLARE t public.daily_operator_tasks%rowtype; prior private.sri_treatment_requests%rowtype; result jsonb; actor uuid:=auth.uid(); tid bigint;
+DECLARE t public.daily_operator_tasks%rowtype; prior private.sri_treatment_requests%rowtype; result jsonb; actor uuid:=auth.uid(); tid bigint; day_key date;
 BEGIN
  IF actor IS NULL OR p_request IS NULL OR p_expected IS NULL THEN RAISE EXCEPTION 'Sessão ou versão inválida';END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended(actor::text||':'||p_request::text,0));
@@ -14,6 +113,9 @@ BEGIN
   IF prior.task_id<>p_task OR prior.action IS DISTINCT FROM p_action OR prior.notes IS DISTINCT FROM btrim(coalesce(p_notes,'')) THEN RAISE EXCEPTION 'Solicitação já utilizada'; END IF;
   RETURN prior.result;
  END IF;
+ SELECT operational_day INTO day_key FROM public.daily_operator_tasks WHERE id=p_task;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Demanda indisponível; atualize a carteira';END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended('sri-result-day:'||day_key::text,0));
  SELECT * INTO t FROM public.daily_operator_tasks WHERE id=p_task FOR UPDATE;
  IF NOT FOUND OR NOT t.active THEN RAISE EXCEPTION 'Demanda indisponível; atualize a carteira';END IF;
  IF t.updated_at IS DISTINCT FROM p_expected THEN RAISE EXCEPTION 'A demanda foi atualizada em outra sessão. Atualize a carteira antes de salvar';END IF;
@@ -320,7 +422,7 @@ CREATE OR REPLACE FUNCTION private.sri_detect_reconciliation() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $detect$
 DECLARE prior public.daily_operator_tasks%rowtype;
 BEGIN
- IF NEW.treatment_status IS NULL OR NEW.source_status IS NULL OR NEW.source_status='' THEN RETURN NEW; END IF;
+ IF NEW.treatment_status IS NULL OR NEW.treatment_status IN ('','SEM STATUS') OR NEW.source_status IS NULL OR NEW.source_status !~ '^[0-9]+$' THEN RETURN NEW; END IF;
  IF TG_OP='UPDATE' THEN
   IF OLD.source_status IS NOT DISTINCT FROM NEW.source_status THEN RETURN NEW; END IF;
   prior:=OLD;
@@ -332,11 +434,11 @@ BEGIN
   AND s.team_id IS NOT DISTINCT FROM n.team_id AND t.snapshot_id<>NEW.snapshot_id
   ORDER BY s.created_at DESC,t.updated_at DESC,t.id DESC LIMIT 1;
  END IF;
- IF prior.source_status IS NULL OR prior.source_status='' OR prior.source_status=NEW.source_status THEN RETURN NEW; END IF;
+ IF prior.source_status IS NULL OR prior.source_status !~ '^[0-9]+$' OR prior.source_status=NEW.source_status THEN RETURN NEW; END IF;
  IF EXISTS(SELECT 1 FROM private.sri_status_compatibility m WHERE m.source_status=NEW.source_status AND m.treatment_status=NEW.treatment_status AND m.compatible) THEN RETURN NEW; END IF;
  IF EXISTS(SELECT 1 FROM private.sri_status_reconciliation r WHERE r.operational_day=NEW.operational_day
  AND r.protocol_number=NEW.protocol_number AND r.team_id IS NOT DISTINCT FROM NEW.team_id
- AND r.previous_source=prior.source_status AND r.current_source=NEW.source_status AND r.manual_status=NEW.treatment_status) THEN RETURN NEW; END IF;
+ AND r.snapshot_id=NEW.snapshot_id AND r.previous_source=prior.source_status AND r.current_source=NEW.source_status AND r.manual_status=NEW.treatment_status) THEN RETURN NEW; END IF;
  INSERT INTO private.sri_status_reconciliation(task_id,snapshot_id,protocol_number,operational_day,team_id,operator_id,base_name,area_name,previous_source,current_source,manual_status)
  VALUES(NEW.id,NEW.snapshot_id,NEW.protocol_number,NEW.operational_day,NEW.team_id,NEW.operator_user_id,NEW.base_name,NEW.area_name,prior.source_status,NEW.source_status,NEW.treatment_status)
  ON CONFLICT DO NOTHING;
@@ -362,6 +464,7 @@ BEGIN
  SELECT * INTO r FROM private.sri_status_reconciliation WHERE id=p_id FOR UPDATE;
  IF NOT FOUND OR NOT (private.is_manager() OR (r.team_id IS NOT NULL AND private.is_supervisor_of(r.team_id))) THEN RAISE EXCEPTION 'Conciliação indisponível';END IF;
  IF r.decision IS NOT NULL THEN RAISE EXCEPTION 'Conciliação já analisada';END IF;
+ IF p_decision='return' AND NOT EXISTS(SELECT 1 FROM public.profiles p WHERE p.id=r.operator_id AND p.role='operator' AND p.operational_status IN ('Ativo','Promovido')) THEN RAISE EXCEPTION 'Operador indisponível; valide pela supervisão';END IF;
  IF p_decision IS NULL OR p_decision NOT IN ('base','manual','both','return') OR length(btrim(coalesce(p_justification,''))) NOT BETWEEN 1 AND 1500 THEN RAISE EXCEPTION 'Selecione a decisão e informe a justificativa';END IF;
  UPDATE private.sri_status_reconciliation SET decision=p_decision,justification=btrim(p_justification),decided_by=auth.uid(),decided_at=now() WHERE id=p_id;
  INSERT INTO public.audit_events(user_id,action,object_type,object_id,details) VALUES(auth.uid(),'STATUS_RECONCILIATION','daily_operator_task',r.task_id::text,jsonb_build_object('reconciliation_id',r.id,'decision',p_decision,'justification',p_justification,'previous_source',r.previous_source,'current_source',r.current_source,'manual_status',r.manual_status));
@@ -388,7 +491,8 @@ BEGIN
  IF NOT FOUND OR NOT (private.is_manager() OR (snap.imported_by=auth.uid() AND EXISTS(SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='supervisor'))) THEN RAISE EXCEPTION 'Apuração indisponível';END IF;
  IF p_extracted IS NULL OR (p_extracted AT TIME ZONE 'America/Fortaleza')::date<>snap.operational_day OR p_extracted>now()+interval '10 minutes' OR jsonb_typeof(p_presence) IS DISTINCT FROM 'object' THEN RAISE EXCEPTION 'Evidência da extração inválida';END IF;
  IF NOT EXISTS(SELECT 1 FROM public.daily_result_distributions d WHERE d.snapshot_id=p_snapshot) THEN RAISE EXCEPTION 'Publique primeiro a apuração';END IF;
- PERFORM pg_advisory_xact_lock(hashtextextended('sri-reconcile:'||snap.operational_day::text||':'||snap.shift_label,0));
+ IF EXISTS(SELECT 1 FROM public.daily_result_snapshots s JOIN public.daily_result_distributions d ON d.snapshot_id=s.id WHERE s.team_id IS NULL AND s.operational_day=snap.operational_day AND s.shift_label=snap.shift_label AND s.created_at>snap.created_at) THEN RAISE EXCEPTION 'Há apuração mais recente; concilie a última versão';END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended('sri-result-day:'||snap.operational_day::text,0));
  IF EXISTS(SELECT 1 FROM private.sri_presence_rounds WHERE snapshot_id=p_snapshot) THEN RETURN 0;END IF;
  IF EXISTS(SELECT 1 FROM private.sri_presence_rounds r WHERE r.operational_day=snap.operational_day AND r.shift_label=snap.shift_label AND r.extracted_at>=p_extracted) THEN RAISE EXCEPTION 'Extração anterior ou de mesmo horário; conciliação não registrada';END IF;
  IF (SELECT count(*) FROM jsonb_object_keys(p_presence)) NOT BETWEEN 1 AND 250000 THEN RAISE EXCEPTION 'Volume de presença inválido';END IF;
