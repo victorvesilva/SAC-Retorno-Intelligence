@@ -10,6 +10,7 @@ Estado: NÃO LIBERADO PARA PRODUÇÃO. Branch feat/pacote-03-integridade-monitor
 - Monitoramento e histórico gerencial: contadores no recorte carregado, exportação JSON/CSV, deduplicação.
 - Produtividade por dia/equipe/operador com consulta RLS, gráfico e CSV.
 - Correção de declaração JavaScript duplicada na publicação das carteiras.
+- Gestão Operacional: consulta histórica read-only no Supabase por dia/turno, identificação da fonte e atalho para relatório de dia anterior. O histórico da nuvem contém somente indicadores consolidados; não reconstrói carteira detalhada.
 
 ## Dependências e sequência
 1. Conferir branch atual e divergências de main, sem sobrescrever alterações concorrentes.
@@ -17,12 +18,15 @@ Estado: NÃO LIBERADO PARA PRODUÇÃO. Branch feat/pacote-03-integridade-monitor
 3. Validar e, apenas na janela de publicação, aplicar migrações pendentes na ordem:
    - sql/2026-11-24_sri_pacote03_historico_carteira.sql
    - sql/2026-11-24_sri_pacote03_produtividade.sql
+   - sql/2026-11-24_sri_pacote03_protecao_incidentes.sql (revisar gatilhos e transições antes de aplicar)
 4. Verificar funções, grants, RLS, recortes por perfil e retornos reais. Não atribuir a resolução SIGO ao status completed_in_tool.
 5. Testar login/logout, carteira, tratamento e avanço, atualização e paginação, conciliação, importação/distribuição, relatórios e exportações.
 6. Somente após conclusão do escopo autorizado, confirmação dos testes e ausência de impedimentos: consolidar main, solicitar um único deploy, verificar READY e commit correto. Não repetir deployment bem-sucedido; não contornar quotas nem alterar cobrança.
 7. Caso incompleto ou bloqueado, manter versão anterior e informar precisamente.
 
 ## Verificação realizada
+- Histórico operacional: dados da apuração geral de 23/11/2026 confirmados em `daily_result_snapshots` (1 extração, turno Tarde, 2.678 protocolos monitorados; 2.467 SAC Retorno; 231 WhatsSAC). Mapeamento de metadados e consulta de histórico testados com amostra, sem testar interface autenticada.
+- Correção do histórico registrada nos commits `08614ed`, `46ffc0c`; continua não publicada.
 Análise de sintaxe: 8 scripts clássicos inline do index.html e assets/sri-pacote03.js sem erro de parsing no commit b20d229. Não equivale a testes em navegador, integração autenticada ou validação das migrações.
 
 ## Lacunas não liberadas
