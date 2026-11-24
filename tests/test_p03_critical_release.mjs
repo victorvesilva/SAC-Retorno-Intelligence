@@ -36,7 +36,7 @@ assert.match(html,/assistant:'Assistente'/);
 assert.match(html,/result\.role==='assistant'\?'supervisor'/);
 assert.match(assistant,/profiles_role_check/);
 assert.match(assistant,/admin_change_user_role/);
-assert.match(assistant,/team_memberships/);
+assert.match(assistant,/is_supervisor_of/);
 assert.match(assistant,/ALTER POLICY/);
 
 // Toasts 4s e navegação interna sem history.back(). 
