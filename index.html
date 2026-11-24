@@ -7249,6 +7249,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     ctx.syncedDistributionState=null;ctx.syncedPayloadHash=null;
     clearSharedNotice();syncShift();renderImportContext();
     v42RenderStats();
+    if($('sri33-progress-table'))$('sri33-progress-table').innerHTML='<p>0 protocolos distribuídos hoje. Aguardando nova distribuição.</p>';
+    if($('sri33-progress-status'))$('sri33-progress-status').textContent='Novo dia: 0 protocolos distribuídos.';
     status('Novo dia '+next+': indicadores zerados. Aguarde a primeira importação SAC + ATIVO a partir das 07h. Histórico preservado.','normal');
   }
   window.sriEnsureOperationalDay=ensureOperationalDay;
@@ -7561,10 +7563,10 @@ body.sri33-modal-open{overflow:hidden}
     try{
       const {client,profile,user}=await session();if(profile.role!=='operator')return;
       const {data,count,error}=await client.from('daily_operator_tasks')
-        .select('id,updated_at',{count:'exact'}).eq('operator_user_id',user.id).eq('active',true)
+        .select('id,updated_at',{count:'exact'}).eq('operator_user_id',user.id).eq('active',true).eq('operational_day',sriTodayOperationalDay())
         .order('updated_at',{ascending:false}).limit(1);
       if(error)throw Error(error.message);
-      const fingerprint=[count||0,data?.[0]?.id||'',data?.[0]?.updated_at||''].join('|');
+      const fingerprint=[sriTodayOperationalDay(),count||0,data?.[0]?.id||'',data?.[0]?.updated_at||''].join('|');
       if(operatorFingerprint&&fingerprint!==operatorFingerprint)await safeMine(loadTasks);
       operatorFingerprint=fingerprint;
     }catch(err){console.warn('[SRI carteira compartilhada]',err?.message||String(err))}
