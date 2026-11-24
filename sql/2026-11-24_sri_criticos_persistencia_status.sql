@@ -185,6 +185,7 @@ BEGIN
    AND old.operational_day=p_day AND old.shift_label=p_shift
    AND os.team_id IS NOT DISTINCT FROM p_scope_team
    AND old.work_status<>'completed_in_tool'
+   AND private.sri_p03_status_sigo(old.treatment_status) IS DISTINCT FROM 3
    AND NOT EXISTS (SELECT 1 FROM public.daily_operator_tasks fresh
      WHERE fresh.snapshot_id=p_snapshot AND fresh.protocol_number=old.protocol_number)
   ORDER BY old.protocol_number,old.updated_at DESC,old.id DESC
@@ -203,7 +204,8 @@ BEGIN
  GET DIAGNOSTICS v_count=ROW_COUNT;
  UPDATE public.daily_operator_tasks t SET distribution_revision=p_revision,updated_at=now()
  WHERE t.snapshot_id=p_snapshot AND t.active AND t.distribution_revision<>p_revision
-   AND t.work_status<>'completed_in_tool';
+   AND t.work_status<>'completed_in_tool'
+   AND private.sri_p03_status_sigo(t.treatment_status) IS DISTINCT FROM 3;
  IF v_count>0 THEN
   INSERT INTO public.audit_events(user_id,action,object_type,object_id,details)
   VALUES(auth.uid(),'P03_UNFINISHED_CARRIED','daily_result',p_snapshot::text,
@@ -465,6 +467,7 @@ RETURNS SETOF jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $
  SELECT jsonb_build_object('protocol_number',t.protocol_number,'last_day',t.operational_day,
   'shift_label',t.shift_label,'work_status',t.work_status,
   'treatment_status',t.treatment_status,'updated_at',t.updated_at,
+  'sigo_reference',private.sri_p03_status_sigo(t.treatment_status),
   'criticality',t.criticality,'due_date',t.due_date,
   'base_name',t.base_name,'area_name',t.area_name,
   'requires_reconciliation',true)

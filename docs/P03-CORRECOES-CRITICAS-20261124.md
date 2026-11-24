@@ -13,3 +13,6 @@
 3. Conferir com a operação os 5 protocolos desativados do Vinícius; não recuperar automaticamente os 4 inconclusos sem verificar estado atual no SIGO.
 4. Continuidade entre dias/turnos e histórico detalhado da Gestão Operacional ainda exigem conclusão de requisitos e testes.
 5. Não fazer merge em main, migração em produção ou deploy antes dos gates.
+
+## Regra de proteção adicional
+Tratatativas com status oficial correspondente ao SIGO 3 (incluindo OUTROS e ACEITOU) não são transportadas automaticamente só porque o motor antigo gravou `work_status=in_progress`. Esses casos ficam sinalizados à conferência, com a referência do SIGO, sem retificação histórica em massa.

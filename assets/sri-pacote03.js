@@ -26,7 +26,7 @@ function makePendingPanel(){
  if(!root)return;
  const section=document.createElement('section');section.id='sri-p03-reconcile';section.className='v20-panel';section.style.margin='18px 0';
  const heading=document.createElement('h3');heading.textContent='Pendências antigas para conferência';section.append(heading);
- const desc=document.createElement('p');desc.textContent='Protocolos inconclusos que saíram da carteira publicada. Consulta em somente leitura: a supervisão deve validar antes da devolução à operação; não equivale a encerramento no SIGO.';section.append(desc);
+ const desc=document.createElement('p');desc.textContent='Protocolos fora da carteira que exigem conciliação, inclusive divergências do status antigo (ex.: OUTROS aparecendo como Em andamento). Consulta somente leitura; não reativar nem presumir conclusão no SIGO.';section.append(desc);
  const btn=document.createElement('button');btn.className='v20-button secondary';btn.type='button';btn.textContent='Conferir pendências';section.append(btn);
  const status=document.createElement('p');status.setAttribute('role','status');section.append(status);
  const wrap=document.createElement('div');wrap.style.overflowX='auto';section.append(wrap);
@@ -41,7 +41,7 @@ function makePendingPanel(){
    status.textContent=rows.length?rows.length+' protocolo(s) para conferência.':'Nenhuma pendência histórica.';
    if(rows.length){
     const table=document.createElement('table');table.className='v20-table';
-    const cols=[['protocol_number','Protocolo'],['last_day','Último dia'],['work_status','Andamento'],['treatment_status','Última tratativa'],['due_date','Prazo'],['base_name','Base']];
+    const cols=[['protocol_number','Protocolo'],['last_day','Último dia'],['work_status','Estado histórico'],['treatment_status','Última tratativa'],['sigo_reference','Referência SIGO'],['due_date','Prazo'],['base_name','Base']];
     const hr=table.createTHead().insertRow();for(const [,label]of cols){const th=document.createElement('th');th.textContent=label;hr.append(th);}
     const body=table.createTBody();for(const row of rows){const tr=body.insertRow();for(const [key]of cols)cell(tr,row[key]??'—');}
     wrap.append(table);
