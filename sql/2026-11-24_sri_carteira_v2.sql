@@ -373,4 +373,82 @@ CREATE OR REPLACE FUNCTION public.sri_list_reconciliation(p_day date) RETURNS SE
 CREATE OR REPLACE FUNCTION public.sri_decide_reconciliation(p_id bigint,p_decision text,p_justification text) RETURNS void LANGUAGE sql SECURITY INVOKER SET search_path='' AS $d$ SELECT private.sri_decide_reconciliation(p_id,p_decision,p_justification); $d$;
 REVOKE ALL ON FUNCTION public.sri_list_reconciliation(date),public.sri_decide_reconciliation(bigint,text,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.sri_list_reconciliation(date),public.sri_decide_reconciliation(bigint,text,text) TO authenticated;
+
+-- Evidência mínima da comparação entre os dois arquivos completos.
+ALTER TABLE private.sri_status_reconciliation ADD COLUMN IF NOT EXISTS event_kind text NOT NULL DEFAULT 'status_changed', ADD COLUMN IF NOT EXISTS extracted_at timestamptz, ADD COLUMN IF NOT EXISTS review_response text, ADD COLUMN IF NOT EXISTS review_responded_at timestamptz;
+CREATE TABLE IF NOT EXISTS private.sri_presence_rounds(snapshot_id uuid PRIMARY KEY, operational_day date NOT NULL, shift_label text NOT NULL, extracted_at timestamptz NOT NULL, registered_by uuid NOT NULL, registered_at timestamptz NOT NULL DEFAULT now());
+ALTER TABLE private.sri_presence_rounds ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON private.sri_presence_rounds FROM PUBLIC,anon,authenticated;
+CREATE OR REPLACE FUNCTION private.sri_reconcile_presence(p_snapshot uuid,p_extracted timestamptz,p_presence jsonb)
+RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $presence$
+DECLARE snap public.daily_result_snapshots%rowtype; prior_id uuid; added integer:=0;
+BEGIN
+ IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Sessão obrigatória';END IF;
+ SELECT * INTO snap FROM public.daily_result_snapshots WHERE id=p_snapshot AND team_id IS NULL;
+ IF NOT FOUND OR NOT (private.is_manager() OR (snap.imported_by=auth.uid() AND EXISTS(SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='supervisor'))) THEN RAISE EXCEPTION 'Apuração indisponível';END IF;
+ IF p_extracted IS NULL OR (p_extracted AT TIME ZONE 'America/Fortaleza')::date<>snap.operational_day OR p_extracted>now()+interval '10 minutes' OR jsonb_typeof(p_presence) IS DISTINCT FROM 'object' THEN RAISE EXCEPTION 'Evidência da extração inválida';END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.daily_result_distributions d WHERE d.snapshot_id=p_snapshot) THEN RAISE EXCEPTION 'Publique primeiro a apuração';END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended('sri-reconcile:'||snap.operational_day::text||':'||snap.shift_label,0));
+ IF EXISTS(SELECT 1 FROM private.sri_presence_rounds WHERE snapshot_id=p_snapshot) THEN RETURN 0;END IF;
+ IF EXISTS(SELECT 1 FROM private.sri_presence_rounds r WHERE r.operational_day=snap.operational_day AND r.shift_label=snap.shift_label AND r.extracted_at>=p_extracted) THEN RAISE EXCEPTION 'Extração anterior ou de mesmo horário; conciliação não registrada';END IF;
+ IF (SELECT count(*) FROM jsonb_object_keys(p_presence)) NOT BETWEEN 1 AND 250000 THEN RAISE EXCEPTION 'Volume de presença inválido';END IF;
+ IF EXISTS(SELECT 1 FROM jsonb_each(p_presence) j WHERE j.key !~ '^[0-9]{8,40}$' OR jsonb_typeof(j.value) NOT IN ('string','null') OR length(j.value #>> '{}')>80) THEN RAISE EXCEPTION 'Identificadores ou status da extração inválidos';END IF;
+ SELECT s.id INTO prior_id FROM public.daily_result_snapshots s
+ JOIN public.daily_result_distributions d ON d.snapshot_id=s.id
+ WHERE s.team_id IS NULL AND s.operational_day=snap.operational_day AND s.shift_label=snap.shift_label AND s.created_at<snap.created_at
+ ORDER BY s.created_at DESC,s.id DESC LIMIT 1;
+ INSERT INTO private.sri_status_reconciliation(task_id,snapshot_id,protocol_number,operational_day,team_id,operator_id,base_name,area_name,previous_source,current_source,manual_status,event_kind,extracted_at)
+ SELECT t.id,p_snapshot,t.protocol_number,t.operational_day,t.team_id,t.operator_user_id,t.base_name,t.area_name,COALESCE(NULLIF(t.source_status,''),'Não informado'),
+ CASE WHEN NOT p_presence ? t.protocol_number THEN 'AUSENTE SAC + ATIVO' ELSE p_presence->>t.protocol_number END,
+ t.treatment_status,CASE WHEN NOT p_presence ? t.protocol_number THEN 'absent' ELSE 'status_changed' END,p_extracted
+ FROM public.daily_operator_tasks t WHERE t.snapshot_id=prior_id AND t.treatment_status IS NOT NULL AND t.treatment_status NOT IN ('','SEM STATUS')
+ AND (NOT p_presence ? t.protocol_number OR ((p_presence->>t.protocol_number) ~ '^[0-9]+$' AND t.source_status ~ '^[0-9]+$' AND t.source_status IS DISTINCT FROM p_presence->>t.protocol_number))
+ AND NOT EXISTS(SELECT 1 FROM private.sri_status_compatibility m WHERE m.source_status=p_presence->>t.protocol_number AND m.treatment_status=t.treatment_status AND m.compatible)
+ AND NOT EXISTS(SELECT 1 FROM private.sri_status_reconciliation r WHERE r.protocol_number=t.protocol_number AND r.operational_day=t.operational_day AND r.current_source=CASE WHEN NOT p_presence ? t.protocol_number THEN 'AUSENTE SAC + ATIVO' ELSE p_presence->>t.protocol_number END AND r.previous_source=COALESCE(NULLIF(t.source_status,''),'Não informado') AND r.manual_status=t.treatment_status AND r.snapshot_id=p_snapshot)
+ ON CONFLICT DO NOTHING;
+ GET DIAGNOSTICS added=ROW_COUNT;
+ INSERT INTO private.sri_presence_rounds(snapshot_id,operational_day,shift_label,extracted_at,registered_by) VALUES(p_snapshot,snap.operational_day,snap.shift_label,p_extracted,auth.uid());
+ RETURN added;
+END;
+$presence$;
+REVOKE ALL ON FUNCTION private.sri_reconcile_presence(uuid,timestamptz,jsonb) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION private.sri_reconcile_presence(uuid,timestamptz,jsonb) TO authenticated;
+CREATE OR REPLACE FUNCTION public.sri_reconcile_presence(p_snapshot uuid,p_extracted timestamptz,p_presence jsonb) RETURNS integer LANGUAGE sql SECURITY INVOKER SET search_path='' AS $p$ SELECT private.sri_reconcile_presence(p_snapshot,p_extracted,p_presence); $p$;
+REVOKE ALL ON FUNCTION public.sri_reconcile_presence(uuid,timestamptz,jsonb) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.sri_reconcile_presence(uuid,timestamptz,jsonb) TO authenticated;
+-- Devolução efetiva: fila pessoal de revisão, inclusive se o protocolo saiu da base.
+CREATE OR REPLACE FUNCTION private.sri_my_reviews() RETURNS SETOF jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $my$
+ SELECT jsonb_build_object('id',r.id,'protocol_number',r.protocol_number,'base_name',r.base_name,'area_name',r.area_name,'previous_source',r.previous_source,'current_source',r.current_source,'manual_status',r.manual_status,'justification',r.justification,'decided_at',r.decided_at,'review_response',r.review_response,'review_responded_at',r.review_responded_at)
+ FROM private.sri_status_reconciliation r
+ WHERE r.operator_id=auth.uid() AND r.decision='return' AND EXISTS(SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='operator' AND p.operational_status IN ('Ativo','Promovido'))
+ AND r.review_responded_at IS NULL ORDER BY r.decided_at DESC LIMIT 500
+$my$;
+CREATE OR REPLACE FUNCTION private.sri_answer_review(p_id bigint,p_response text) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $answer$
+DECLARE r private.sri_status_reconciliation%rowtype;
+BEGIN
+ IF auth.uid() IS NULL OR NOT EXISTS(SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='operator' AND p.operational_status IN ('Ativo','Promovido')) THEN RAISE EXCEPTION 'Acesso restrito ao operador';END IF;
+ SELECT * INTO r FROM private.sri_status_reconciliation WHERE id=p_id AND operator_id=auth.uid() AND decision='return' FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Revisão indisponível';END IF;
+ IF length(btrim(coalesce(p_response,''))) NOT BETWEEN 1 AND 1500 THEN RAISE EXCEPTION 'Informe a resposta da revisão';END IF;
+ IF r.review_responded_at IS NOT NULL THEN IF r.review_response=btrim(p_response) THEN RETURN;END IF;RAISE EXCEPTION 'Revisão já respondida';END IF;
+ UPDATE private.sri_status_reconciliation SET review_response=btrim(p_response),review_responded_at=now() WHERE id=r.id;
+ INSERT INTO public.audit_events(user_id,action,object_type,object_id,details) VALUES(auth.uid(),'STATUS_REVIEW_ANSWERED','daily_operator_task',r.task_id::text,jsonb_build_object('reconciliation_id',r.id,'response',btrim(p_response)));
+END;
+$answer$;
+REVOKE ALL ON FUNCTION private.sri_my_reviews(),private.sri_answer_review(bigint,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION private.sri_my_reviews(),private.sri_answer_review(bigint,text) TO authenticated;
+CREATE OR REPLACE FUNCTION public.sri_my_reviews() RETURNS SETOF jsonb LANGUAGE sql STABLE SECURITY INVOKER SET search_path='' AS $m$ SELECT * FROM private.sri_my_reviews(); $m$;
+CREATE OR REPLACE FUNCTION public.sri_answer_review(p_id bigint,p_response text) RETURNS void LANGUAGE sql SECURITY INVOKER SET search_path='' AS $r$ SELECT private.sri_answer_review(p_id,p_response); $r$;
+REVOKE ALL ON FUNCTION public.sri_my_reviews(),public.sri_answer_review(bigint,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.sri_my_reviews(),public.sri_answer_review(bigint,text) TO authenticated;
+-- Permite consultar e administrar regras somente pela gestão.
+CREATE OR REPLACE FUNCTION private.sri_list_status_compatibility() RETURNS SETOF jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $rules$
+ SELECT to_jsonb(m)-'updated_by' FROM private.sri_status_compatibility m WHERE auth.uid() IS NOT NULL AND private.is_manager() ORDER BY source_status,treatment_status
+$rules$;
+REVOKE ALL ON FUNCTION private.sri_list_status_compatibility() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION private.sri_list_status_compatibility() TO authenticated;
+CREATE OR REPLACE FUNCTION public.sri_list_status_compatibility() RETURNS SETOF jsonb LANGUAGE sql STABLE SECURITY INVOKER SET search_path='' AS $rules$ SELECT * FROM private.sri_list_status_compatibility(); $rules$;
+REVOKE ALL ON FUNCTION public.sri_list_status_compatibility() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.sri_list_status_compatibility() TO authenticated;
+
 COMMIT;
