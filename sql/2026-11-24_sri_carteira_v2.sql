@@ -133,7 +133,7 @@ BEGIN
       due_situation=EXCLUDED.due_situation,
       sla_band=EXCLUDED.sla_band,
       channel=EXCLUDED.channel,
-      source_status=EXCLUDED.source_status,base_name=COALESCE(EXCLUDED.base_name,daily_operator_tasks.base_name),area_name=COALESCE(EXCLUDED.area_name,daily_operator_tasks.area_name),
+      source_status=COALESCE(EXCLUDED.source_status,daily_operator_tasks.source_status),base_name=COALESCE(EXCLUDED.base_name,daily_operator_tasks.base_name),area_name=COALESCE(EXCLUDED.area_name,daily_operator_tasks.area_name),
       active=true,distribution_revision=EXCLUDED.distribution_revision,updated_at=now(),
       work_status=public.daily_operator_tasks.work_status;
     v_published:=v_published+1;
@@ -241,7 +241,7 @@ BEGIN
    operator_user_id=EXCLUDED.operator_user_id,team_id=EXCLUDED.team_id,
    criticality=EXCLUDED.criticality,priority_reason=EXCLUDED.priority_reason,due_date=EXCLUDED.due_date,due_situation=EXCLUDED.due_situation,
    sla_band=EXCLUDED.sla_band,channel=EXCLUDED.channel,
-   source_status=EXCLUDED.source_status,base_name=COALESCE(EXCLUDED.base_name,daily_operator_tasks.base_name),area_name=COALESCE(EXCLUDED.area_name,daily_operator_tasks.area_name),
+   source_status=COALESCE(EXCLUDED.source_status,daily_operator_tasks.source_status),base_name=COALESCE(EXCLUDED.base_name,daily_operator_tasks.base_name),area_name=COALESCE(EXCLUDED.area_name,daily_operator_tasks.area_name),
    active=true,distribution_revision=EXCLUDED.distribution_revision,updated_at=now(),
    work_status=public.daily_operator_tasks.work_status;
   v_published:=v_published+1;
@@ -290,6 +290,32 @@ ALTER TABLE private.sri_status_reconciliation ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON private.sri_status_reconciliation FROM PUBLIC,anon,authenticated;
 -- A matriz sem validação operacional não presume equivalências. Mudanças da origem com tratativa
 -- existente são sinais de revisão, nunca uma declaração automática de erro do operador.
+
+-- Matriz operacional configurável. Sem equivalência validada, o evento é analisado manualmente.
+CREATE TABLE IF NOT EXISTS private.sri_status_compatibility(
+ source_status text NOT NULL, treatment_status text NOT NULL,
+ compatible boolean NOT NULL, reason text NOT NULL, updated_by uuid NOT NULL, updated_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(source_status,treatment_status));
+ALTER TABLE private.sri_status_compatibility ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON private.sri_status_compatibility FROM PUBLIC,anon,authenticated;
+CREATE OR REPLACE FUNCTION private.sri_set_status_compatibility(p_source text,p_treatment text,p_compatible boolean,p_reason text)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $matrix$
+BEGIN
+ IF auth.uid() IS NULL OR NOT private.is_manager() THEN RAISE EXCEPTION 'A configuração da matriz é exclusiva da gestão';END IF;
+ IF length(btrim(coalesce(p_source,''))) NOT BETWEEN 1 AND 80 OR p_treatment IS NULL OR p_treatment NOT IN ('E-MAIL','LIGAÇÃO','ASCSAC','RECUSOU','ACEITOU','ASSOCIADO','OUTROS','FILIAL','DÚVIDA','OUVIDORIA','PENDENTE','MÍDIAS NE','CARTA AR') OR p_compatible IS NULL OR length(btrim(coalesce(p_reason,''))) NOT BETWEEN 1 AND 1500 THEN RAISE EXCEPTION 'Preencha os campos da regra'; END IF;
+ INSERT INTO private.sri_status_compatibility(source_status,treatment_status,compatible,reason,updated_by)
+ VALUES(btrim(p_source),p_treatment,p_compatible,btrim(p_reason),auth.uid())
+ ON CONFLICT(source_status,treatment_status) DO UPDATE SET compatible=EXCLUDED.compatible,reason=EXCLUDED.reason,updated_by=auth.uid(),updated_at=now();
+ INSERT INTO public.audit_events(user_id,action,object_type,object_id,details) VALUES(auth.uid(),'STATUS_COMPATIBILITY_CONFIGURED','status_matrix',btrim(p_source)||':'||p_treatment,jsonb_build_object('compatible',p_compatible,'reason',p_reason));
+END;
+$matrix$;
+REVOKE ALL ON FUNCTION private.sri_set_status_compatibility(text,text,boolean,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION private.sri_set_status_compatibility(text,text,boolean,text) TO authenticated;
+CREATE OR REPLACE FUNCTION public.sri_set_status_compatibility(p_source text,p_treatment text,p_compatible boolean,p_reason text)
+RETURNS void LANGUAGE sql SECURITY INVOKER SET search_path='' AS $m$ SELECT private.sri_set_status_compatibility(p_source,p_treatment,p_compatible,p_reason); $m$;
+REVOKE ALL ON FUNCTION public.sri_set_status_compatibility(text,text,boolean,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.sri_set_status_compatibility(text,text,boolean,text) TO authenticated;
+
 CREATE OR REPLACE FUNCTION private.sri_detect_reconciliation() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $detect$
 DECLARE prior public.daily_operator_tasks%rowtype;
@@ -307,6 +333,7 @@ BEGIN
   ORDER BY s.created_at DESC,t.updated_at DESC,t.id DESC LIMIT 1;
  END IF;
  IF prior.source_status IS NULL OR prior.source_status='' OR prior.source_status=NEW.source_status THEN RETURN NEW; END IF;
+ IF EXISTS(SELECT 1 FROM private.sri_status_compatibility m WHERE m.source_status=NEW.source_status AND m.treatment_status=NEW.treatment_status AND m.compatible) THEN RETURN NEW; END IF;
  IF EXISTS(SELECT 1 FROM private.sri_status_reconciliation r WHERE r.operational_day=NEW.operational_day
  AND r.protocol_number=NEW.protocol_number AND r.team_id IS NOT DISTINCT FROM NEW.team_id
  AND r.previous_source=prior.source_status AND r.current_source=NEW.source_status AND r.manual_status=NEW.treatment_status) THEN RETURN NEW; END IF;
