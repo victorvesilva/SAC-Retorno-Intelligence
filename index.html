@@ -6748,7 +6748,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   const $ = id => document.getElementById(id);
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const managerRoles = new Set(['admin','manager','supervisor']);
-  const ctx = {client:null,user:null,profile:null,teams:[],operations:[],snapshotId:null,revision:0,busy:false,restoring:false,saveTimer:null,initialized:false,fileStaged:false,localDataUnsaved:false,syncedDistributionState:null,syncedPayloadHash:null,cloudTimer:null,cloudChecking:false,cloudPendingId:null,pendingSnapshot:null};
+  const ctx = {client:null,user:null,profile:null,teams:[],operations:[],snapshotId:null,snapshotDay:null,operationalDay:null,revision:0,busy:false,restoring:false,saveTimer:null,initialized:false,fileStaged:false,localDataUnsaved:false,syncedDistributionState:null,syncedPayloadHash:null,cloudTimer:null,cloudChecking:false,cloudPendingId:null,pendingSnapshot:null};
   window.sriGetSavedDistributionContext=()=>({snapshotId:ctx.snapshotId,revision:ctx.revision,teamId:ctx.teamId});
   const today = () => sriTodayOperationalDay();
   function notify(message,kind='success'){
@@ -6772,8 +6772,9 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   // Elementos técnicos legados permanecem ocultos para compatibilidade dos módulos.
   function renderImportContext(){
     const el=$('sri-import-summary');if(!el)return;
-    el.textContent=ui.live?'Base geral disponível · atualização e distribuição sincronizadas':
-      'Importação geral SAC + ATIVO · aguardando arquivos';
+    const cycle=operationalContext();
+    el.textContent=ui.live?'Dia '+cycle.day+' · Base SAC + ATIVO de hoje · atualização sincronizada':
+      'Dia '+cycle.day+' · 0 protocolos · aguardando primeira importação'+(cycle.shift?' · '+cycle.shift:' · importações 07h às 20h');
   }
   function revealRecovery(mode='save'){
     const box=$('sri-import-recovery');if(!box)return;
@@ -7006,7 +7007,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       }else snapshotId=data.id;
     }
     if(ctx.snapshotId!==snapshotId)ctx.revision=0;
-    ctx.snapshotId=snapshotId;ctx.teamId=team;ctx.pendingSnapshot={key,id:snapshotId};
+    ctx.snapshotId=snapshotId;ctx.snapshotDay=day;ctx.operationalDay=day;ctx.teamId=team;ctx.pendingSnapshot={key,id:snapshotId};
     // Quando outra sessão já publicou a mesma apuração, nunca substituir sua distribuição.
     if(alreadyPresent){
       const existingDist=await client.from('daily_result_distributions')
@@ -7086,6 +7087,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       .select('id,team_id,operational_day,shift_label,reference_serial,payload_sha256,payload_gzip,indicators,warnings,created_at')
       .eq('id',snapshot.id).single();
     if(error||!data)throw Error('Não foi possível ler o resultado: '+(error?.message||'registro indisponível'));
+    if(data.operational_day!==operationalContext().day)throw Error('Resultado anterior não pode aparecer no painel do dia atual. Consulte o histórico.');
     const payload=await v42Uncompress(data.payload_gzip);
     if(!payload||payload.schema!==1||!Array.isArray(payload.source))throw Error('Resultado consolidado em formato incompatível.');
     // O horário do usuário que importou foi gravado no payload; não substituí-lo pelo created_at no Supabase.
@@ -7097,7 +7099,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       if(dist.error)throw Error('Falha ao carregar distribuição: '+dist.error.message);
       ctx.revision=dist.data?.revision||0;
       if(dist.data?.state)setLoadedDistribution(dist.data.state);
-      ctx.snapshotId=data.id;ctx.teamId=data.team_id;
+      ctx.snapshotId=data.id;ctx.snapshotDay=data.operational_day;ctx.operationalDay=data.operational_day;ctx.teamId=data.team_id;
       ctx.lastCycleKey=['GERAL',data.operational_day,data.shift_label].join('|');
       try{localStorage.setItem('sri_last_operational_cycle_'+ctx.user.id,ctx.lastCycleKey);}catch(_){}
       $('sri-daily-day').value=data.operational_day;$('sri-daily-shift').value=data.shift_label;
@@ -7107,12 +7109,12 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     }finally{ctx.restoring=false;}
   }
   async function loadLast({startup=false}={}){const client=await auth();
+    const currentDay=operationalContext().day;
     const {data,error}=await client.from('daily_result_snapshots').select('id,team_id,operational_day,shift_label,created_at,payload_sha256')
-      .is('team_id',null).order('created_at',{ascending:false}).limit(10);
+      .is('team_id',null).eq('operational_day',currentDay).order('created_at',{ascending:false}).limit(10);
     if(error)throw Error('Consulta de resultados: '+error.message);
-    const items=data||[],currentDay=operationalContext().day;
-    const latest=items.find(x=>x.operational_day===currentDay)||items[0];
-    if(!latest)throw Error('Nenhum resultado consolidado foi encontrado nas equipes autorizadas.');
+    const items=data||[],latest=items[0];
+    if(!latest)throw Error('Nenhum resultado de hoje encontrado. Aguardando primeira importação SAC + ATIVO.');
     if(startup&&ui.live&&!ctx.snapshotId){
       const localHash=await hash(JSON.stringify({reference:ui.reference,source:ui.source}));
       if(ctx.localDataUnsaved||localHash!==readSharedDigest()){ctx.localDataUnsaved=true;showSharedNotice(latest,'Existe uma base recuperada deste navegador que ainda não foi identificada como compartilhada. Para preservar seu trabalho, confira antes de substituir.');return;}
@@ -7168,7 +7170,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       let query=ctx.client.from('daily_result_snapshots')
         .select('id,team_id,operational_day,shift_label,created_at,payload_sha256')
         .order('created_at',{ascending:false}).limit(5);
-      query=query.is('team_id',null);
+      query=query.is('team_id',null).eq('operational_day',operationalContext().day);
       const {data,error}=await query;
       if(error)throw Error(error.message);
       const next=(data||[])[0];
@@ -7285,10 +7287,10 @@ body.sri33-modal-open{overflow:hidden}
     if(!['admin','manager','supervisor'].includes(profile.role))return;
     const team=$('sri-daily-team')?.value;
     if(!team)throw Error('Selecione uma equipe para acompanhar.');
-    const countQuery=client.from('daily_operator_tasks').select('id',{head:true,count:'exact'}).eq('team_id',team).eq('active',true);
+    const countQuery=client.from('daily_operator_tasks').select('id',{head:true,count:'exact'}).eq('team_id',team).eq('active',true).eq('operational_day',sriTodayOperationalDay());
     const dataQuery=client.from('daily_operator_tasks')
        .select('id,protocol_number,operator_user_id,work_status,treatment_status,criticality,due_situation,updated_at')
-       .eq('team_id',team).eq('active',true).order('updated_at',{ascending:false}).limit(100);
+       .eq('team_id',team).eq('active',true).eq('operational_day',sriTodayOperationalDay()).order('updated_at',{ascending:false}).limit(100);
     const [tot,rows]=await Promise.all([countQuery,dataQuery]);
     if(tot.error)throw Error('Total da carteira: '+tot.error.message);
     if(rows.error)throw Error('Acompanhamento: '+rows.error.message);
@@ -7419,7 +7421,7 @@ body.sri33-modal-open{overflow:hidden}
     for(let round=0;round<20;round++){
       const {data,error}=await client.from('daily_operator_tasks')
         .select('id,protocol_number,criticality,due_situation,sla_band,channel,source_status,work_status,treatment_status,operational_day,shift_label,updated_at')
-        .eq('operator_user_id',user.id).eq('active',true)
+        .eq('operator_user_id',user.id).eq('active',true).eq('operational_day',sriTodayOperationalDay())
         .order('operational_day',{ascending:false}).order('updated_at',{ascending:false})
         .range(from,from+199);
       if(error)throw Error('Carteira: '+error.message);
