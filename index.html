@@ -6179,7 +6179,7 @@ function setupImportGuard(){const btn=$('process-btn');if(!btn)return;
    if(prev&&((prev.sacSize&&sac.size<prev.sacSize*.55)||(prev.ativoSize&&ativo.size<prev.ativoSize*.55))){if(!confirm('ATENÇÃO: queda acentuada no tamanho dos arquivos. Confira se ambos estão completos. Deseja continuar?'))return}
    if(!confirm(`Confirmar importação SAC + ATIVO?\nSAC: ${sac.name}\nATIVO: ${ativo.name}\nResponsável: ${current.name}`))return;
    const wasLast=!!$('v57-last-check')?.checked,team=role()==='admin'?$('v57-import-team')?.value:current.team,prior=v20LatestImport(),actor=current.id;
-   if(wasLast&&(!team||team==='Não vinculada'||!v57Teams().includes(team)))throw Error('O fechamento de turno exige equipe vinculada. A importação geral pode prosseguir sem encerrar o turno.');
+   if(wasLast&&(!team||team==='Não vinculada'||!v57Teams().includes(team)))msg('Importação geral permitida. O fechamento do turno deverá ser confirmado separadamente, com equipe vinculada.');
    await v20StartImport({sac,ativo,pair,roundKey:kind.stamp,reimport:false});
    if(team&&team!=='Não vinculada'&&v57Teams().includes(team))v57OnImportCompleted(prior,wasLast,team,actor);
   }catch(ex){console.warn('Verificação de importação',ex);msg('Importação não concluída: '+(ex.message||ex))}
