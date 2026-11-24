@@ -2410,7 +2410,7 @@ function parseSac(text,lookup){const lines=text.split(/\r?\n|\r/),rows=[],seen=n
 function setProgress(t,n){document.getElementById('progress-box').style.display='block';document.getElementById('progress-label').textContent=t;document.getElementById('progress-run').style.setProperty('--progress',n+'%')}
 const sleep=()=>new Promise(r=>setTimeout(r,25));
 async function process(){if(window.sriIsPublishing?.()){alert('Aguarde a publicação da apuração anterior antes de importar outra base.');return;}if(ui.busy||!ui.files.sac||!ui.files.ativo)return;if(window.sriCanAutoPublish&&!window.sriCanAutoPublish())return;if(!v52ValidatePairBeforeProcess())return;await v113Ready;v52CaptureBefore();v53CaptureBefore();ui.busy=true;const btn=document.getElementById('process-btn');btn.disabled=true;try{setProgress('Lendo os arquivos CSV no navegador...',12);await sleep();const [atxt,stxt]=await Promise.all([decoded(ui.files.ativo),decoded(ui.files.sac)]);setProgress('Indexando protocolos da base ATIVO...',34);await sleep();const a=parseAtivo(atxt);setProgress('Mesclando SAC + ATIVO e classificando filiais...',57);await sleep();const s=parseSac(stxt,a.map);for(const r of s.rows){const match=a.map.get(r.id);if(match){r.ativoConflito=!!match.conflict;r.ativoDuplicado=!!match.duplicate;r.ativoOcorrencias=match.occurrences||1;r.ativoCriterio=match.conflict?'CONFLITO':match.duplicate?'MAIS_RECENTE':'UNICO';}}
- if(!a.valid||!s.rows.length)throw Error('Uma das bases não contém protocolos válidos. A carteira anterior será preservada.');v113Pending=v113Stage(stxt,a.map);if(!v113ConfirmCompleteness(v113Pending)){v113Pending=null;return}window.sriMarkLocalImportPending?.();ui.source=s.rows;ui.quality={sacName:ui.files.sac.name,ativoName:ui.files.ativo.name,sacValid:s.valid,ativoValid:a.valid,merged:s.rows.length,missingFilial:s.missingFilial,noJoin:s.noJoin,duplicateSac:s.repeated,duplicateAtivo:a.repeated,ativoDuplicateProtocols:a.duplicateProtocols,ativoConflictingAgents:a.conflictingAgents,ativoLatestSelected:a.latestSelected,ativoDuplicateCases:a.duplicates,ativoTailWarnings:a.extraTailWarnings,ativoContinuationLines:a.continuations,sacSemicolonRepairs:s.semicolonRepairs,fix:s.fix,bad:s.bad+a.bad,unknownBko:s.unknownBko};let dates=ui.source.map(r=>r.atribuicao).filter(x=>x!==null);ui.reference=(dates.length?Math.max(...dates):epoch(new Date().toISOString().slice(0,10)));document.getElementById('ref-date').value='';document.getElementById('ref-date').disabled=true;setProgress('Aplicando regras de APURAÇÃO e montando indicadores...',78);await sleep();recalc();ui.selected={bko:[],area:[],canal:[],fila:[]};ui.quality.importedAt=new Date().toISOString();setProgress('Dashboard atualizado com sucesso.',100);await sleep();postLoad();setTimeout(()=>window.sriShareProcessedResult?.(),0);setTimeout(()=>{document.getElementById('progress-box').style.display='none'},1200)}catch(err){console.error(err);setProgress('Falha na leitura: '+(err&&err.message?err.message:err),0);alert('Não foi possível processar os arquivos. Verifique se os dois arquivos são as extrações CSV esperadas.\n\n'+(err.message||err))}finally{ui.busy=false;btn.disabled=!(ui.files.sac&&ui.files.ativo);renderExtractionManager();v52RefreshPair()}}
+ if(!a.valid||!s.rows.length)throw Error('Uma das bases não contém protocolos válidos. A carteira anterior será preservada.');v113Pending=v113Stage(stxt,a.map);if(!v113ConfirmCompleteness(v113Pending)){v113Pending=null;return}ui.sriPresenceEvidence=null;window.sriMarkLocalImportPending?.();ui.source=s.rows;ui.quality={sacName:ui.files.sac.name,ativoName:ui.files.ativo.name,sacValid:s.valid,ativoValid:a.valid,merged:s.rows.length,missingFilial:s.missingFilial,noJoin:s.noJoin,duplicateSac:s.repeated,duplicateAtivo:a.repeated,ativoDuplicateProtocols:a.duplicateProtocols,ativoConflictingAgents:a.conflictingAgents,ativoLatestSelected:a.latestSelected,ativoDuplicateCases:a.duplicates,ativoTailWarnings:a.extraTailWarnings,ativoContinuationLines:a.continuations,sacSemicolonRepairs:s.semicolonRepairs,fix:s.fix,bad:s.bad+a.bad,unknownBko:s.unknownBko};let dates=ui.source.map(r=>r.atribuicao).filter(x=>x!==null);ui.reference=(dates.length?Math.max(...dates):epoch(new Date().toISOString().slice(0,10)));document.getElementById('ref-date').value='';document.getElementById('ref-date').disabled=true;setProgress('Aplicando regras de APURAÇÃO e montando indicadores...',78);await sleep();recalc();ui.selected={bko:[],area:[],canal:[],fila:[]};ui.quality.importedAt=new Date().toISOString();setProgress('Dashboard atualizado com sucesso.',100);await sleep();postLoad();setTimeout(()=>window.sriShareProcessedResult?.(),0);setTimeout(()=>{document.getElementById('progress-box').style.display='none'},1200)}catch(err){console.error(err);setProgress('Falha na leitura: '+(err&&err.message?err.message:err),0);alert('Não foi possível processar os arquivos. Verifique se os dois arquivos são as extrações CSV esperadas.\n\n'+(err.message||err))}finally{ui.busy=false;btn.disabled=!(ui.files.sac&&ui.files.ativo);renderExtractionManager();v52RefreshPair()}}
 function setupDrop(which){let node=document.getElementById('drop-'+which),input=document.getElementById('file-'+which);input.addEventListener('change',e=>loadFile(which,e.target.files?.[0]));node.addEventListener('dragover',e=>{e.preventDefault();node.classList.add('drag')});node.addEventListener('dragleave',()=>node.classList.remove('drag'));node.addEventListener('drop',e=>{e.preventDefault();node.classList.remove('drag');loadFile(which,e.dataTransfer.files?.[0])})}
 function loadFile(type,f){if(!f)return;if(!/\.csv$/i.test(f.name)){alert('Selecione um arquivo CSV.');return}window.sriMarkLocalUploadStaged?.();ui.files[type]=f;const node=document.getElementById('drop-'+type);node.classList.add('file-ok');node.querySelector('strong').textContent=(type==='sac'?'01 · Base SAC':'02 · Base ATIVO')+' ✓';document.getElementById('filename-'+type).textContent=f.name+' · '+(f.size/1024/1024).toFixed(1)+' MB';document.getElementById('process-btn').disabled=!(ui.files.sac&&ui.files.ativo)}
 function v46SetPane(pane){const requested=['quality','reconcile'].includes(pane)?pane:'records';document.querySelectorAll('.v46-subtab').forEach(btn=>{const active=btn.dataset.v46Pane===requested;btn.classList.toggle('active',active);btn.setAttribute('aria-selected',String(active))});document.querySelectorAll('.v46-pane').forEach(el=>el.classList.toggle('active',el.id==='v46-pane-'+requested));if(ui.tab==='details')document.getElementById('global-controls').hidden=(requested==='quality'||requested==='reconcile');}
@@ -3640,7 +3640,7 @@ async function v42SaveCurrent(){
  finally{if(token===v42SaveToken)v42SavePending=false}
 }
 function v42ValidateData(payload){if(!payload||payload.schema!==1||!Array.isArray(payload.source)||!Number.isFinite(payload.reference)||!payload.quality||typeof payload.quality!=='object')throw Error('Cópia de base inválida.');if(payload.source.length>250000)throw Error('Base grande demais.');return true}
-async function v42ApplyCurrent(payload,opts={}){
+async function v42ApplyCurrent(payload,opts={}){ui.sriPresenceEvidence=payload.presenceEvidence||null;
  v42ValidateData(payload);if(ui.busy)throw Error('Há uma importação em andamento.');
  v42Restoring=true;try{ui.files={sac:null,ativo:null};ui.source=payload.source;ui.quality={...payload.quality};ui.quality.importedAt=payload.importedAt||payload.quality?.importedAt||null;ui.reference=payload.reference;ui.selected={bko:[],area:[],canal:[],fila:[]};recalc();postLoad();
   // savedAt é data de salvamento, não de importação; preservar sempre importedAt.
@@ -5596,6 +5596,7 @@ function v113Record(){const p=v113Pending;if(!p||!ui.live||v42Restoring)return;v
  const comparison=v113Compare(previous,now);v113State.rounds.push(comparison);v113State.rounds=v113State.rounds.slice(-V113_MAX_ROUNDS);
  v2Toast(`${fmt.format(comparison.totals.finalized)} finalizado(s) e ${fmt.format(comparison.totals.statusChanges)} alteração(ões) de CD_STATUS nesta comparação.`);
  }
+ ui.sriPresenceEvidence={extractedAt:now.time,presence:Object.fromEntries([...p.presences].map(id=>[id,p.statuses.get(id)||null]))};
  v113State.latestByDay[now.day]=now;
  const days=Object.keys(v113State.latestByDay).sort();for(const d of days.slice(0,Math.max(0,days.length-V113_MAX_DAYS)))delete v113State.latestByDay[d];
  v113Save();
@@ -5825,7 +5826,7 @@ function sriToggleSignup(value){sriRegisterMode=!!value;$('sri-signup-fields').h
  $('v20-login-error').textContent='';$('sri-auth-info').textContent='';
 }
 async function sriAuthorizeUser(authUser){
- window.sriPackResetOperator?.();
+ window.sriPackResetOperator?.();window.sriCloudTreatmentReset?.();window.sriOperatorReviewReset?.();
  const client=await sriClient();
  const {data:result,error}=await client.from('profiles').select('id,full_name,role').eq('id',authUser.id).single();
  if(error||!result)throw Error('Seu perfil ainda não está disponível. Procure a gestão para verificar seu cadastro.');
@@ -5881,7 +5882,7 @@ async function sriRestoreSession(){
  }catch(e){console.warn('Autenticação não disponível:',e.message);$('v20-login-error').textContent='Não foi possível conectar ao sistema: '+(window.sriFriendly?.(sriAuthMessage(e),'error')||sriAuthMessage(e));}
 }
 async function logout(){try{const client=await sriClient();await client.auth.signOut()}catch(e){console.warn('Não foi possível encerrar sessão remota',e)}
- window.sriPackLogout?.();window.sriPackResetOperator?.();window.sriCloudTreatmentReset?.();document.body.classList.remove('sri33-operator-cloud');current=null;$('v20-email').value='';$('v20-pass').value='';$('v20-login').hidden=false;
+ window.sriPackLogout?.();window.sriPackResetOperator?.();window.sriCloudTreatmentReset?.();window.sriOperatorReviewReset?.();document.body.classList.remove('sri33-operator-cloud');current=null;$('v20-email').value='';$('v20-pass').value='';$('v20-login').hidden=false;
  document.body.classList.add('v20-not-logged');document.body.classList.remove('v20-active');
  closeModal();$('v20-login-error').textContent='';
 }
@@ -6944,7 +6945,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const allowedQuality=['sacValid','ativoValid','merged','missingFilial','noJoin','duplicateSac','duplicateAtivo','ativoDuplicateProtocols','ativoConflictingAgents','ativoLatestSelected','fix','bad','unknownBko'];
     const quality={};for(const name of allowedQuality)if(Number.isFinite(Number(ui.quality?.[name])))quality[name]=Number(ui.quality[name]);
     // A lista source é a carteira JÁ CONSOLIDADA (não são as linhas CSV originais).
-    return {schema:1,savedAt:new Date().toISOString(),importedAt:ui.quality?.importedAt||null,reference:ui.reference,quality,source:ui.source};
+    return {schema:1,savedAt:new Date().toISOString(),importedAt:ui.quality?.importedAt||null,reference:ui.reference,quality,source:ui.source,presenceEvidence:ui.sriPresenceEvidence||null};
   }
   function summarize(){
     const r=ui.apured||[],unique=new Set(r.map(x=>String(x.id))).size;
@@ -7001,7 +7002,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!shift)throw Error('Importação disponível de 07h a 20h: Manhã (07–13h), Tarde (13–18h), Noite (18–20h).');
     await carryForwardDistribution(client,team,day,shift);
     const payload=resultPayload(),indicator=summarize(),warnings=warningSummary();
-    const digest=await hash(JSON.stringify({reference:payload.reference,source:payload.source}));
+    const digest=await hash(JSON.stringify({reference:payload.reference,source:payload.source,presenceEvidence:payload.presenceEvidence}));
     const key=['GERAL',day,shift,digest].join('|');
     const packed=await v42Compress(payload);
     if(packed.length>10000000)throw Error('Resultado consolidado acima de 10 MB. Mantenha os dados locais e acione a TI para processamento em lotes.');
@@ -7032,6 +7033,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       if(existingDist.error)throw Error('Leitura da distribuição compartilhada: '+existingDist.error.message);
       if(existingDist.data){
         await loadSnapshot({id:snapshotId});
+        await reconcilePresence(client,snapshotId,payload.presenceEvidence);
         ctx.pendingSnapshot=null;
         status('Apuração já publicada no Supabase. Resultado e distribuição atuais carregados sem duplicação.','success');
         return;
@@ -7039,6 +7041,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     }
     status('Resultado consolidado gravado. Sincronizando a distribuição...','pending');
     await saveDistribution();
+    await reconcilePresence(client,snapshotId,payload.presenceEvidence);
     ctx.localDataUnsaved=false;ctx.fileStaged=false;ctx.pendingSnapshot=null;
     ctx.lastCycleKey=['GERAL',day,shift].join('|');
     try{localStorage.setItem('sri_last_operational_cycle_'+ctx.user.id,ctx.lastCycleKey);}catch(_){}
@@ -7046,6 +7049,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     $('sri-daily-result').textContent='Apuração geral SAC + ATIVO publicada. '+indicator.protocolos_consolidados+' protocolos consolidados.';renderImportContext();
     status('Apuração SAC + ATIVO publicada automaticamente no Supabase, incluindo distribuição. CSVs originais não enviados.','success');
   }
+  async function reconcilePresence(client,snapshotId,evidence){if(!evidence?.extractedAt||!evidence?.presence)return;try{const {error}=await client.rpc('sri_reconcile_presence',{p_snapshot:snapshotId,p_extracted:evidence.extractedAt,p_presence:evidence.presence});if(error)throw Error(error.message);window.sriCloudReconciliationRefresh?.();}catch(e){window.sriToast?.('Apuração publicada, mas a conciliação de presença não foi confirmada. Recarregue a apuração e tente novamente pela Central de Conciliação.','warning');console.warn('Conciliação de presença',e.message)}}
+  window.sriRetryPresence=async()=>{if(!ctx.snapshotId||!ui.sriPresenceEvidence)throw Error('Não há evidência de presença da apuração carregada.');const client=await auth();const e=ui.sriPresenceEvidence;const {data,error}=await client.rpc('sri_reconcile_presence',{p_snapshot:ctx.snapshotId,p_extracted:e.extractedAt,p_presence:e.presence});if(error)throw Error(error.message);return data};
   function distributionState(){
     if(!ui.live)return {};
     const ids=new Set(ui.source.map(x=>String(x.id)));
@@ -7112,7 +7117,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(Number(payload.reference)!==Number(data.reference_serial))throw Error('Referência da apuração não confere.');
     ctx.restoring=true;
     try{
-      await v42ApplyCurrent(payload,{tab:ui.tab||'overview'});
+      await v42ApplyCurrent(payload,{tab:ui.tab||'overview'});ui.sriPresenceEvidence=payload.presenceEvidence||null;
       const dist=await client.from('daily_result_distributions').select('state,revision').eq('snapshot_id',data.id).maybeSingle();
       if(dist.error)throw Error('Falha ao carregar distribuição: '+dist.error.message);
       ctx.revision=dist.data?.revision||0;
@@ -7413,6 +7418,7 @@ body.sri33-modal-open{overflow:hidden}
        <div class="v20-between"><div><h3>Minha Carteira</h3><p class="v20-muted">Demandas atribuídas a você. Priorize as de maior criticidade e registre a tratativa.</p></div><button type="button" id="sri33-mine-refresh" class="v20-button secondary">Atualizar protocolos</button></div>
        <p id="sri33-mine-status" role="status" aria-live="polite"></p>
        <div id="sri-pack-carteira"><div id="sri-pack-summary" class="sri-pack-kpis"></div><div class="sri-pack-controls"><label class="v20-field">Buscar protocolo<input type="search" id="sri-pack-search" placeholder="Número do protocolo"></label><label class="v20-field">Criticidade<select id="sri-pack-filter"><option value="all">Todas</option><option>Crítico</option><option>Alto</option><option>Médio</option><option>Baixo</option><option>Não avaliado</option></select></label><label class="v20-field">Base<select id="sri-pack-base"><option value="">Todas</option></select></label><label class="v20-field">Área<select id="sri-pack-area"><option value="">Todas</option></select></label><label class="v20-field">Tratativa<select id="sri-pack-status-filter"><option value="all">Todas</option><option value="pending">Sem tratativa</option><option value="filled">Com tratativa</option></select></label><button type="button" class="v20-button secondary" id="sri-pack-clear">Limpar filtros</button></div><div id="sri33-task-table" style="overflow-x:auto"></div><div id="sri33-priority" hidden></div></div>
+       <section id="sri-operator-reviews" class="v20-panel" hidden><h3>Revisões solicitadas pela supervisão</h3><div id="sri-operator-review-list"></div></section>
        <div id="sri-pack-history" hidden><h3>Meu Histórico</h3><p class="v20-muted">Até 50 registros mais recentes.</p><div id="sri33-history"></div></div>
        <div id="sri33-treatment" hidden role="presentation">
          <div class="sri33-dialog" role="dialog" aria-modal="true" aria-labelledby="sri33-treatment-title" aria-describedby="sri33-treatment-owner" tabindex="-1">
@@ -7489,7 +7495,7 @@ body.sri33-modal-open{overflow:hidden}
     taskRows.sort((a,b)=>packRank(a)-packRank(b)||packDueDate(a,b)||packDue(a)-packDue(b)||String(a.protocol_number).localeCompare(String(b.protocol_number)));
     renderPackTasks();
     stateMsg('sri33-mine-status',`${rows.length} protocolo(s) na sua carteira de hoje.`,'success');
-    void loadHistory(client,user.id,epoch).catch(()=>stateMsg('sri33-mine-status','Carteira atualizada; histórico temporariamente indisponível.','warning'));
+    void loadHistory(client,user.id,epoch).catch(()=>stateMsg('sri33-mine-status','Carteira atualizada; histórico temporariamente indisponível.','warning'));void window.sriOperatorReviewRefresh?.(client,user.id);
   }
   const packLevel=r=>['Crítico','Alto','Médio','Baixo'].find(x=>x.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()===String(r.criticality||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase())||'Não avaliado';
   const packRank=r=>['Crítico','Alto','Médio','Baixo','Não avaliado'].indexOf(packLevel(r));
@@ -7534,7 +7540,7 @@ body.sri33-modal-open{overflow:hidden}
     closeTreatment(true);renderPackTasks();stateMsg('sri33-mine-status','Tratativa registrada com sucesso!','success');
     if(next)openTreatment(next,null,true);else if(advance)window.sriToast?.('Não há outro protocolo sem tratativa nos filtros atuais.','info');
     void loadHistory(client,user.id,epoch).catch(()=>window.sriToast?.('Tratativa salva; histórico será atualizado na próxima consulta.','warning'));
-    if(!advance)operatorFingerprint='';
+    if(!advance)operatorFingerprint='';void window.sriOperatorReviewRefresh?.(client,user.id);
   }
 
   // Ao publicar uma nova distribuição, o operador recebe sua carteira atualizada
