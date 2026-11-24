@@ -373,8 +373,9 @@ BEGIN
  JOIN public.daily_result_snapshots n ON n.id=NEW.snapshot_id
  WHERE t.operational_day=NEW.operational_day AND t.shift_label=NEW.shift_label
  AND t.protocol_number=NEW.protocol_number AND t.snapshot_id<>NEW.snapshot_id
- AND (s.team_id IS NOT DISTINCT FROM n.team_id) AND t.active
- ORDER BY t.updated_at DESC,t.id DESC LIMIT 1;
+ AND (s.team_id IS NOT DISTINCT FROM n.team_id)
+ AND t.treatment_status IS NOT NULL AND t.treatment_status NOT IN ('','SEM STATUS')
+ ORDER BY s.created_at DESC,t.updated_at DESC,t.id DESC LIMIT 1;
  IF FOUND THEN NEW.treatment_status:=old_task.treatment_status;NEW.work_status:=old_task.work_status; END IF;
  RETURN NEW;
 END;
@@ -386,11 +387,13 @@ CREATE TABLE IF NOT EXISTS private.sri_status_reconciliation(
  base_name text, area_name text, previous_source text NOT NULL, current_source text NOT NULL,
  manual_status text NOT NULL, observed_at timestamptz NOT NULL DEFAULT now(),
  decision text, justification text, decided_by uuid, decided_at timestamptz,
- event_kind text NOT NULL DEFAULT 'status_changed', extracted_at timestamptz,
+ event_kind text NOT NULL DEFAULT 'status_changed', extracted_at timestamptz, manual_at timestamptz,
  review_response text, review_responded_at timestamptz,return_reason text,return_requested_by uuid,return_requested_at timestamptz,
  UNIQUE(task_id,previous_source,current_source,manual_status)
 );
 ALTER TABLE private.sri_status_reconciliation ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS sri_reconciliation_day_team_idx ON private.sri_status_reconciliation(operational_day,team_id,observed_at DESC);
+CREATE INDEX IF NOT EXISTS sri_reconciliation_operator_idx ON private.sri_status_reconciliation(operator_id,decided_at DESC) WHERE decision='return' AND review_responded_at IS NULL;
 REVOKE ALL ON private.sri_status_reconciliation FROM PUBLIC,anon,authenticated;
 -- A matriz sem validação operacional não presume equivalências. Mudanças da origem com tratativa
 -- existente são sinais de revisão, nunca uma declaração automática de erro do operador.
@@ -516,6 +519,7 @@ BEGIN
  AND NOT EXISTS(SELECT 1 FROM private.sri_status_reconciliation r WHERE r.protocol_number=t.protocol_number AND r.operational_day=t.operational_day AND r.current_source=CASE WHEN NOT p_presence ? t.protocol_number THEN 'AUSENTE SAC + ATIVO' ELSE p_presence->>t.protocol_number END AND r.previous_source=COALESCE(NULLIF(t.source_status,''),'Não informado') AND r.manual_status=t.treatment_status AND r.snapshot_id=p_snapshot)
  ON CONFLICT DO NOTHING;
  GET DIAGNOSTICS added=ROW_COUNT;
+ UPDATE private.sri_status_reconciliation r SET extracted_at=p_extracted,manual_at=(SELECT max(h.created_at) FROM public.daily_operator_treatments h JOIN public.daily_operator_tasks t ON t.id=h.task_id WHERE t.protocol_number=r.protocol_number AND t.operational_day=r.operational_day AND h.action=r.manual_status AND h.created_at<=r.observed_at) WHERE r.snapshot_id=p_snapshot;
  INSERT INTO private.sri_presence_rounds(snapshot_id,operational_day,shift_label,extracted_at,registered_by) VALUES(p_snapshot,snap.operational_day,snap.shift_label,p_extracted,auth.uid());
  RETURN added;
 END;
@@ -563,8 +567,9 @@ GRANT EXECUTE ON FUNCTION public.sri_list_status_compatibility() TO authenticate
 
 CREATE OR REPLACE FUNCTION private.sri_reconciliation_counts(p_day date) RETURNS jsonb
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $counts$
- SELECT jsonb_build_object('pending',count(*) FILTER(WHERE decision IS NULL OR decision='return'),'waiting_operator',count(*) FILTER(WHERE decision='return' AND review_responded_at IS NULL),'awaiting_supervisor',count(*) FILTER(WHERE decision='return' AND review_responded_at IS NOT NULL),'resolved',count(*) FILTER(WHERE decision IN ('base','manual','both')))
- FROM private.sri_status_reconciliation r WHERE r.operational_day=p_day AND auth.uid() IS NOT NULL AND (private.is_manager() OR (r.team_id IS NOT NULL AND private.is_supervisor_of(r.team_id)))
+ WITH scoped AS (SELECT r.* FROM private.sri_status_reconciliation r WHERE r.operational_day=p_day AND auth.uid() IS NOT NULL AND (private.is_manager() OR (r.team_id IS NOT NULL AND private.is_supervisor_of(r.team_id)))),
+ latest AS (SELECT DISTINCT ON(protocol_number) protocol_number,CASE WHEN decision IS NULL THEN 'Em análise' WHEN decision='return' AND review_responded_at IS NULL THEN 'Aguardando operador' WHEN decision='return' THEN 'Aguardando decisão final' WHEN decision='base' THEN 'Origem validada' WHEN decision='manual' THEN 'Tratativa mantida' WHEN decision='both' THEN 'Ambas válidas' END AS label FROM scoped ORDER BY protocol_number,observed_at DESC,id DESC)
+ SELECT jsonb_build_object('pending',count(*) FILTER(WHERE decision IS NULL OR decision='return'),'waiting_operator',count(*) FILTER(WHERE decision='return' AND review_responded_at IS NULL),'awaiting_supervisor',count(*) FILTER(WHERE decision='return' AND review_responded_at IS NOT NULL),'resolved',count(*) FILTER(WHERE decision IN ('base','manual','both')),'labels',(SELECT coalesce(jsonb_object_agg(protocol_number,label),'{}'::jsonb) FROM latest)) FROM scoped
 $counts$;
 REVOKE ALL ON FUNCTION private.sri_reconciliation_counts(date) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION private.sri_reconciliation_counts(date) TO authenticated;
