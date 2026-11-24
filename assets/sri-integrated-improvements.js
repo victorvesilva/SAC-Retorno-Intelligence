@@ -3,15 +3,12 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const mq=matchMedia('(prefers-color-scheme: dark)');let account='anonymous',mode='auto';
-const key=()=> 'sri-appearance-v1:'+account;
-function read(){try{return ['light','dark','auto'].includes(localStorage.getItem(key()))?localStorage.getItem(key()):'auto'}catch{return 'auto'}}
-function theme(v,persist=true){mode=['light','dark','auto'].includes(v)?v:'auto';document.documentElement.dataset.sriTheme=mode==='auto'?(mq.matches?'dark':'light'):mode; if(persist)try{localStorage.setItem(key(),mode)}catch{};const s=$('sri-pack-theme-select');if(s)s.value=mode;const b=$('sri-pack-theme-shortcut');if(b){b.textContent=mode==='dark'?'☀ Claro':'☾ Escuro';b.setAttribute('aria-label','Alternar tema claro ou escuro')}}
-mq.addEventListener('change',()=>{if(mode==='auto')theme(mode,false)});
-window.sriPackAppearance=function(root){if(!root||$('sri-pack-appearance'))return;root.insertAdjacentHTML('beforeend','<section class="v20-panel" id="sri-pack-appearance"><h3>Configurações pessoais</h3><label class="v20-field">Aparência<select id="sri-pack-theme-select"><option value="light">Claro</option><option value="dark">Escuro</option><option value="auto">Automático (dispositivo)</option></select></label><p class="v20-muted">Sua preferência é lembrada neste navegador.</p><details><summary>Ajuda rápida</summary><p>Abra Minha Carteira para consultar demandas, filtre por prioridade e registre a tratativa. O SIGO permanece como sistema oficial. Se precisar de ajuda, procure a supervisão.</p></details></section>');$('sri-pack-theme-select').value=mode;$('sri-pack-theme-select').onchange=e=>theme(e.target.value)};
-function init(){theme(read(),false);const top=document.querySelector('.top-right');if(top&&!$('sri-pack-theme-shortcut')){const b=document.createElement('button');b.id='sri-pack-theme-shortcut';b.type='button';b.className='sri-pack-theme';b.onclick=()=>theme(document.documentElement.dataset.sriTheme==='dark'?'light':'dark');top.prepend(b);theme(mode,false)}}
-window.sriPackIdentity=async()=>{try{const c=await window.sriGetSupabaseClient?.();const {data}=await c.auth.getUser();account=data?.user?.id||'anonymous';theme(read(),false)}catch{account='anonymous';theme(read(),false)}};
-window.sriPackLogout=()=>{account='anonymous';theme(read(),false)};
+// Tema claro obrigatório por enquanto; preferências anteriores preservadas.
+function theme(){document.documentElement.dataset.sriTheme='light';$('sri-pack-theme-shortcut')?.remove();}
+window.sriPackAppearance=function(root){if(!root||$('sri-pack-appearance'))return;root.insertAdjacentHTML('beforeend','<section class="v20-panel" id="sri-pack-appearance"><h3>Ajuda rápida</h3><p>Consulte Minha Carteira, filtre por prioridade, Base e Área e registre a tratativa. O SIGO permanece como sistema oficial.</p></section>');theme()};
+function init(){theme()}
+window.sriPackIdentity=async()=>theme();
+window.sriPackLogout=()=>theme();
 const replace=[
  [/Comunicação autenticada com o Supabase verificada\.?/gi,'Sistema conectado.'],
  [/Há alterações locais ainda não confirmadas no Supabase\.?/gi,'Existem alterações pendentes de salvamento.'],
