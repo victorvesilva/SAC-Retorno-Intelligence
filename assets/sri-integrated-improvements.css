@@ -25,3 +25,30 @@ html[data-sri-theme="dark"] svg text{fill:var(--sri-ui-ink)}
 .sri-pack-toast article span{flex:1}.sri-pack-toast article button{border:0;background:transparent;color:inherit;font-size:18px}
 @media(max-width:640px){.sri-pack-controls>*{flex:1 1 130px}.sri-pack-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#sri-pack-theme-shortcut{padding:6px;font-size:12px}}
 @media print{html[data-sri-theme="dark"]{color-scheme:light;--sri-ui-bg:#fff;--sri-ui-card:#fff;--sri-ui-ink:#111;--sri-ui-muted:#333;--sri-ui-line:#ccc}.sri-pack-toast,#sri-pack-theme-shortcut{display:none!important}}
+
+/* Carteira operacional — superfície clara, compacta e acessível. */
+body.sri33-operator-cloud #sri33-mine{background:#f4f7fb;border:0;box-shadow:none;padding:18px!important}
+#sri33-mine h3{color:#153d76;font-size:20px;margin:0 0 6px}
+#sri33-mine .sri-pack-kpis{display:grid;grid-template-columns:repeat(5,minmax(95px,1fr));gap:10px;margin:16px 0}
+#sri33-mine .sri-pack-kpis .v20-stat{background:white;border:1px solid #dce5f0;border-radius:12px;padding:14px;min-height:68px}
+#sri33-mine .sri-pack-kpis button{background:#fff;border:1px solid #dce5f0;border-radius:10px;min-height:65px;padding:9px;display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+#sri33-mine .sri-pack-kpis button[aria-pressed=true]{outline:2px solid #235caa;outline-offset:1px}
+#sri33-mine .sri-pack-controls{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:10px;background:#fff;padding:14px;border:1px solid #dce5f0;border-radius:12px;margin:12px 0}
+#sri33-task-table{background:white;border:1px solid #dce5f0;border-radius:12px;max-height:65vh;overflow:auto}
+#sri33-task-table .v20-table{min-width:900px!important;border-collapse:separate;border-spacing:0}
+#sri33-task-table th{position:sticky;top:0;background:#edf3fb;color:#24466c;z-index:1;font-size:12px;white-space:nowrap}
+#sri33-task-table td{font-size:12px;padding:9px 10px;border-bottom:1px solid #edf2f7}
+#sri33-task-table tr:hover td{background:#f2f7ff}
+#sri33-task-table td:first-child{font-weight:700;color:#194583}
+#sri33-task-table button{min-height:32px;white-space:nowrap;color:#174b92}
+#sri33-treatment .sri33-dialog{width:min(680px,96vw);border-radius:18px;padding:24px;box-shadow:0 24px 80px #10243e45;background:white}
+#sri33-treatment .sri33-head{border-bottom:1px solid #dce5f0;padding-bottom:14px}
+#sri33-treatment .sri33-head h3{color:#153d76;font-size:21px}
+.sri-operator-context{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;background:#f0f5fc;padding:14px;border-radius:12px;margin:12px 0}
+.sri-operator-context div{display:flex;flex-direction:column;gap:4px;overflow-wrap:anywhere}.sri-operator-context small{color:#506785;font-size:11px}.sri-operator-context b{color:#173f73;font-size:13px}
+#sri33-treatment .sri33-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+#sri33-treatment-next{background:#164a95;color:white}
+#sri33-note-count{display:block;text-align:right;color:#526785;font-size:11px}
+#sri33-mine :focus-visible,#sri33-treatment :focus-visible{outline:3px solid #2563eb;outline-offset:2px}
+@media(max-width:1050px){#sri33-mine .sri-pack-controls{grid-template-columns:repeat(2,minmax(0,1fr))}#sri33-mine .sri-pack-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){#sri33-mine .sri-pack-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#sri33-treatment .sri33-dialog{padding:15px;max-height:96dvh;overflow:auto}#sri33-treatment .sri33-actions button{flex:1 1 42%}#sri33-mine .sri-pack-controls{padding:8px}}
