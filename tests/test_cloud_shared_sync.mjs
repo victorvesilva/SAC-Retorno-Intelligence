@@ -29,13 +29,13 @@ const start=html.indexOf("  const sharedDigestKey='sri_cloud_shared_digest_v1';"
 const end=html.indexOf('  window.sriSnapshotAfterAuth=()=>{',start);
 assert.ok(start>0&&end>start,'Controlador de sincronização não encontrado');
 const nodes={};const $=id=>nodes[id]||(nodes[id]={hidden:true,textContent:'',value:''});
-const state={snapshotId:'original',revision:3,busy:false,restoring:false,saveTimer:null,
+const state={snapshotId:'original',revision:3,busy:false,restoring:false,saveTimer:null,operationalDay:'2026-11-23',
   localDataUnsaved:false,syncedDistributionState:JSON.stringify({assignments:{}}),
   syncedPayloadHash:null,cloudTimer:null,cloudChecking:false,cloudPendingId:null,
   client:null,profile:{role:'supervisor'},user:{id:'x'}};
 let assignments={};let loaded=[];
 const context={
- ctx:state,ui:{busy:false},$: $,status:()=>{},syncShift:()=>({day:"2026-11-23",shift:"Manhã"}),console,document:{hidden:false,
+ ctx:state,ui:{busy:false},$: $,status:()=>{},syncShift:()=>({day:"2026-11-23",shift:"Manhã"}),operationalContext:()=>({day:"2026-11-23",shift:"Manhã"}),console,document:{hidden:false,
  activeElement:{closest:()=>null},addEventListener:()=>{}},
  window:{addEventListener:()=>{}},setInterval:()=>100,clearTimeout:()=>{},
  localStorage:{getItem:()=>'',setItem:()=>{}},
