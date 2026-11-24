@@ -9,7 +9,7 @@ BEGIN
 EXCEPTION WHEN datetime_field_overflow OR invalid_datetime_format THEN RETURN NULL;
 END; $date$;
 CREATE OR REPLACE FUNCTION private.sri_priority_reason(p_value text) RETURNS text LANGUAGE sql IMMUTABLE SET search_path='' AS $reason$
- SELECT CASE WHEN p_value IN ('Prazo vencido','Vence hoje','Prazo D6','Histórico de NIP','Fila crítica','Credenciamento D6','Prazo D5/D4','Tempo excedido no retorno','Prazo regular','Prioridade definida pela supervisão','Sem classificação de prazo') THEN p_value ELSE NULL END;
+ SELECT CASE WHEN p_value IN ('Prazo vencido','Vence hoje','Prazo D6','Histórico de NIP','Fila crítica','Credenciamento D6','Prazo D5/D4','Tempo excedido no retorno','Prazo regular','Prioridade operacional','Sem classificação de prazo') THEN p_value ELSE NULL END;
 $reason$;
 CREATE OR REPLACE FUNCTION public.publish_daily_operator_tasks(p_snapshot uuid, p_revision bigint, p_details jsonb DEFAULT '{}'::jsonb)
  RETURNS jsonb
