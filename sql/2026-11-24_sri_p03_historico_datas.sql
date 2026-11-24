@@ -43,7 +43,7 @@ RETURNS SETOF jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' 
 DECLARE v_role text;
 BEGIN
  SELECT p.role INTO v_role FROM public.profiles p WHERE p.id=auth.uid();
- IF v_role NOT IN ('admin','manager','supervisor','assistant') OR p_day IS NULL
+ IF v_role IS NULL OR v_role NOT IN ('admin','manager','supervisor','assistant') OR p_day IS NULL
  THEN RAISE EXCEPTION 'Consulta histórica indisponível'; END IF;
  RETURN QUERY
  SELECT jsonb_build_object(
@@ -70,7 +70,7 @@ CREATE OR REPLACE FUNCTION private.sri_p03_history_tasks(
 DECLARE v_role text;
 BEGIN
  SELECT p.role INTO v_role FROM public.profiles p WHERE p.id=auth.uid();
- IF v_role NOT IN ('admin','manager','supervisor','assistant') OR p_snapshot IS NULL
+ IF v_role IS NULL OR v_role NOT IN ('admin','manager','supervisor','assistant') OR p_snapshot IS NULL
  THEN RAISE EXCEPTION 'Consulta histórica indisponível'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.daily_result_snapshots s WHERE s.id=p_snapshot
    AND (v_role IN ('admin','manager') OR
