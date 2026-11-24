@@ -1789,7 +1789,7 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
 })();
 </script>
 <link rel="stylesheet" href="/assets/sri-mobile-navigation.css?v=20261124-01"/>
-<link rel="stylesheet" href="/assets/sri-integrated-improvements.css?v=20261124-01">
+<link rel="stylesheet" href="/assets/sri-integrated-improvements.css?v=20261124-02">
 </head>
 <body>
 <div id="sri-boot-modal" role="dialog" aria-modal="true" aria-labelledby="sri-boot-title" aria-describedby="sri-boot-message" tabindex="-1" data-state="loading" hidden>
@@ -2914,6 +2914,7 @@ function distUpdateSelect(){const n=distState.selected.size,multi=document.getEl
  const plan=document.getElementById('dist-plan');if(!n){plan.innerHTML='<span>Selecione os protocolos na tabela para atribuir.</span>';return}if(multi){if(eligible.length<2){plan.innerHTML='<span class="dist-plan-warning">Selecione pelo menos dois operadores habilitados.</span>';return}const base=Math.floor(n/eligible.length),extra=n%eligible.length;plan.innerHTML='<span>Divisão igualitária prevista:</span>'+eligible.map((id,i)=>`<span>${safe(distOperator(id).name)}: ${base+(i<extra?1:0)}</span>`).join('')}else{plan.innerHTML=ready?`<span>${safe(single.name)}: ${fmt.format(n)} protocolo(s)</span>`:'<span>Escolha um operador habilitado.</span>'}}
 let v198PendingSource=false;
 function distRefresh(){distRefreshStats();distApplyFilters();distRenderRoster();dmManagerRender();v198DrawTotals();}
+window.sriRefreshStatusViews=()=>{if(!ui.live)return;const el=document.querySelector('.dist-table-wrap'),top=el?.scrollTop||0,left=el?.scrollLeft||0;distBuildFilterOptions();distApplyFilters();dmManagerRender();v198DrawTotals();if(el){el.scrollTop=top;el.scrollLeft=left}};
 function distPane(name){distState.pane=name;document.querySelectorAll('.dist-tab').forEach(b=>b.classList.toggle('active',b.dataset.distPane===name));document.querySelectorAll('.dist-pane').forEach(el=>el.classList.toggle('active',el.id==='dist-pane-'+name));if(name==='manager')dmManagerRender()}
 function distAssign(release=false){if(!ui.live||!distState.selected.size)return;const activeIds=new Set(distState.rows.map(r=>r.id));const chosen=distState.rows.filter(r=>distState.selected.has(r.id)&&activeIds.has(r.id)).map(r=>r.id);if(!chosen.length)return;const multi=!release&&document.getElementById('dist-multi').checked;let targets=[];
  if(!release){targets=multi?[...document.querySelectorAll('#dist-multi-options input:checked')].map(x=>x.value):[document.getElementById('dist-target').value];targets=[...new Set(targets)].filter(id=>distEligible(distOperator(id)));if(targets.length<(multi?2:1)){alert(multi?'Selecione pelo menos dois operadores habilitados.':'Selecione um operador habilitado.');return}}
@@ -3061,10 +3062,10 @@ const DIST_STATUS_DEFS=[
 ];
 const DIST_STATUS_CHOICES=DIST_STATUS_DEFS.map(x=>x[0]);
 const DIST_STATUS_SET=new Set(DIST_STATUS_CHOICES);
-function distStatus(id){return distStatuses[id]?.status||''}
+function distStatus(id){const cloud=window.sriCloudTreatment?.(id);return cloud?cloud.treatment_status||'':distStatuses[id]?.status||''}
 function distStatusNormalize(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim().replace(/[^A-Z0-9 -]/g,'')}
 function distNormalizeStatus(value){const needle=distStatusNormalize(value);return DIST_STATUS_CHOICES.find(x=>distStatusNormalize(x)===needle)||null}
-function distSetStatus(id,status){if(status&&!DIST_STATUS_SET.has(status))return false;if(!status){delete distStatuses[id]}else{distStatuses[id]={status,updatedAt:new Date().toISOString()}}distPersist();return true}
+function distSetStatus(id,status){if(window.sriCloudTreatment?.(id))return false;if(status&&!DIST_STATUS_SET.has(status))return false;if(!status){delete distStatuses[id]}else{distStatuses[id]={status,updatedAt:new Date().toISOString()}}distPersist();return true}
 function distStatusOptions(id){const active=distStatus(id);return '<option value="">Sem status</option>'+DIST_STATUS_CHOICES.map(v=>`<option value="${safe(v)}" ${v===active?'selected':''}>${safe(v)}</option>`).join('')}
 
 function distStylesXml(){return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts><fonts count="4"><font><sz val="10"/><name val="Aptos"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Aptos"/></font><font><b/><sz val="10"/><color rgb="FF15396E"/><name val="Aptos"/></font><font><sz val="10"/><color rgb="FF60748D"/><name val="Aptos"/></font></fonts><fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF0B45B7"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFF7A16"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF0F5FC"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFE0E8F3"/></left><right style="thin"><color rgb="FFE0E8F3"/></right><top style="thin"><color rgb="FFE0E8F3"/></top><bottom style="thin"><color rgb="FFE0E8F3"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="3" borderId="1" xfId="0" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="4" borderId="1" xfId="0" applyFill="1"><alignment vertical="center"/></xf><xf numFmtId="164" fontId="0" fillId="4" borderId="1" xfId="0" applyNumberFormat="1"><alignment vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0"><alignment vertical="center"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`}
@@ -5783,7 +5784,7 @@ switchTab=function(tab){
  if(effective.startsWith('v20-')){document.querySelector('.hero').style.display='none';document.getElementById('state-banner').hidden=true}else document.querySelector('.hero').style.display='';
  if(effective==='v20-mine'){if(mineMode==='pending')renderOperatorPending();else renderMine(mineMode==='history')}
  /* H-02: desempenho nunca exibido ao Operador. */if(effective==='overview')v20GoalsRenderOverview();if(effective==='intelligence'&&v49Pane==='metas')v20RenderGoalPerformance();
- if(effective==='v20-closure')renderClosing();if(effective==='v20-pending')renderPending();if(effective==='v20-alerts')renderAlerts();if(effective==='v20-settings')renderSettings();if(effective==='v20-account'){renderAccount();window.sriPackAppearance?.($('v20-account-body'));}if(effective==='v20-catalog')renderCatalog();
+ if(effective==='v20-closure')renderClosing();if(effective==='v20-pending')renderPending();if(effective==='v20-alerts'){renderAlerts();window.sriCloudReconciliationOpen?.();}if(effective==='v20-settings')renderSettings();if(effective==='v20-account'){renderAccount();window.sriPackAppearance?.($('v20-account-body'));}if(effective==='v20-catalog')renderCatalog();
  closeAccountMenu();syncNavigation();
 };
 function visibleNavigation(){buildNav();
@@ -5880,7 +5881,7 @@ async function sriRestoreSession(){
  }catch(e){console.warn('Autenticação não disponível:',e.message);$('v20-login-error').textContent='Não foi possível conectar ao sistema: '+(window.sriFriendly?.(sriAuthMessage(e),'error')||sriAuthMessage(e));}
 }
 async function logout(){try{const client=await sriClient();await client.auth.signOut()}catch(e){console.warn('Não foi possível encerrar sessão remota',e)}
- window.sriPackLogout?.();window.sriPackResetOperator?.();document.body.classList.remove('sri33-operator-cloud');current=null;$('v20-email').value='';$('v20-pass').value='';$('v20-login').hidden=false;
+ window.sriPackLogout?.();window.sriPackResetOperator?.();window.sriCloudTreatmentReset?.();document.body.classList.remove('sri33-operator-cloud');current=null;$('v20-email').value='';$('v20-pass').value='';$('v20-login').hidden=false;
  document.body.classList.add('v20-not-logged');document.body.classList.remove('v20-active');
  closeModal();$('v20-login-error').textContent='';
 }
@@ -5985,16 +5986,17 @@ function treat(id,mode='new'){
  ${v20ProtocolHistory(id)}`,
  action('Cancelar','closeModal',true)+(!correcting&&v20Correctable(id)?action('Corrigir última tratativa','treatEdit_'+id,true):'')+(!correcting?action('Salvar nova tratativa','treatSave_'+id):action('Salvar correção','treatCorrectSave_'+id)));
 }
-function saveTreat(id){const status=$('v20-treat-status')?.value,noteText=$('v20-treat-note')?.value.trim()||'';const prev=distStatus(id);
+async function saveTreat(id){const status=$('v20-treat-status')?.value,noteText=$('v20-treat-note')?.value.trim()||'';const prev=distStatus(id);
  if(!statusList.includes(status))throw Error('Selecione um status válido.');
  if((pendingNote.has(status)||(prev&&prev!==status))&&noteText.length<8)throw Error('Esta tratativa exige observação com pelo menos 8 caracteres.');
  if(role()==='operator'&&distOwner(id)?.id!==current.rosterId)throw Error('Protocolo não pertence a você.');
  if(role()==='supervisor'&&ownerLink(distOwner(id)?.id)?.team!==current.team)throw Error('Protocolo não pertence à sua equipe.');
  if(!hasActiveProtocol(id))throw Error('Protocolo finalizado não pode receber nova tratativa.');
+ if(window.sriGetSavedDistributionContext?.()?.snapshotId){await window.sriCloudTreatmentSave(id,status,noteText);closeModal();msg('Tratativa registrada no sistema.');return;}
  if(!distSetStatus(id,status))throw Error('Não foi possível atualizar o status.');
  data.treatments.push({id:mkid(),pid:id,user:current.id,teamAtAction:current.team,teamIdAtAction:current.teamId||null,from:prev,to:status,note:noteText,at:time()});audit('tratativa',id+': '+prev+' → '+status);closeModal();msg('Nova tratativa registrada. Data e horário automáticos.');if(role()==='operator')renderMine();
 }
-function saveCorrection(id){if(!v20Correctable(id))throw Error('Você não tem permissão para corrigir esta tratativa.');
+function saveCorrection(id){if(window.sriGetSavedDistributionContext?.()?.snapshotId)throw Error('Utilize uma nova tratativa centralizada ou a Central de Conciliação. A correção legada não altera a carteira publicada.');if(!v20Correctable(id))throw Error('Você não tem permissão para corrigir esta tratativa.');
  const last=v20LastTreatment(id);if(!last)throw Error('Nenhuma tratativa foi localizada para correção.');
  if(!last.id){last.id=mkid();save();}
  const effective=v20EffectiveTreatment(last),status=$('v20-treat-status')?.value,noteText=$('v20-treat-note')?.value.trim()||'',reason=$('v20-correct-reason')?.value.trim()||'';
@@ -6661,7 +6663,7 @@ function dispatchClick(e){const route=e.target.closest('[data-v20-go]');if(route
  if(cmd==='closeModal')return closeModal();if(cmd==='logout')return logout();if(cmd.startsWith('prefill')){msg('Credenciais de demonstração não estão disponíveis em produção.');return}
  requireRole();
  if(cmd==='mineRefresh')return switchTab('v20-mine');if(cmd==='mineHistory')return switchTab('v20-mine-history');
- if(cmd.startsWith('detail_'))return detailProtocol(cmd.slice(7));if(cmd.startsWith('treatCorrectSave_'))return saveCorrection(cmd.slice(17));if(cmd.startsWith('treatEdit_'))return treat(cmd.slice(10),'correct');if(cmd.startsWith('treatSave_'))return saveTreat(cmd.slice(10));if(cmd.startsWith('treat_'))return treat(cmd.slice(6));
+ if(cmd.startsWith('detail_'))return detailProtocol(cmd.slice(7));if(cmd.startsWith('treatCorrectSave_'))return saveCorrection(cmd.slice(17));if(cmd.startsWith('treatEdit_'))return treat(cmd.slice(10),'correct');if(cmd.startsWith('treatSave_'))return saveTreat(cmd.slice(10)).catch(ex=>msg(window.sriFriendly?.(ex.message,'error')||ex.message));if(cmd.startsWith('treat_'))return treat(cmd.slice(6));
  if(cmd==='requestSupport')return requestSupport();if(cmd==='supportSave')return supportSave();if(cmd.startsWith('supportResolve_'))return supportResolve(cmd.slice(15));if(cmd.startsWith('supportCommit_'))return supportCommit(cmd.slice(14));
  if(cmd==='confirmTurnClose')return v57ConfirmTurnClose();if(cmd==='cancelTurnClose')return v57CancelTurnClose();if(cmd==='previewGeneralClose')return v57GeneralPreview();if(cmd==='confirmGeneralClose')return v57ConfirmGeneralClose();if(cmd==='cancelGeneralClose'){v57GeneralDraft=null;return closeModal()};if(cmd==='previewReopenDay')return v57ReopenPreview();if(cmd==='confirmReopenDay')return v57ConfirmReopen();
  if(cmd==='closingRefresh')return renderClosing();if(cmd==='switchHourly'){activeClosing='hour';return renderClosing()};if(cmd==='generateClosure')return generateClosure();if(cmd==='exportHourly')return exportHourly();if(cmd==='exportDaily')return exportDaily();if(cmd.startsWith('round_'))return detailRound(Number(cmd.slice(6)));
@@ -7049,7 +7051,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const ids=new Set(ui.source.map(x=>String(x.id)));
     const only=(obj)=>Object.fromEntries(Object.entries(obj||{}).filter(([key])=>ids.has(String(key))));
     const a=only(distAssignments),operators=new Set(Object.values(a).map(x=>x?.opId).filter(Boolean));
-    return {schema:1,assignments:a,statuses:only(distStatuses),criticities:only(distCriticities),
+    const statuses=only(distStatuses);for(const id of ids){const row=window.sriCloudTreatment?.(id);if(row){if(row.treatment_status)statuses[id]={status:row.treatment_status,updatedAt:row.updated_at};else delete statuses[id];}}
+    return {schema:1,assignments:a,statuses,criticities:only(distCriticities),
       roster:(distRoster||[]).filter(x=>operators.has(x.id)),
       archivedRoster:(distArchivedRoster||[]).filter(x=>operators.has(x.id)),
       events:(v194Events||[]).filter(e=>ids.has(String(e.protocol||''))).slice(-10000)};
@@ -7082,7 +7085,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     ctx.lastCloudSaveAt=new Date().toISOString();
     if(typeof window.dispatchEvent==='function'&&typeof CustomEvent==='function')
       window.dispatchEvent(new CustomEvent('sri-cloud-saved',{detail:{at:ctx.lastCloudSaveAt}}));
-    status('Distribuição do dia sincronizada no Supabase. Versão '+ctx.revision+'.'+assignmentMessage,'success');
+    status('Distribuição do dia sincronizada no Supabase. Versão '+ctx.revision+'.'+assignmentMessage,'success');void window.sriCloudTreatmentRefresh?.();
   }
   function setLoadedDistribution(loaded){
     if(!loaded||loaded.schema!==1)return;
@@ -7568,6 +7571,7 @@ body.sri33-modal-open{overflow:hidden}
       if(profile.role==='operator'){startOperatorTaskRefresh();await checkOperatorTaskRefresh();}
       else if(['manager','admin'].includes(profile.role))await safeLink(refreshLinks);
       if(['manager','admin','supervisor'].includes(profile.role)){
+        void window.sriCloudTreatmentInit?.();
         if($('sri-daily-team')?.value)await safeProgress(loadProgress);
         else stateMsg('sri33-progress-status','Selecione a equipe no resultado diário e clique Atualizar acompanhamento.');
       }
@@ -7923,6 +7927,7 @@ document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.tar
 <script defer src="/sri-prd-painel.js?v=2.0-prod-20261123"></script>
 <script defer src="/assets/sri-connection-status.js?v=20261123"></script>
 <script defer src="/assets/sri-mobile-navigation.js?v=20261124-01"></script>
-<script defer src="/assets/sri-integrated-improvements.js?v=20261124-01"></script>
+<script defer src="/assets/sri-integrated-improvements.js?v=20261124-02"></script>
+<script src="/assets/sri-cloud-treatments.js?v=20261124-02"></script>
 </body>
 </html>
