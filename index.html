@@ -1788,7 +1788,6 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
  }catch(err){console.warn('[SRI PRD] Limpeza local indisponível neste navegador:',err?.message||String(err));}
 })();
 </script>
-<link rel="stylesheet" href="/assets/sri-mobile-navigation.css?v=20261124-01"/>
 </head>
 <body>
 <div id="sri-boot-modal" role="dialog" aria-modal="true" aria-labelledby="sri-boot-title" aria-describedby="sri-boot-message" tabindex="-1" data-state="loading" hidden>
@@ -3601,7 +3600,7 @@ function v42RecordImport(){
 function v42RenderStats(){
  const root=document.getElementById('v42-daily-stats');if(!root)return;
  const now=new Date().toLocaleDateString('sv-SE'),today=v2History.filter(x=>x.dayKey===now||(!x.dayKey&&x.timestamp?.slice(0,10)===now)).length;
- const last=v2History.at(-1),unique=ui.live?v42UniqueRows().size:(last?.unique||0),fresh=ui.live?(v42LastSummary?.newCount??last?.added):last?.added,missing=ui.live?(v42LastSummary?.missingCount??last?.missing):last?.missing;
+ const last=v2History.at(-1),unique=ui.live?v42UniqueRows().size:0,fresh=ui.live?(v42LastSummary?.newCount??last?.added):0,missing=ui.live?(v42LastSummary?.missingCount??last?.missing):0;
  const cells=[['Extrações hoje',today],['Protocolos únicos atuais',ui.live?unique:0],['Novos no último confronto',fresh===null||fresh===undefined?'—':fresh],['Ausentes no último confronto',missing===null||missing===undefined?'—':missing]];
  root.innerHTML=cells.map(([label,val])=>`<div><strong>${typeof val==='number'?fmt.format(val):safe(val)}</strong><span>${safe(label)}</span></div>`).join('');
 }
@@ -3609,7 +3608,17 @@ function v42BytesB64(bytes){let x='';for(let i=0;i<bytes.length;i+=32768)x+=Stri
 function v42B64Bytes(data){const s=atob(data),result=new Uint8Array(s.length);for(let i=0;i<s.length;i++)result[i]=s.charCodeAt(i);return result}
 async function v42Compress(obj){if(!('CompressionStream' in window))throw Error('Este navegador não oferece compactação local.');const raw=new Blob([JSON.stringify(obj)]),stream=raw.stream().pipeThrough(new CompressionStream('gzip'));return v42BytesB64(new Uint8Array(await new Response(stream).arrayBuffer()))}
 async function v42Uncompress(data){if(!('DecompressionStream' in window))throw Error('Este navegador não oferece descompactação local.');const decoded=new Blob([v42B64Bytes(data)]).stream().pipeThrough(new DecompressionStream('gzip'));return JSON.parse(await new Response(decoded).text())}
-function v42CurrentPayload(){return {schema:1,savedAt:new Date().toISOString(),importedAt:ui.quality?.importedAt||null,reference:ui.reference,quality:ui.quality,source:ui.source}}
+function sriTodayOperationalDay(instant=new Date()){
+ const p=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'America/Fortaleza',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(instant).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+ return p.year+'-'+p.month+'-'+p.day;
+}
+function sriPayloadOperationalDay(payload){
+ if(/^\d{4}-\d{2}-\d{2}$/.test(payload?.operationalDay||''))return payload.operationalDay;
+ const imported=payload?.importedAt||payload?.quality?.importedAt;
+ if(imported&&!Number.isNaN(new Date(imported).getTime()))return sriTodayOperationalDay(new Date(imported));
+ return null;
+}
+function v42CurrentPayload(){return {schema:1,savedAt:new Date().toISOString(),operationalDay:sriTodayOperationalDay(),importedAt:ui.quality?.importedAt||null,reference:ui.reference,quality:ui.quality,source:ui.source}}
 async function v42SaveCurrent(){
  if(!ui.live)return;const token=++v42SaveToken;v42SavePending=true;v42SetStatus('Salvando localmente…',true,'Compactando a base mais recente no navegador. O histórico de indicadores já foi atualizado.');
  try{const packed=await v42Compress(v42CurrentPayload());if(token!==v42SaveToken)return;
@@ -3630,13 +3639,12 @@ async function v42ApplyCurrent(payload,opts={}){
 }
 async function v42RestoreSavedOnOpen(){v42RenderStats();const raw=v42SafeGet(V42_CURRENT_KEY);if(!raw){v42SetStatus(v42CanStore()?'Aguardando importação':'Backup recomendado',v42CanStore(),v42CanStore()?'Importe SAC + ATIVO para iniciar. As próximas importações terão histórico automático.':'Armazenamento indisponível: importe as bases e use o backup completo.');return true}
  try{v42SetStatus('Recuperando última base…',true,'Recuperando a cópia compacta da importação mais recente.');const payload=await v42Uncompress(raw);
- const imported=new Date(payload.importedAt||payload.quality?.importedAt||payload.savedAt||'');
- const d=x=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Fortaleza',year:'numeric',month:'2-digit',day:'2-digit'}).format(x);
- if(!Number.isFinite(imported.getTime())||d(imported)!==d(new Date())){
-   resetLoadedData();v42StorageAvailable=true;
-   v42SetStatus('Novo dia — aguardando importação',true,'O histórico e o backup anterior foram preservados. Os indicadores de hoje começam zerados.');return true;
- }
- await v42ApplyCurrent(payload);v42StorageAvailable=true;v42SetStatus('Base recuperada',true,'A última base completa foi recuperada deste navegador. Para atualizar, importe os dois novos CSVs normalmente.');return true}
+   if(sriPayloadOperationalDay(payload)!==sriTodayOperationalDay()){
+     resetLoadedData();v42StorageAvailable=true;
+     v42SetStatus('Novo dia · aguardando importação',true,'Indicadores de hoje começam em zero. O histórico e a cópia do dia anterior continuam preservados.');
+     return true;
+   }
+   await v42ApplyCurrent(payload);v42StorageAvailable=true;v42SetStatus('Base recuperada',true,'A base de hoje foi recuperada. Importe novos CSVs normalmente para atualizar.');return true}
  catch(err){console.warn('Falha de recuperação',err);v42SetStatus('Recuperação indisponível',false,'Não foi possível recuperar a cópia local. Importe novos CSVs ou restaure o backup completo.');return false}
 }
 function v42FullPayload(){return {kind:'SAC_RETORNO_INTELLIGENCE_LOCAL_BACKUP',version:2,exportedAt:new Date().toISOString(),current:ui.live?v42CurrentPayload():null,history:v2History,protocols:v42SafeGet(V42_PROTOCOL_KEY)?JSON.parse(v42SafeGet(V42_PROTOCOL_KEY)):null,roster:distRoster,archivedRoster:distArchivedRoster,assignments:distAssignments,statuses:distStatuses,criticities:distCriticities,events:v194Events,rules:v194Rules,tratativaHistory:v47History,filialReturns:v53Events,comparisonHistory:v113ExportPayload(),detailedIndex:(()=>{try{return JSON.parse(v42SafeGet(V52_INDEX_KEY)||"null")||v52MemoryIndex}catch{return null}})()}}
@@ -6052,7 +6060,7 @@ function renderAccess(){const users=data.users.filter(scopedUser),vis=scopeEvent
  <div class="v20-grid">${stat('Usuários visíveis',users.length)}${stat('Acessaram hoje',accessed.size)}${stat('Sua sessão local',current?1:0)}${stat('Acessos negados',vis.filter(a=>a.type==='negado').length)}</div>
  <div class="v20-panel"><h3>Último acesso da equipe</h3>${table(['Usuário','Perfil','Equipe','Último acesso'],users.map(u=>`<tr><td>${esc(u.name)}</td><td>${esc(u.role)}</td><td>${esc(u.team)}</td><td>${pretty(last.get(u.id))}</td></tr>`))}</div>
  <div class="v20-panel"><h3>Histórico de acessos</h3>${table(['Data / hora','Usuário','Evento'],vis.slice(0,80).map(a=>`<tr><td>${pretty(a.at)}</td><td>${esc(a.name)}</td><td>${badge(a.type,a.type==='negado'?'red':'ok')}</td></tr>`))}</div>`}
-function renderImportRights(){requireRole(true);const allowed=data.users.filter(u=>u.importAuthorized&&u.active);$('v20-settings-body').innerHTML=`<div class="v20-panel"><h3>Controle Centralizado de Importações</h3>${note('A permissão de importação é independente do perfil. O Gestor/ADM autoriza um titular e substituto. Apenas uma rodada SAC + ATIVO pode ser processada por vez.')}<p><b>Responsáveis autorizados:</b> ${allowed.map(x=>esc(x.name)).join(', ')||'Nenhum'}</p>${role()==='admin'?`<div class="v20-controls"><label class="v20-field">Usuário autorizado<select id="v20-imp-user">${data.users.filter(x=>x.role!=='operator').map(x=>`<option value="${x.id}">${esc(x.name)} — ${esc(x.role)}</option>`).join('')}</select></label><label class="v20-field">Permissão<select id="v20-imp-val"><option value="true">Autorizar</option><option value="false">Revogar</option></select></label>${action('Aplicar','updateImportRights')}</div>`:''}</div>
+function renderImportRights(){requireRole(true);const allowed=data.users.filter(u=>u.importAuthorized&&u.active);$('v20-settings-body').innerHTML=`<div class="v20-panel"><h3>Controle Centralizado de Importações</h3>${note('Gestores e supervisores podem importar SAC + ATIVO; outros perfis de gestão exigem autorização do Gestor/ADM. Apenas uma rodada é processada por vez.')}<p><b>Responsáveis autorizados:</b> ${allowed.map(x=>esc(x.name)).join(', ')||'Nenhum'}</p>${role()==='admin'?`<div class="v20-controls"><label class="v20-field">Usuário autorizado<select id="v20-imp-user">${data.users.filter(x=>x.role!=='operator').map(x=>`<option value="${x.id}">${esc(x.name)} — ${esc(x.role)}</option>`).join('')}</select></label><label class="v20-field">Permissão<select id="v20-imp-val"><option value="true">Autorizar</option><option value="false">Revogar</option></select></label>${action('Aplicar','updateImportRights')}</div>`:''}</div>
  <div class="v20-panel"><h3>Histórico local de importações (legado)</h3>${table(['Data inicial','Responsável','SAC','ATIVO','Reimportações'],data.imports.slice(0,50).map(x=>`<tr><td>${pretty(x.firstImportedAt||x.at)}</td><td>${esc(userName(x.user))}</td><td>${esc(x.sacName)}</td><td>${esc(x.ativoName)}</td><td>${badge(String(x.revisions?.length||0),(x.revisions?.length||0)?'warn':'ok')}</td></tr>`))}<div class="v20-muted">${data.imports.flatMap(i=>(i.revisions||[]).map(r=>`<div style="padding:6px 0;border-bottom:1px solid #e2e8f0"><b>${pretty(r.at)} · ${esc(userName(r.by))}</b> — ${esc(r.reason)}</div>`)).join('')||'Nenhuma reimportação registrada.'}</div></div>`}
 function updateImportRights(){requireRole(false,true);const u=data.users.find(x=>x.id===$('v20-imp-user').value);if(u.role==='operator')throw Error('Operador não pode importar bases.');u.importAuthorized=$('v20-imp-val').value==='true';audit('permissao_importacao',u.name+': '+u.importAuthorized);renderImportRights()}
 function renderAccount(){$('v20-account-body').innerHTML=`<div class="v20-panel"><h3>${esc(current.name)}</h3><p>Login: ${esc(current.email)}</p><p>Perfil: ${esc(current.role)} · Equipe: ${esc(current.team)}</p><p class="v20-muted">Autenticação individual via Supabase. Resultados consolidados podem ser sincronizados pelo painel de importação. Os módulos sincronizados respeitam as permissões da equipe. O SIGO permanece como sistema oficial dos protocolos.</p>${action('Encerrar sessão','logout',true)}</div>`}
@@ -6105,7 +6113,7 @@ function v20ImportPreviousSnapshotOK(prior){
 }
 async function v20StartImport(context){
  if(importBusy||ui.busy)throw Error('Outra importação está em andamento.');
- if(!current||!(authManager()||current.importAuthorized))throw Error('Usuário sem autorização de importação.');
+ if(!current||!(['admin','supervisor'].includes(role())||current.importAuthorized))throw Error('Somente gestor, supervisor ou responsável autorizado pode importar bases.');
  if(ui.files.sac!==context.sac||ui.files.ativo!==context.ativo)throw Error('Os arquivos selecionados mudaram. Revise os dois CSVs.');
  if(context.reimport){
   const latest=v20LatestImport();if(!latest||latest!==context.previous)throw Error('A rodada original foi alterada. Reinicie a confirmação.');
@@ -6169,7 +6177,7 @@ function setupImportGuard(){const btn=$('process-btn');if(!btn)return;
  btn.addEventListener('click',async e=>{
   e.preventDefault();e.stopImmediatePropagation();
   if(importBusy||ui.busy){msg('Há uma importação em andamento.');return}
-  if(!current||!(authManager()||current.importAuthorized)){msg('Somente o responsável autorizado pode importar bases.');return}
+  if(!current||!(['admin','supervisor'].includes(role())||current.importAuthorized)){msg('Somente gestor, supervisor ou responsável autorizado pode importar bases.');return}
   const sac=ui.files?.sac,ativo=ui.files?.ativo;if(!sac||!ativo){msg('Selecione os arquivos SAC + ATIVO.');return}
   try{
    const hashes=await Promise.all([fileDigest(sac),fileDigest(ativo)]),pair=hashes.join(':'),kind=v20ImportClassification(pair,sac,ativo);
@@ -6179,9 +6187,9 @@ function setupImportGuard(){const btn=$('process-btn');if(!btn)return;
    if(prev&&((prev.sacSize&&sac.size<prev.sacSize*.55)||(prev.ativoSize&&ativo.size<prev.ativoSize*.55))){if(!confirm('ATENÇÃO: queda acentuada no tamanho dos arquivos. Confira se ambos estão completos. Deseja continuar?'))return}
    if(!confirm(`Confirmar importação SAC + ATIVO?\nSAC: ${sac.name}\nATIVO: ${ativo.name}\nResponsável: ${current.name}`))return;
    const wasLast=!!$('v57-last-check')?.checked,team=role()==='admin'?$('v57-import-team')?.value:current.team,prior=v20LatestImport(),actor=current.id;
-   if(wasLast&&(!team||team==='Não vinculada'||!v57Teams().includes(team)))msg('Importação geral permitida. O fechamento do turno deverá ser confirmado separadamente, com equipe vinculada.');
+   if(wasLast&&!team)throw Error('Selecione a equipe do fechamento.');
    await v20StartImport({sac,ativo,pair,roundKey:kind.stamp,reimport:false});
-   if(team&&team!=='Não vinculada'&&v57Teams().includes(team))v57OnImportCompleted(prior,wasLast,team,actor);
+   if(team)v57OnImportCompleted(prior,wasLast,team,actor);
   }catch(ex){console.warn('Verificação de importação',ex);msg('Importação não concluída: '+(ex.message||ex))}
  },true);
  const previousPost=postLoad;
@@ -6740,9 +6748,9 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   const $ = id => document.getElementById(id);
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const managerRoles = new Set(['admin','manager','supervisor']);
-  const ctx = {client:null,user:null,profile:null,operationalDay:null,teams:[],operations:[],snapshotId:null,revision:0,busy:false,restoring:false,saveTimer:null,initialized:false,fileStaged:false,localDataUnsaved:false,syncedDistributionState:null,syncedPayloadHash:null,cloudTimer:null,cloudChecking:false,cloudPendingId:null,pendingSnapshot:null};
+  const ctx = {client:null,user:null,profile:null,teams:[],operations:[],snapshotId:null,revision:0,busy:false,restoring:false,saveTimer:null,initialized:false,fileStaged:false,localDataUnsaved:false,syncedDistributionState:null,syncedPayloadHash:null,cloudTimer:null,cloudChecking:false,cloudPendingId:null,pendingSnapshot:null};
   window.sriGetSavedDistributionContext=()=>({snapshotId:ctx.snapshotId,revision:ctx.revision,teamId:ctx.teamId});
-  const today = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const today = () => sriTodayOperationalDay();
   function notify(message,kind='success'){
     let root=$('sri-auto-toast-root');
     if(!root){root=document.createElement('div');root.id='sri-auto-toast-root';root.setAttribute('aria-live','polite');document.body.appendChild(root);}
@@ -6851,18 +6859,17 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     return original;
   }
   window.sriDisplayTurnoLabel=sriOperationLabel;
-  // Dia civil em Fortaleza: 00h00 reinicia a visão, não o histórico.
-  // Manhã 07h–13h; Tarde 13h–18h; Noite 18h–20h. Fora desses horários não há nova apuração.
+  // Dia civil de Fortaleza: 00:00 reinicia indicadores; turnos 07–13, 13–18 e 18–20.
   function operationalContext(instant=new Date()){
-    const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{
+    const p=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{
       timeZone:'America/Fortaleza',year:'numeric',month:'2-digit',day:'2-digit',
       hour:'2-digit',minute:'2-digit',hourCycle:'h23'
-    }).formatToParts(instant).filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));
-    const hour=Number(parts.hour)%24;
-    const shift=hour>=7&&hour<13?'Manhã':hour>=13&&hour<18?'Tarde':hour>=18&&hour<20?'Noite':'';
-    return {day:parts.year+'-'+parts.month+'-'+parts.day,shift,hour};
+    }).formatToParts(instant).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+    const hour=Number(p.hour)%24;
+    const shift=hour>=7&&hour<13?'Manhã':hour>=13&&hour<18?'Tarde':hour>=18&&hour<20?'Noite':null;
+    return {day:p.year+'-'+p.month+'-'+p.day,shift,hour};
   }
-  window.sriOperationalContext=operationalContext;
+    window.sriOperationalContext=operationalContext;
   function inferredShift(){return operationalContext().shift;}
   function syncShift(){
     const current=operationalContext();
@@ -6973,7 +6980,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const client=await auth();
     const team=null,{day,shift}=syncShift();
     if(!publishingContextValid())throw Error('A importação geral exige sessão de gestão ou supervisão.');
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!shift)throw Error('Importação disponível de 07h a 20h: Manhã (07–13h), Tarde (13–18h), Noite (18–20h).');
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!shift)throw Error('Não foi possível identificar o horário operacional de Brasília.');
     await carryForwardDistribution(client,team,day,shift);
     const payload=resultPayload(),indicator=summarize(),warnings=warningSummary();
     const digest=await hash(JSON.stringify({reference:payload.reference,source:payload.source}));
@@ -7079,7 +7086,6 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       .select('id,team_id,operational_day,shift_label,reference_serial,payload_sha256,payload_gzip,indicators,warnings,created_at')
       .eq('id',snapshot.id).single();
     if(error||!data)throw Error('Não foi possível ler o resultado: '+(error?.message||'registro indisponível'));
-    if(data.operational_day!==operationalContext().day)throw Error('Esta apuração é de um dia anterior; consulte o histórico.');
     const payload=await v42Uncompress(data.payload_gzip);
     if(!payload||payload.schema!==1||!Array.isArray(payload.source))throw Error('Resultado consolidado em formato incompatível.');
     // O horário do usuário que importou foi gravado no payload; não substituí-lo pelo created_at no Supabase.
@@ -7101,18 +7107,12 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     }finally{ctx.restoring=false;}
   }
   async function loadLast({startup=false}={}){const client=await auth();
-    const currentDay=operationalContext().day;
     const {data,error}=await client.from('daily_result_snapshots').select('id,team_id,operational_day,shift_label,created_at,payload_sha256')
-      .is('team_id',null).eq('operational_day',currentDay).order('created_at',{ascending:false}).limit(10);
+      .is('team_id',null).order('created_at',{ascending:false}).limit(10);
     if(error)throw Error('Consulta de resultados: '+error.message);
-    const latest=(data||[])[0];
-    if(!latest){
-      if(ui.live)resetLoadedData();
-      ctx.snapshotId=null;ctx.revision=0;ctx.syncedDistributionState=null;
-      $('sri-daily-result').textContent='Novo dia: 0 protocolos até a primeira importação SAC + ATIVO.';
-      renderImportContext();
-      throw Error('Nenhuma apuração do dia corrente. Aguardando primeira importação.');
-    }
+    const items=data||[],currentDay=operationalContext().day;
+    const latest=items.find(x=>x.operational_day===currentDay)||items[0];
+    if(!latest)throw Error('Nenhum resultado consolidado foi encontrado nas equipes autorizadas.');
     if(startup&&ui.live&&!ctx.snapshotId){
       const localHash=await hash(JSON.stringify({reference:ui.reference,source:ui.source}));
       if(ctx.localDataUnsaved||localHash!==readSharedDigest()){ctx.localDataUnsaved=true;showSharedNotice(latest,'Existe uma base recuperada deste navegador que ainda não foi identificada como compartilhada. Para preservar seu trabalho, confira antes de substituir.');return;}
@@ -7165,21 +7165,10 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(ctx.cloudChecking||ctx.busy||ctx.restoring||!ctx.client||!managerRoles.has(ctx.profile?.role)||document.hidden)return;
     ctx.cloudChecking=true;
     try{
-      const today=operationalContext().day;
-      if(ctx.operationalDay!==today){
-        if(ui.live&&ctx.localDataUnsaved)await v42SaveCurrent();
-        if(ui.live)resetLoadedData();
-        ctx.operationalDay=today;
-        ctx.snapshotId=null;ctx.revision=0;ctx.pendingSnapshot=null;
-        ctx.syncedDistributionState=null;ctx.localDataUnsaved=false;ctx.fileStaged=false;
-        clearSharedNotice();
-        $('sri-daily-result').textContent='Indicadores zerados até a primeira importação do dia.';
-        status('Dia '+today+' iniciado: aguardando SAC + ATIVO a partir das 07h.','normal');
-      }
       let query=ctx.client.from('daily_result_snapshots')
         .select('id,team_id,operational_day,shift_label,created_at,payload_sha256')
         .order('created_at',{ascending:false}).limit(5);
-      query=query.is('team_id',null).eq('operational_day',operationalContext().day);
+      query=query.is('team_id',null);
       const {data,error}=await query;
       if(error)throw Error(error.message);
       const next=(data||[])[0];
@@ -7208,11 +7197,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     return safe(async()=>{const client=await window.sriGetSupabaseClient();const {data}=await client.auth.getUser();
       if(!data?.user)return;const {data:p}=await client.from('profiles').select('role').eq('id',data.user.id).single();
       if(!managerRoles.has(p?.role))return;
-      ctx.operationalDay=operationalContext().day;
-      await loadMetadata();await loadLast({startup:true}).catch(e=>{
-        if(/Nenhuma apuração do dia corrente/.test(String(e)))status('Hoje: 0 protocolos até a primeira importação. Manhã 07–13h, Tarde 13–18h, Noite 18–20h.','normal');
-        else throw e;
-      });
+      await loadMetadata();await loadLast({startup:true}).catch(e=>{if(/Nenhum resultado/.test(String(e)))status('Aguardando primeira importação. Os resultados serão carregados automaticamente.','normal');else throw e;});
     }).then(()=>startSharedUpdates());
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',makePanel);else makePanel();
@@ -7300,10 +7285,10 @@ body.sri33-modal-open{overflow:hidden}
     if(!['admin','manager','supervisor'].includes(profile.role))return;
     const team=$('sri-daily-team')?.value;
     if(!team)throw Error('Selecione uma equipe para acompanhar.');
-    const countQuery=client.from('daily_operator_tasks').select('id',{head:true,count:'exact'}).eq('team_id',team).eq('active',true).eq('operational_day',window.sriOperationalContext?.().day||'1900-01-01');
+    const countQuery=client.from('daily_operator_tasks').select('id',{head:true,count:'exact'}).eq('team_id',team).eq('active',true);
     const dataQuery=client.from('daily_operator_tasks')
        .select('id,protocol_number,operator_user_id,work_status,treatment_status,criticality,due_situation,updated_at')
-       .eq('team_id',team).eq('active',true).eq('operational_day',window.sriOperationalContext?.().day||'1900-01-01').order('updated_at',{ascending:false}).limit(100);
+       .eq('team_id',team).eq('active',true).order('updated_at',{ascending:false}).limit(100);
     const [tot,rows]=await Promise.all([countQuery,dataQuery]);
     if(tot.error)throw Error('Total da carteira: '+tot.error.message);
     if(rows.error)throw Error('Acompanhamento: '+rows.error.message);
@@ -7435,7 +7420,6 @@ body.sri33-modal-open{overflow:hidden}
       const {data,error}=await client.from('daily_operator_tasks')
         .select('id,protocol_number,criticality,due_situation,sla_band,channel,source_status,work_status,treatment_status,operational_day,shift_label,updated_at')
         .eq('operator_user_id',user.id).eq('active',true)
-        .eq('operational_day',window.sriOperationalContext?.().day||'1900-01-01')
         .order('operational_day',{ascending:false}).order('updated_at',{ascending:false})
         .range(from,from+199);
       if(error)throw Error('Carteira: '+error.message);
@@ -7485,7 +7469,6 @@ body.sri33-modal-open{overflow:hidden}
       const {client,profile,user}=await session();if(profile.role!=='operator')return;
       const {data,count,error}=await client.from('daily_operator_tasks')
         .select('id,updated_at',{count:'exact'}).eq('operator_user_id',user.id).eq('active',true)
-        .eq('operational_day',window.sriOperationalContext?.().day||'1900-01-01')
         .order('updated_at',{ascending:false}).limit(1);
       if(error)throw Error(error.message);
       const fingerprint=[count||0,data?.[0]?.id||'',data?.[0]?.updated_at||''].join('|');
@@ -7861,6 +7844,5 @@ document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.tar
 </script>
 <script defer src="/sri-prd-painel.js?v=2.0-prod-20261123"></script>
 <script defer src="/assets/sri-connection-status.js?v=20261123"></script>
-<script defer src="/assets/sri-mobile-navigation.js?v=20261124-01"></script>
 </body>
 </html>
