@@ -9,7 +9,7 @@ const markers=[
  'postLoad();setTimeout(()=>window.sriShareProcessedResult?.(),0)',
  "ctx.localDataUnsaved=true;ctx.snapshotId=null;ctx.revision=0;",
  "ctx.localDataUnsaved||!ctx.snapshotId",
- 'await saveDistribution();\n    ctx.localDataUnsaved=false;',
+ 'await saveDistribution();\n    await reconcilePresence(client,snapshotId,payload.presenceEvidence);\n    ctx.localDataUnsaved=false;',
  "ctx.syncedDistributionState=JSON.stringify(distributionState())",
  "select('id,team_id,operational_day,shift_label,created_at,payload_sha256')",
  "client.from('daily_result_snapshots')",
