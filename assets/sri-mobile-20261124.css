@@ -1,0 +1,30 @@
+/* SAC Intelligence 2.0 — menu completo e conteudo acessivel em telefones */
+#sri-mobile-backdrop{display:none}
+@media(max-width:760px){
+ html,body{max-width:100%;overflow-x:clip}
+ .app.v5-app,.app.v5-app.v5-collapsed{display:block!important;width:100%!important;max-width:100%!important}
+ .v5-app .sidebar{position:sticky!important;top:0!important;z-index:100!important;width:100%!important;height:56px!important;overflow:visible!important}
+ .v5-app .v5-rail{width:100%;box-sizing:border-box;position:relative;padding-right:56px!important;overflow:visible!important}
+ .v5-app #v5-menu-toggle{display:grid!important;position:absolute!important;top:7px;right:9px;z-index:105;width:41px!important;height:41px!important;background:#ffffff36!important;color:white!important;border:1px solid #ffffff65!important}
+ .v5-app .v5-rail-links{min-width:0;flex:1;overflow-x:auto!important;overflow-y:hidden;scrollbar-width:thin}
+ .v5-app .v5-nav-panel,.v5-app.v5-collapsed .v5-nav-panel{display:flex!important;position:fixed!important;top:56px!important;left:0!important;width:min(345px,calc(100vw - 34px))!important;height:calc(100dvh - 56px)!important;max-height:calc(100dvh - 56px)!important;box-sizing:border-box!important;overflow-y:auto!important;overflow-x:hidden!important;z-index:103!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important;transform:translateX(-105%);transition:transform .2s ease,opacity .2s ease;box-shadow:10px 10px 32px #07214545!important}
+ .v5-app.sri-mobile-open .v5-nav-panel,.v5-app.v5-collapsed.sri-mobile-open .v5-nav-panel{opacity:1!important;visibility:visible!important;pointer-events:auto!important;transform:translateX(0)!important}
+ .v5-app.sri-mobile-open .v20-nav-group-items[hidden]{display:grid!important}
+ #sri-mobile-backdrop:not([hidden]){display:block!important;position:fixed;inset:56px 0 0;z-index:99;background:#081c3db2;border:0;width:100%}
+ body.sri-mobile-locked{overflow:hidden}
+ .v5-app .main{width:100%!important;max-width:100%!important;min-width:0!important;padding:0 12px 26px!important;overflow-x:clip}
+ .v5-app .topbar{margin-left:-12px!important;margin-right:-12px!important;padding-left:12px!important;padding-right:12px!important}
+ .v5-app .tab-content,.v5-app .v20-panel,.v5-app .dist-panel,.v5-app .card{box-sizing:border-box;min-width:0;max-width:100%!important}
+ .v5-app .v20-panel,.v5-app .dist-panel{overflow-x:auto}
+ .v5-app .v20-module-tabs,.v5-app .dist-tabbar,.v5-app .v49-tabs,.v5-app .v46-subtabs{overflow-x:auto!important;scrollbar-width:thin;flex-wrap:nowrap!important;max-width:100%}
+ .v5-app .v20-module-tab,.v5-app .dist-tab,.v5-app .v49-tab,.v5-app .v46-subtab{flex:0 0 auto!important;white-space:nowrap}
+ .v5-app .dist-kpis,.v5-app .kpi-grid,.v5-app .v20-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+ .v5-app .v20-controls,.v5-app .dist-controls,.v5-app .v3-controls{max-width:100%;flex-wrap:wrap!important}
+ .v5-app .v20-controls>*,.v5-app .dist-controls>*{min-width:0;max-width:100%}
+ .v5-app input,.v5-app select,.v5-app textarea{max-width:100%;min-width:0;box-sizing:border-box;font-size:16px}
+ .v5-app .section-heading{flex-wrap:wrap;min-width:0}
+ .v5-app .section-heading>*{min-width:0;max-width:100%}
+ #v20-modal .v20-dialog,#v199-modal .v199-dialog,#sri33-treatment .sri33-dialog{max-width:calc(100vw - 10px)!important;max-height:95dvh!important;overflow-y:auto!important}
+}
+@media(max-width:420px){.v5-app .v20-panel,.v5-app .dist-panel{padding:11px!important}.v5-app .v5-top-name{font-size:10.5px!important}}
+@media print{#sri-mobile-backdrop{display:none!important}}
