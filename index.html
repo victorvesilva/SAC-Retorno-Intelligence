@@ -1820,6 +1820,7 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
  .v5-app .dist-kpi strong{font-size:21px!important}
 }
 </style>
+<link rel="stylesheet" href="/assets/sri-mobile-navigation.css?v=20261124-02"/>
 </head>
 <body>
 <div id="sri-boot-modal" role="dialog" aria-modal="true" aria-labelledby="sri-boot-title" aria-describedby="sri-boot-message" tabindex="-1" data-state="loading" hidden>
@@ -3650,7 +3651,7 @@ function sriPayloadOperationalDay(payload){
  if(imported&&!Number.isNaN(new Date(imported).getTime()))return sriTodayOperationalDay(new Date(imported));
  return null;
 }
-function v42CurrentPayload(){return {schema:1,savedAt:new Date().toISOString(),operationalDay:sriTodayOperationalDay(),importedAt:ui.quality?.importedAt||null,reference:ui.reference,quality:ui.quality,source:ui.source}}
+function v42CurrentPayload(){return {schema:1,savedAt:new Date().toISOString(),operationalDay:sriPayloadOperationalDay({importedAt:ui.quality?.importedAt})||sriTodayOperationalDay(),importedAt:ui.quality?.importedAt||null,reference:ui.reference,quality:ui.quality,source:ui.source}}
 async function v42SaveCurrent(){
  if(!ui.live)return;const token=++v42SaveToken;v42SavePending=true;v42SetStatus('Salvando localmente…',true,'Compactando a base mais recente no navegador. O histórico de indicadores já foi atualizado.');
  try{const packed=await v42Compress(v42CurrentPayload());if(token!==v42SaveToken)return;
@@ -7939,5 +7940,6 @@ document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.tar
 </script>
 <script defer src="/sri-prd-painel.js?v=2.0-prod-20261123"></script>
 <script defer src="/assets/sri-connection-status.js?v=20261123"></script>
+<script defer src="/assets/sri-mobile-navigation.js?v=20261124-02"></script>
 </body>
 </html>
