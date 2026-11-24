@@ -2837,11 +2837,25 @@ window.sriSyncDistributionCandidates=function(candidates,selectedTeamId){
 };
 window.sriRefreshCloudDistributionOptions=()=>{try{distTargetOptions();distBuildFilterOptions();distRenderRoster();distApplyFilters();}catch(e){console.warn('[Gestão unificada] Atualização de opções:',e)}};
 
+function sriPackPriorityReason(r){
+ const level=distCriticity(r).name,auto=distCriticityAuto(r).name;
+ if(level!==auto)return 'Prioridade operacional';
+ if(!r?.sla)return 'Sem classificação de prazo';
+ if(r.situacao==='BACKLOG'||r.sla==='BACKLOG')return 'Prazo vencido';
+ if(r.situacao==='VENCE HOJE'||r.sla==='D7')return 'Vence hoje';
+ if(r.sla==='D6')return 'Prazo D6';
+ if(r.nip==='CLIENTE NIP')return 'Histórico de NIP';
+ if(r.fila==='CRITICA')return 'Fila crítica';
+ if(r.fila==='CREDENCIAMENTO_D6')return 'Credenciamento D6';
+ if(['D5','D4'].includes(r.sla))return 'Prazo D5/D4';
+ if(r.slaRetorno==='TEMPO EXCEDIDO')return 'Tempo excedido no retorno';
+ return 'Prazo regular';
+}
 window.sriGetDistributionDetails = () => {
   const details={}; const assigned=distAssignments||{};
   for(const r of (ui.apured||[])){
     const id=String(r.id||'');if(!assigned[id]||details[id])continue;
-    details[id]={criticality:String(distCriticity(r).name).slice(0,80),
+    details[id]={criticality:String(distCriticity(r).name).slice(0,80),priority_reason:sriPackPriorityReason(r),due_date:iso(r.limite)||null,
       situation:String(r.situacao||'').slice(0,80),sla:String(r.sla||'').slice(0,50),
       channel:String(r.where||'').slice(0,80),status:String(r.status||'').slice(0,80)};
   }
@@ -7455,17 +7469,19 @@ body.sri33-modal-open{overflow:hidden}
     if(profile.role!=='operator')return;
     const rows=[];let from=0;
     for(let round=0;round<20;round++){
-      const {data,error}=await client.from('daily_operator_tasks')
-        .select('id,protocol_number,criticality,due_situation,sla_band,channel,source_status,work_status,treatment_status,operational_day,shift_label,updated_at')
+      const fields='id,protocol_number,criticality,due_situation,sla_band,channel,source_status,work_status,treatment_status,operational_day,shift_label,updated_at';
+      const fetchPage=cols=>client.from('daily_operator_tasks').select(cols)
         .eq('operator_user_id',user.id).eq('active',true)
         .eq('operational_day',window.sriOperationalContext?.().day||'1900-01-01')
         .order('operational_day',{ascending:false}).order('updated_at',{ascending:false})
         .range(from,from+199);
+      let {data,error}=await fetchPage(fields+',priority_reason,due_date');
+      if(error&&['42703','PGRST204'].includes(error.code)&&/priority_reason|due_date/i.test(error.message||''))({data,error}=await fetchPage(fields));
       if(error)throw Error('Carteira: '+error.message);
       rows.push(...(data||[]));if((data||[]).length<200)break;from+=200;
     }
     taskRows=rows;
-    taskRows.sort((a,b)=>packRank(a)-packRank(b)||packDue(a)-packDue(b)||String(a.protocol_number).localeCompare(String(b.protocol_number)));
+    taskRows.sort((a,b)=>packRank(a)-packRank(b)||packDueDate(a,b)||packDue(a)-packDue(b)||String(a.protocol_number).localeCompare(String(b.protocol_number)));
     renderPackTasks();
     stateMsg('sri33-mine-status',`${rows.length} protocolo(s) na sua carteira de hoje.`,'success');
     await loadHistory(client,user.id);
@@ -7473,13 +7489,15 @@ body.sri33-modal-open{overflow:hidden}
   const packLevel=r=>['Crítico','Alto','Médio','Baixo'].find(x=>x.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()===String(r.criticality||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase())||'Não avaliado';
   const packRank=r=>['Crítico','Alto','Médio','Baixo','Não avaliado'].indexOf(packLevel(r));
   const packDue=r=>/BACKLOG/i.test(r.due_situation||'')?0:/VENCE HOJE|VENCENDO HOJE|D7/i.test((r.due_situation||'')+' '+(r.sla_band||''))?1:/D6|AMANHÃ/i.test((r.sla_band||'')+' '+(r.due_situation||''))?2:/D5/i.test(r.sla_band||'')?3:/D4/i.test(r.sla_band||'')?4:5;
+  const packDueDate=(a,b)=>a.due_date&&b.due_date?String(a.due_date).localeCompare(String(b.due_date)):a.due_date?-1:b.due_date?1:0;
+  const packDate=r=>r.due_date&&/^\d{4}-\d{2}-\d{2}$/.test(r.due_date)?r.due_date.split('-').reverse().join('/'):'';
   function renderPackTasks(){
     const search=$('sri-pack-search').value.trim(),level=$('sri-pack-filter').value,status=$('sri-pack-status-filter').value;
     const filled=r=>Boolean(r.treatment_status&&r.treatment_status!=='SEM STATUS');
     const sum=$('sri-pack-summary');
     sum.innerHTML='<div class="v20-stat"><span>Recebidos na carteira atual</span><b>'+taskRows.length+'</b></div><div class="v20-stat"><span>Com tratativa</span><b>'+taskRows.filter(filled).length+'</b></div><div class="v20-stat"><span>Sem tratativa</span><b>'+taskRows.filter(r=>!filled(r)).length+'</b></div>'+['Crítico','Alto','Médio','Baixo','Não avaliado'].map(l=>'<button type="button" data-level="'+h(l)+'" aria-pressed="'+(level===l)+'"><span class="sri-pack-level" data-level="'+h(l)+'">'+h(l)+'</span><strong>'+taskRows.filter(r=>packLevel(r)===l).length+'</strong></button>').join('');
     const rows=taskRows.filter(r=>(!search||String(r.protocol_number).includes(search))&&(level==='all'||packLevel(r)===level)&&(status==='all'||(status==='filled')===filled(r)));
-    $('sri33-task-table').innerHTML=rows.length?`<table class="v20-table" style="min-width:670px;width:100%"><thead><tr><th>Protocolo</th><th>Criticidade</th><th>Prazo / sinalização</th><th>Status da tratativa</th><th>Ação</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${h(r.protocol_number)}</td><td><span class="sri-pack-level" data-level="${h(packLevel(r))}">${h(packLevel(r))}</span></td><td>${h(r.due_situation||r.sla_band||'—')}</td><td>${h(r.treatment_status||'SEM STATUS')}</td><td><button class="v20-button secondary" type="button" data-sri33-task="${h(r.id)}">Tratar</button></td></tr>`).join('')}</tbody></table>`:'<p>Nenhuma demanda para esta seleção.</p>';
+    $('sri33-task-table').innerHTML=rows.length?`<table class="v20-table" style="min-width:670px;width:100%"><thead><tr><th>Protocolo</th><th>Criticidade</th><th>Prazo / sinalização</th><th>Motivo da prioridade</th><th>Status da tratativa</th><th>Ação</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${h(r.protocol_number)}</td><td><span class="sri-pack-level" data-level="${h(packLevel(r))}">${h(packLevel(r))}</span></td><td>${h(r.due_situation||r.sla_band||'—')}${packDate(r)?' · '+h(packDate(r)):''}</td><td>${h(r.priority_reason||r.due_situation||r.sla_band||'Não informado')}</td><td>${h(r.treatment_status||'SEM STATUS')}</td><td><button class="v20-button secondary" type="button" data-sri33-task="${h(r.id)}">Tratar</button></td></tr>`).join('')}</tbody></table>`:'<p>Nenhuma demanda para esta seleção.</p>';
   }
   async function loadHistory(client,userId){
     const {data,error}=await client.from('daily_operator_treatments')
