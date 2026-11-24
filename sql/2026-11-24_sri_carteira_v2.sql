@@ -572,4 +572,17 @@ CREATE OR REPLACE FUNCTION public.sri_reconciliation_counts(p_day date) RETURNS 
 REVOKE ALL ON FUNCTION public.sri_reconciliation_counts(date) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.sri_reconciliation_counts(date) TO authenticated;
 
+
+CREATE OR REPLACE FUNCTION private.sri_my_treatment_history() RETURNS SETOF jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $hist$
+ SELECT jsonb_build_object('id',h.id,'action',h.action,'notes',h.notes,'created_at',h.created_at,'task_id',h.task_id,'protocol_number',t.protocol_number,'base_name',t.base_name,'area_name',t.area_name)
+ FROM public.daily_operator_treatments h JOIN public.daily_operator_tasks t ON t.id=h.task_id
+ WHERE h.actor_id=auth.uid() AND EXISTS(SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='operator' AND p.operational_status IN ('Ativo','Promovido'))
+ ORDER BY h.created_at DESC,h.id DESC LIMIT 50
+$hist$;
+REVOKE ALL ON FUNCTION private.sri_my_treatment_history() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION private.sri_my_treatment_history() TO authenticated;
+CREATE OR REPLACE FUNCTION public.sri_my_treatment_history() RETURNS SETOF jsonb LANGUAGE sql STABLE SECURITY INVOKER SET search_path='' AS $h$ SELECT * FROM private.sri_my_treatment_history(); $h$;
+REVOKE ALL ON FUNCTION public.sri_my_treatment_history() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.sri_my_treatment_history() TO authenticated;
+
 COMMIT;
