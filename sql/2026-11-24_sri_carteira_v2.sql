@@ -135,8 +135,7 @@ BEGIN
       channel=EXCLUDED.channel,
       source_status=EXCLUDED.source_status,base_name=COALESCE(EXCLUDED.base_name,daily_operator_tasks.base_name),area_name=COALESCE(EXCLUDED.area_name,daily_operator_tasks.area_name),
       active=true,distribution_revision=EXCLUDED.distribution_revision,updated_at=now(),
-      work_status=CASE WHEN public.daily_operator_tasks.operator_user_id IS DISTINCT FROM EXCLUDED.operator_user_id
-                       THEN 'pending' ELSE public.daily_operator_tasks.work_status END;
+      work_status=public.daily_operator_tasks.work_status;
     v_published:=v_published+1;
   END LOOP;
   -- Desativa atribuições removidas, sem excluir histórico. Também invalida rodadas anteriores do mesmo turno.
@@ -244,9 +243,7 @@ BEGIN
    sla_band=EXCLUDED.sla_band,channel=EXCLUDED.channel,
    source_status=EXCLUDED.source_status,base_name=COALESCE(EXCLUDED.base_name,daily_operator_tasks.base_name),area_name=COALESCE(EXCLUDED.area_name,daily_operator_tasks.area_name),
    active=true,distribution_revision=EXCLUDED.distribution_revision,updated_at=now(),
-   work_status=CASE WHEN public.daily_operator_tasks.operator_user_id
-                        IS DISTINCT FROM EXCLUDED.operator_user_id
-                    THEN 'pending' ELSE public.daily_operator_tasks.work_status END;
+   work_status=public.daily_operator_tasks.work_status;
   v_published:=v_published+1;
  END LOOP;
  UPDATE public.daily_operator_tasks t SET active=false,updated_at=now()
@@ -263,4 +260,90 @@ BEGIN
  RETURN jsonb_build_object('published',v_published,'unlinked',0,'revision',v_revision);
 END;
 $function$;
+
+-- Preservar a tratativa do mesmo protocolo nas reimportações do mesmo dia/turno.
+CREATE OR REPLACE FUNCTION private.sri_carry_task_status()
+RETURNS trigger LANGUAGE plpgsql SET search_path='' AS $carry$
+DECLARE old_task public.daily_operator_tasks%rowtype;
+BEGIN
+ SELECT t.* INTO old_task FROM public.daily_operator_tasks t
+ JOIN public.daily_result_snapshots s ON s.id=t.snapshot_id
+ JOIN public.daily_result_snapshots n ON n.id=NEW.snapshot_id
+ WHERE t.operational_day=NEW.operational_day AND t.shift_label=NEW.shift_label
+ AND t.protocol_number=NEW.protocol_number AND t.snapshot_id<>NEW.snapshot_id
+ AND (s.team_id IS NOT DISTINCT FROM n.team_id) AND t.active
+ ORDER BY t.updated_at DESC,t.id DESC LIMIT 1;
+ IF FOUND THEN NEW.treatment_status:=old_task.treatment_status;NEW.work_status:=old_task.work_status; END IF;
+ RETURN NEW;
+END;
+$carry$;
+CREATE TABLE IF NOT EXISTS private.sri_status_reconciliation(
+ id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ task_id uuid NOT NULL, snapshot_id uuid NOT NULL, protocol_number text NOT NULL,
+ operational_day date NOT NULL, team_id uuid, operator_id uuid NOT NULL,
+ base_name text, area_name text, previous_source text NOT NULL, current_source text NOT NULL,
+ manual_status text NOT NULL, observed_at timestamptz NOT NULL DEFAULT now(),
+ decision text, justification text, decided_by uuid, decided_at timestamptz,
+ UNIQUE(task_id,previous_source,current_source,manual_status)
+);
+ALTER TABLE private.sri_status_reconciliation ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON private.sri_status_reconciliation FROM PUBLIC,anon,authenticated;
+-- A matriz sem validação operacional não presume equivalências. Mudanças da origem com tratativa
+-- existente são sinais de revisão, nunca uma declaração automática de erro do operador.
+CREATE OR REPLACE FUNCTION private.sri_detect_reconciliation() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $detect$
+DECLARE prior public.daily_operator_tasks%rowtype;
+BEGIN
+ IF NEW.treatment_status IS NULL OR NEW.source_status IS NULL OR NEW.source_status='' THEN RETURN NEW; END IF;
+ IF TG_OP='UPDATE' THEN
+  IF OLD.source_status IS NOT DISTINCT FROM NEW.source_status THEN RETURN NEW; END IF;
+  prior:=OLD;
+ ELSE
+  SELECT t.* INTO prior FROM public.daily_operator_tasks t
+  JOIN public.daily_result_snapshots s ON s.id=t.snapshot_id
+  JOIN public.daily_result_snapshots n ON n.id=NEW.snapshot_id
+  WHERE t.protocol_number=NEW.protocol_number AND t.operational_day=NEW.operational_day
+  AND s.team_id IS NOT DISTINCT FROM n.team_id AND t.snapshot_id<>NEW.snapshot_id
+  ORDER BY s.created_at DESC,t.updated_at DESC,t.id DESC LIMIT 1;
+ END IF;
+ IF prior.source_status IS NULL OR prior.source_status='' OR prior.source_status=NEW.source_status THEN RETURN NEW; END IF;
+ IF EXISTS(SELECT 1 FROM private.sri_status_reconciliation r WHERE r.operational_day=NEW.operational_day
+ AND r.protocol_number=NEW.protocol_number AND r.team_id IS NOT DISTINCT FROM NEW.team_id
+ AND r.previous_source=prior.source_status AND r.current_source=NEW.source_status AND r.manual_status=NEW.treatment_status) THEN RETURN NEW; END IF;
+ INSERT INTO private.sri_status_reconciliation(task_id,snapshot_id,protocol_number,operational_day,team_id,operator_id,base_name,area_name,previous_source,current_source,manual_status)
+ VALUES(NEW.id,NEW.snapshot_id,NEW.protocol_number,NEW.operational_day,NEW.team_id,NEW.operator_user_id,NEW.base_name,NEW.area_name,prior.source_status,NEW.source_status,NEW.treatment_status)
+ ON CONFLICT DO NOTHING;
+ RETURN NEW;
+END;
+$detect$;
+REVOKE ALL ON FUNCTION private.sri_detect_reconciliation() FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER sri_detect_reconciliation AFTER INSERT OR UPDATE OF source_status ON public.daily_operator_tasks FOR EACH ROW EXECUTE FUNCTION private.sri_detect_reconciliation();
+CREATE OR REPLACE FUNCTION private.sri_list_reconciliation(p_day date)
+RETURNS SETOF jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $list$
+ SELECT to_jsonb(r)||jsonb_build_object('operator_name',p.full_name,'team_name',t.name,'reviewer_name',u.full_name)
+ FROM private.sri_status_reconciliation r LEFT JOIN public.profiles p ON p.id=r.operator_id
+ LEFT JOIN public.teams t ON t.id=r.team_id LEFT JOIN public.profiles u ON u.id=r.decided_by
+ WHERE auth.uid() IS NOT NULL AND r.operational_day=p_day
+ AND (private.is_manager() OR (r.team_id IS NOT NULL AND private.is_supervisor_of(r.team_id)))
+ ORDER BY r.observed_at DESC,r.id DESC LIMIT 2000
+$list$;
+CREATE OR REPLACE FUNCTION private.sri_decide_reconciliation(p_id bigint,p_decision text,p_justification text)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $dec$
+DECLARE r private.sri_status_reconciliation%rowtype;
+BEGIN
+ IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Sessão obrigatória';END IF;
+ SELECT * INTO r FROM private.sri_status_reconciliation WHERE id=p_id FOR UPDATE;
+ IF NOT FOUND OR NOT (private.is_manager() OR (r.team_id IS NOT NULL AND private.is_supervisor_of(r.team_id))) THEN RAISE EXCEPTION 'Conciliação indisponível';END IF;
+ IF r.decision IS NOT NULL THEN RAISE EXCEPTION 'Conciliação já analisada';END IF;
+ IF p_decision IS NULL OR p_decision NOT IN ('base','manual','both','return') OR length(btrim(coalesce(p_justification,''))) NOT BETWEEN 1 AND 1500 THEN RAISE EXCEPTION 'Selecione a decisão e informe a justificativa';END IF;
+ UPDATE private.sri_status_reconciliation SET decision=p_decision,justification=btrim(p_justification),decided_by=auth.uid(),decided_at=now() WHERE id=p_id;
+ INSERT INTO public.audit_events(user_id,action,object_type,object_id,details) VALUES(auth.uid(),'STATUS_RECONCILIATION','daily_operator_task',r.task_id::text,jsonb_build_object('reconciliation_id',r.id,'decision',p_decision,'justification',p_justification,'previous_source',r.previous_source,'current_source',r.current_source,'manual_status',r.manual_status));
+END;
+$dec$;
+REVOKE ALL ON FUNCTION private.sri_list_reconciliation(date),private.sri_decide_reconciliation(bigint,text,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION private.sri_list_reconciliation(date),private.sri_decide_reconciliation(bigint,text,text) TO authenticated;
+CREATE OR REPLACE FUNCTION public.sri_list_reconciliation(p_day date) RETURNS SETOF jsonb LANGUAGE sql STABLE SECURITY INVOKER SET search_path='' AS $l$ SELECT * FROM private.sri_list_reconciliation(p_day); $l$;
+CREATE OR REPLACE FUNCTION public.sri_decide_reconciliation(p_id bigint,p_decision text,p_justification text) RETURNS void LANGUAGE sql SECURITY INVOKER SET search_path='' AS $d$ SELECT private.sri_decide_reconciliation(p_id,p_decision,p_justification); $d$;
+REVOKE ALL ON FUNCTION public.sri_list_reconciliation(date),public.sri_decide_reconciliation(bigint,text,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.sri_list_reconciliation(date),public.sri_decide_reconciliation(bigint,text,text) TO authenticated;
 COMMIT;
