@@ -3609,7 +3609,11 @@ function v42BytesB64(bytes){let x='';for(let i=0;i<bytes.length;i+=32768)x+=Stri
 function v42B64Bytes(data){const s=atob(data),result=new Uint8Array(s.length);for(let i=0;i<s.length;i++)result[i]=s.charCodeAt(i);return result}
 async function v42Compress(obj){if(!('CompressionStream' in window))throw Error('Este navegador não oferece compactação local.');const raw=new Blob([JSON.stringify(obj)]),stream=raw.stream().pipeThrough(new CompressionStream('gzip'));return v42BytesB64(new Uint8Array(await new Response(stream).arrayBuffer()))}
 async function v42Uncompress(data){if(!('DecompressionStream' in window))throw Error('Este navegador não oferece descompactação local.');const decoded=new Blob([v42B64Bytes(data)]).stream().pipeThrough(new DecompressionStream('gzip'));return JSON.parse(await new Response(decoded).text())}
-function v42CurrentPayload(){return {schema:1,savedAt:new Date().toISOString(),importedAt:ui.quality?.importedAt||null,reference:ui.reference,quality:ui.quality,source:ui.source}}
+function sriCivilDay(value){
+ const d=value instanceof Date?value:new Date(value||'');
+ return Number.isFinite(d.getTime())?new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Fortaleza',year:'numeric',month:'2-digit',day:'2-digit'}).format(d):'';
+}
+function v42CurrentPayload(){return {schema:1,savedAt:new Date().toISOString(),operationalDay:sriCivilDay(ui.quality?.importedAt),importedAt:ui.quality?.importedAt||null,reference:ui.reference,quality:ui.quality,source:ui.source}}
 async function v42SaveCurrent(){
  if(!ui.live)return;const token=++v42SaveToken;v42SavePending=true;v42SetStatus('Salvando localmente…',true,'Compactando a base mais recente no navegador. O histórico de indicadores já foi atualizado.');
  try{const packed=await v42Compress(v42CurrentPayload());if(token!==v42SaveToken)return;
@@ -3630,9 +3634,9 @@ async function v42ApplyCurrent(payload,opts={}){
 }
 async function v42RestoreSavedOnOpen(){v42RenderStats();const raw=v42SafeGet(V42_CURRENT_KEY);if(!raw){v42SetStatus(v42CanStore()?'Aguardando importação':'Backup recomendado',v42CanStore(),v42CanStore()?'Importe SAC + ATIVO para iniciar. As próximas importações terão histórico automático.':'Armazenamento indisponível: importe as bases e use o backup completo.');return true}
  try{v42SetStatus('Recuperando última base…',true,'Recuperando a cópia compacta da importação mais recente.');const payload=await v42Uncompress(raw);
- const imported=new Date(payload.importedAt||payload.quality?.importedAt||payload.savedAt||'');
- const d=x=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Fortaleza',year:'numeric',month:'2-digit',day:'2-digit'}).format(x);
- if(!Number.isFinite(imported.getTime())||d(imported)!==d(new Date())){
+ // Salvamento de cache não é uma nova importação; somente a data da origem valida o dia.
+ const importedDay=sriCivilDay(payload.importedAt||payload.quality?.importedAt)||payload.operationalDay||'';
+ if(importedDay!==sriCivilDay(new Date())){
    resetLoadedData();v42StorageAvailable=true;
    v42SetStatus('Novo dia — aguardando importação',true,'O histórico e o backup anterior foram preservados. Os indicadores de hoje começam zerados.');return true;
  }
@@ -7167,16 +7171,26 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     try{
       const today=operationalContext().day;
       if(ctx.operationalDay!==today){
+        // A base processada de ontem pode ser preservada como backup, mas nunca na apuração de hoje.
         if(ui.live&&ctx.localDataUnsaved)await v42SaveCurrent();
         if(ui.live)resetLoadedData();
         ctx.operationalDay=today;
+        // Não permitir que uma seleção de arquivos de ontem seja processada inadvertidamente hoje.
+        ui.files={sac:null,ativo:null};
+        for(const type of ['sac','ativo']){
+          const input=$('file-'+type),drop=$('drop-'+type),name=$('filename-'+type);
+          if(input)input.value='';
+          if(drop){drop.classList.remove('file-ok');const title=drop.querySelector('strong');if(title)title.textContent=(type==='sac'?'01 · Base SAC':'02 · Base ATIVO');}
+          if(name)name.textContent='Nenhum arquivo selecionado';
+        }
+        if($('process-btn'))$('process-btn').disabled=true;
         ctx.snapshotId=null;ctx.revision=0;ctx.pendingSnapshot=null;
         ctx.syncedDistributionState=null;ctx.localDataUnsaved=false;ctx.fileStaged=false;
-        clearSharedNotice();
+        clearSharedNotice();syncShift();renderImportContext();
         $('sri-daily-result').textContent='Indicadores zerados até a primeira importação do dia.';
         status('Dia '+today+' iniciado: aguardando SAC + ATIVO a partir das 07h.','normal');
       }
-      let query=ctx.client.from('daily_result_snapshots')
+            let query=ctx.client.from('daily_result_snapshots')
         .select('id,team_id,operational_day,shift_label,created_at,payload_sha256')
         .order('created_at',{ascending:false}).limit(5);
       query=query.is('team_id',null).eq('operational_day',operationalContext().day);
@@ -7488,7 +7502,7 @@ body.sri33-modal-open{overflow:hidden}
         .eq('operational_day',window.sriOperationalContext?.().day||'1900-01-01')
         .order('updated_at',{ascending:false}).limit(1);
       if(error)throw Error(error.message);
-      const fingerprint=[count||0,data?.[0]?.id||'',data?.[0]?.updated_at||''].join('|');
+      const fingerprint=[window.sriOperationalContext?.().day||sriCivilDay(new Date()),count||0,data?.[0]?.id||'',data?.[0]?.updated_at||''].join('|');
       if(operatorFingerprint&&fingerprint!==operatorFingerprint)await safeMine(loadTasks);
       operatorFingerprint=fingerprint;
     }catch(err){console.warn('[SRI carteira compartilhada]',err?.message||String(err))}
