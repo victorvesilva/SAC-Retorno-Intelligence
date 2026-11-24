@@ -7420,10 +7420,6 @@ body.sri33-modal-open{overflow:hidden}
     // Conta existente recebe protocolos diretamente. O banco resolve equipe apenas
     // se existir vínculo único e válido, sem segundo cadastro de operador.
     const details=window.sriGetDistributionDetails?.()||{};
-    const metadata=new Map();
-    for(const row of (ui.source||[])){const id=String(row.id||'');if(!id)continue;const base=String(row.bko||'').trim().slice(0,120),area=String(row.area||'').trim().slice(0,120);const previous=metadata.get(id);if(previous&&(previous.base!==base||previous.area!==area))metadata.set(id,{conflict:true});else if(!previous)metadata.set(id,{base,area});}
-    for(const [id,entry] of Object.entries(details)){const m=metadata.get(id);if(m&&!m.conflict){entry.base=entry.base||m.base;entry.area=entry.area||m.area;}}
-    if(Object.keys(distAssignments||{}).some(id=>!details[id]?.base||!details[id]?.area))window.sriMonitorEvent?.('WARN','MISSING_METADATA','Carteira');
     // Metadados da apuração persistida, vinculados exclusivamente ao snapshot publicado.
     const snap=await client.from('daily_result_snapshots').select('payload_gzip').eq('id',snapshotId).single();
     if(snap.error||!snap.data?.payload_gzip)throw Error('Não foi possível conferir os metadados da apuração publicada.');
