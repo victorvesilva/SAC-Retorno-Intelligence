@@ -7401,8 +7401,19 @@ body.sri33-modal-open{overflow:hidden}
     // Conta existente recebe protocolos diretamente. O banco resolve equipe apenas
     // se existir vínculo único e válido, sem segundo cadastro de operador.
     const details=window.sriGetDistributionDetails?.()||{};
+    // Metadados da apuração persistida, vinculados exclusivamente ao snapshot publicado.
+    const snap=await client.from('daily_result_snapshots').select('payload_gzip').eq('id',snapshotId).single();
+    if(snap.error||!snap.data?.payload_gzip)throw Error('Não foi possível conferir os metadados da apuração publicada.');
+    const payload=await v42Uncompress(snap.data.payload_gzip);
+    const metadata=new Map();
+    for(const row of payload.source||[]){const id=String(row.id||'');if(!id)continue;const base=String(row.bko||'').trim(),area=String(row.area||'').trim();const old=metadata.get(id);if(!old)metadata.set(id,{base,area});else {if(old.base&&base&&old.base!==base)old.baseConflict=true;if(old.area&&area&&old.area!==area)old.areaConflict=true;if(!old.base)old.base=base;if(!old.area)old.area=area;}}
+    const dist=await client.from('daily_result_distributions').select('state,revision').eq('snapshot_id',snapshotId).single();
+    if(dist.error||Number(dist.data?.revision)!==Number(revision))throw Error('Distribuição mudou durante a conferência dos metadados.');
+    let missing=0;
+    for(const id of Object.keys(dist.data?.state?.assignments||{})){const m=metadata.get(id);const d=details[id]||{};details[id]={...d,base:m&&!m.baseConflict?m.base||null:null,area:m&&!m.areaConflict?m.area||null:null};if(!details[id].base||!details[id].area)missing++;}
+    if(missing)window.sriMonitorEvent?.('WARN','MISSING_METADATA','Carteira');
     const {data,error}=await client.rpc('publish_general_operator_tasks',{p_snapshot:snapshotId,p_revision:revision,p_details:details});
-    if(error)throw Error('Publicação das carteiras: '+error.message+'. Confira se o SQL da Etapa 3.3 foi executado.');
+    if(error){window.sriMonitorEvent?.('ERROR','PUBLISH_ERROR','Distribuição');throw Error('Publicação das carteiras: '+error.message+'. Confira se o SQL da Etapa 3.3 foi executado.');} window.sriMonitorEvent?.('SUCCESS','PUBLISH_OK','Distribuição');
     if(Number(data?.unlinked)>0)throw Error(`${Number(data.unlinked)} atribuição(ões) sem carteira publicada. Verifique os vínculos de operadores legados antes de prosseguir.`);
     const info=`${Number(data?.published)||0} protocolo(s) publicados; ${Number(data?.unlinked)||0} aguardando vínculo de operador.`;
     stateMsg('sri33-link-status',info+(data?.unlinked_names?.length?' Operadores pendentes: '+data.unlinked_names.join(', '):''),data?.unlinked?'warning':'success');
@@ -7936,5 +7947,6 @@ document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.tar
 <script defer src="/assets/sri-mobile-navigation.js?v=20261124-01"></script>
 <script defer src="/assets/sri-integrated-improvements.js?v=20261124-02"></script>
 <script src="/assets/sri-cloud-treatments.js?v=20261124-03"></script>
+<script defer src="/assets/sri-pacote03.js?v=20261124-03"></script>
 </body>
 </html>
