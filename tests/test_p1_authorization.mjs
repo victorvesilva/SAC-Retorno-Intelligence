@@ -23,7 +23,7 @@ assert.match(sql,/GRANT EXECUTE ON FUNCTION public\.record_daily_operator_treatm
 assert.doesNotMatch(sql,/\bDELETE FROM\b|TRUNCATE\b|DROP TABLE\b/i);
 assert.match(html,/\.eq\('snapshot_id',ctx\.snapshotId\)\.eq\('revision',ctx\.revision\)/);
 assert.match(html,/rpc\('publish_general_operator_tasks'/);
-assert.match(html,/rpc\('record_daily_operator_treatment'/);
+assert.match(html,/rpc\('sri_record_treatment_v2'/);
 
 const publishSql=fs.readFileSync(new URL('../sql/2026-11-22_sri_p1_publish_closure_guard.sql',import.meta.url),'utf8');
 assert.match(publishSql,/CREATE OR REPLACE FUNCTION public\.publish_daily_operator_tasks/);
