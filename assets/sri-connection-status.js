@@ -34,12 +34,12 @@
     if(label.textContent!==display.label)label.textContent=display.label;
     chip.dataset.connection=display.kind;
     let info=display.kind==='online'
-      ?'Comunicação autenticada com o Supabase verificada.'
+      ?'Sistema conectado.'
       :display.kind==='syncing'?'Atualização ou carregamento em andamento.'
-      :display.kind==='pending'?'Há alterações locais ainda não confirmadas no Supabase.'
-      :display.kind==='session'?'Entre na sua conta para validar a conexão com o Supabase.'
-      :display.kind==='offline'?'Não foi possível validar a comunicação com o Supabase.'
-      :'Conferindo a sessão e o acesso remoto ao Supabase.';
+      :display.kind==='pending'?'Existem alterações pendentes de salvamento.'
+      :display.kind==='session'?'Faça login para continuar.'
+      :display.kind==='offline'?'Não foi possível conectar ao sistema.'
+      :'Verificando a conexão com o sistema.';
     if(lastVerifiedAt)info+=' Última verificação: '+fmt(lastVerifiedAt)+'.';
     if(lastCloudSaveAt)info+=' Última gravação confirmada nesta sessão: '+fmt(lastCloudSaveAt)+'.';
     chip.title=info;

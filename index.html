@@ -1789,6 +1789,7 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
 })();
 </script>
 <link rel="stylesheet" href="/assets/sri-mobile-navigation.css?v=20261124-01"/>
+<link rel="stylesheet" href="/assets/sri-integrated-improvements.css?v=20261124-01">
 </head>
 <body>
 <div id="sri-boot-modal" role="dialog" aria-modal="true" aria-labelledby="sri-boot-title" aria-describedby="sri-boot-message" tabindex="-1" data-state="loading" hidden>
@@ -1822,7 +1823,7 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
 </nav></div>
 </aside>
 <main class="main">
-<header class="topbar" role="banner"><div class="v5-top-identity"><div><div class="v5-top-name">SAC Retorno Intelligence</div><div class="v5-top-subtitle" id="v5-active-context">Gestão Operacional · acompanhamento consolidado</div></div></div><div class="top-right"><button class="v54-clear-all" id="v54-clear-all" title="Remover todos os filtros de visualização do sistema" type="button"><span class="i" data-icon="refresh"></span><span>Limpar todos os filtros</span></button><div class="top-chip" id="sri-connection-chip" data-connection="checking" title="Verificando a comunicação com o Supabase"><span class="privacy-dot" style="margin-right:0"></span><span id="connection-text" role="status" aria-live="polite">Verificando...</span></div><div class="top-chip" title="Data e hora do processamento SAC + ATIVO, no horário de Brasília">ÚLTIMA IMPORTAÇÃO SAC + ATIVO <strong id="update-clock">—</strong></div></div></header>
+<header class="topbar" role="banner"><div class="v5-top-identity"><div><div class="v5-top-name">SAC Retorno Intelligence</div><div class="v5-top-subtitle" id="v5-active-context">Gestão Operacional · acompanhamento consolidado</div></div></div><div class="top-right"><button class="v54-clear-all" id="v54-clear-all" title="Remover todos os filtros de visualização do sistema" type="button"><span class="i" data-icon="refresh"></span><span>Limpar todos os filtros</span></button><div class="top-chip" id="sri-connection-chip" data-connection="checking" title="Verificando a conexão com o sistema"><span class="privacy-dot" style="margin-right:0"></span><span id="connection-text" role="status" aria-live="polite">Verificando...</span></div><div class="top-chip" title="Data e hora do processamento SAC + ATIVO, no horário de Brasília">ÚLTIMA IMPORTAÇÃO SAC + ATIVO <strong id="update-clock">—</strong></div></div></header>
 <section class="hero"><div class="hero-copy"><div class="eyebrow">CENTRAL DE MONITORAMENTO • HAPVIDA</div><h1>SAC Retorno Intelligence</h1><p>SAC + ATIVO: indicadores, prioridades e distribuição em uma única ferramenta.</p></div><div class="hero-actions" id="hero-actions"><button class="btn btn-white" id="hero-upload"><span class="i" data-icon="upload"></span> Importar novas bases</button></div></section>
 <div aria-label="Filtros e ações dos painéis analíticos" id="global-controls">
 <div class="toolbar v114-toolbar"><div class="toolbar-left"><span class="mini-pill demo" id="source-pill">SEM DADOS</span><div class="summary-status" id="status-text">Nenhuma extração processada</div></div><details class="v114-filter-details" id="v114-filter-details"><summary><span class="v114-filter-summary">Filtros gerais <span aria-hidden="true" class="v114-filter-chevron">⌄</span></span><span class="v114-filter-description">Operadora · Área · Canal · Fila</span></summary><div class="toolbar-right"><div class="field multi-field"><label>Operadora</label><div class="multi-select" data-placeholder="Todas as operadoras" id="f-bko"></div></div><div class="field multi-field"><label>Área</label><div class="multi-select" data-placeholder="Todas as áreas" id="f-area"></div></div><div class="field multi-field"><label>Canal</label><div class="multi-select" data-placeholder="Todos os canais" id="f-canal"></div></div><div class="field multi-field"><label>Fila</label><div class="multi-select" data-placeholder="Todas as filas" id="f-fila"></div></div><div class="field-date"><label for="ref-date">Data-base</label><input disabled="" id="ref-date" type="date"/></div><button class="btn btn-ghost" id="clear-filters" title="Limpar todos os filtros do sistema"><span class="i" data-icon="refresh"></span> Limpar filtros gerais</button></div></details></div>
@@ -2436,7 +2437,7 @@ function jsonLocalSet(key,value){try{localStorage.setItem(key,JSON.stringify(val
 let v2History=jsonLocalGet(V2_STORE_HISTORY,[]);if(!Array.isArray(v2History))v2History=[];
 let v2AlertConfig=jsonLocalGet(V2_STORE_ALERTS,V2_ALERTS.map(a=>a.id));if(!Array.isArray(v2AlertConfig))v2AlertConfig=V2_ALERTS.map(a=>a.id);
 let toastTimer=null;
-function v2Toast(msg){const el=document.getElementById('toast-v2');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3100)}
+function v2Toast(msg){if(window.sriPackNotify){window.sriPackNotify(msg,'info');return;}const el=document.getElementById('toast-v2');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3100)}
 const v2DayLabel=(d)=>new Date(d*86400000).toLocaleDateString('pt-BR',{timeZone:'UTC',day:'2-digit',month:'2-digit'});
 function v2Scoped(){return ui.live?ui.filtered:[]}
 const previousCurrentData=currentData;
@@ -2836,11 +2837,25 @@ window.sriSyncDistributionCandidates=function(candidates,selectedTeamId){
 };
 window.sriRefreshCloudDistributionOptions=()=>{try{distTargetOptions();distBuildFilterOptions();distRenderRoster();distApplyFilters();}catch(e){console.warn('[Gestão unificada] Atualização de opções:',e)}};
 
+function sriPackPriorityReason(r){
+ const level=distCriticity(r).name,auto=distCriticityAuto(r).name;
+ if(level!==auto)return 'Prioridade operacional';
+ if(!r?.sla)return 'Sem classificação de prazo';
+ if(r.situacao==='BACKLOG'||r.sla==='BACKLOG')return 'Prazo vencido';
+ if(r.situacao==='VENCE HOJE'||r.sla==='D7')return 'Vence hoje';
+ if(r.sla==='D6')return 'Prazo D6';
+ if(r.nip==='CLIENTE NIP')return 'Histórico de NIP';
+ if(r.fila==='CRITICA')return 'Fila crítica';
+ if(r.fila==='CREDENCIAMENTO_D6')return 'Credenciamento D6';
+ if(['D5','D4'].includes(r.sla))return 'Prazo D5/D4';
+ if(r.slaRetorno==='TEMPO EXCEDIDO')return 'Tempo excedido no retorno';
+ return 'Prazo regular';
+}
 window.sriGetDistributionDetails = () => {
   const details={}; const assigned=distAssignments||{};
   for(const r of (ui.apured||[])){
     const id=String(r.id||'');if(!assigned[id]||details[id])continue;
-    details[id]={criticality:String(distCriticities?.[id]?.value||r.criticidade||'').slice(0,80),
+    details[id]={criticality:String(distCriticity(r).name).slice(0,80),priority_reason:sriPackPriorityReason(r),due_date:iso(r.limite)||null,
       situation:String(r.situacao||'').slice(0,80),sla:String(r.sla||'').slice(0,50),
       channel:String(r.where||'').slice(0,80),status:String(r.status||'').slice(0,80)};
   }
@@ -5707,7 +5722,7 @@ const NAV_GROUPS=[
  {id:'quality',title:'DADOS E QUALIDADE',label:'Dados e qualidade',icon:'shield',first:'import',items:[['import','Importar Bases','upload'],['details','Base e Qualidade','shield']]},
  {id:'admin',title:'ADMINISTRAÇÃO',label:'Administração',icon:'settings',first:'v20-settings',items:[['v20-settings','Configurações','settings']]}
 ];
-const NAV_OPERATOR=[['v20-mine','Minha Carteira','users'],['v20-operator-pending','Minhas Prioridades','alert'],['v20-mine-history','Meu Histórico','clock']];
+const NAV_OPERATOR=[['v20-mine','Minha Carteira','users'],['v20-mine-history','Meu Histórico','clock']];
 const NAV_PARENT={'v20-pending':'overview','v20-alerts':'details','v20-catalog':'reports','v20-mine-history':'v20-mine','v20-operator-pending':'v20-mine'};
 let expandedNavGroups={ops:true,results:true,quality:false,admin:false};
 try{const stored=JSON.parse(localStorage.getItem('sac20-nav-groups')||'null');if(stored&&typeof stored==='object')expandedNavGroups={...expandedNavGroups,...stored}}catch(e){}
@@ -5738,7 +5753,7 @@ function syncNavigation(){const selected=selectedNavTab();const effective=role()
 }
 function sectionTabs(items){return `<nav class="v20-module-tabs" aria-label="Navegação interna">${items.map(([tab,label])=>`<button type="button" data-v20-go="${tab}" class="v20-module-tab">${esc(label)}</button>`).join('')}</nav>`}
 function addSectionTabs(){
- const maps=[['overview',[['overview','Visão geral'],['v20-pending','Pendências e Ações']]],['v20-pending',[['overview','Visão geral'],['v20-pending','Pendências e Ações']]],['details',[['details','Base e Qualidade'],['v20-alerts','Conciliação e Alertas']]],['v20-alerts',[['details','Base e Qualidade'],['v20-alerts','Conciliação e Alertas']]],['reports',[['reports','Relatórios especializados'],['v20-catalog','Consultas e exportações']]],['v20-catalog',[['reports','Relatórios especializados'],['v20-catalog','Consultas e exportações']]],['v20-mine',[['v20-mine','Minha Carteira'],['v20-operator-pending','Minhas Prioridades'],['v20-mine-history','Meu Histórico']]]];
+ const maps=[['overview',[['overview','Visão geral'],['v20-pending','Pendências e Ações']]],['v20-pending',[['overview','Visão geral'],['v20-pending','Pendências e Ações']]],['details',[['details','Base e Qualidade'],['v20-alerts','Conciliação e Alertas']]],['v20-alerts',[['details','Base e Qualidade'],['v20-alerts','Conciliação e Alertas']]],['reports',[['reports','Relatórios especializados'],['v20-catalog','Consultas e exportações']]],['v20-catalog',[['reports','Relatórios especializados'],['v20-catalog','Consultas e exportações']]],['v20-mine',[['v20-mine','Minha Carteira'],['v20-mine-history','Meu Histórico']]]];
  for(const [id,items] of maps){const s=$(id);if(s&&!s.querySelector(':scope > .v20-module-tabs')){s.insertAdjacentHTML('afterbegin',sectionTabs(items));if(id==='v20-mine')s.querySelector(':scope > .v20-module-tabs')?.classList.add('v20-operator-tabs')}}
 }
 function addNav(){buildNav();addSectionTabs();
@@ -5761,13 +5776,14 @@ switchTab=function(tab){
  if(operator&&tab==='v20-settings')tab='v20-mine';
  mineMode=tab==='v20-mine-history'?'history':tab==='v20-operator-pending'?'pending':(operator&&tab==='v20-mine'?'active':mineMode);
  const effective=tab==='v20-mine-history'||tab==='v20-operator-pending'?'v20-mine':tab;
+ document.body.dataset.sriOperatorView=mineMode; window.sriPackOperatorView?.(mineMode);
  originalSwitch(effective);
  document.querySelectorAll('.nav-link').forEach(x=>x.classList.toggle('active',x.dataset.tab===(NAV_PARENT[tab]||tab)));
  document.getElementById('global-controls').hidden=effective.startsWith('v20-')||!['overview','priorities','intelligence','agents','details'].includes(effective);
  if(effective.startsWith('v20-')){document.querySelector('.hero').style.display='none';document.getElementById('state-banner').hidden=true}else document.querySelector('.hero').style.display='';
  if(effective==='v20-mine'){if(mineMode==='pending')renderOperatorPending();else renderMine(mineMode==='history')}
  /* H-02: desempenho nunca exibido ao Operador. */if(effective==='overview')v20GoalsRenderOverview();if(effective==='intelligence'&&v49Pane==='metas')v20RenderGoalPerformance();
- if(effective==='v20-closure')renderClosing();if(effective==='v20-pending')renderPending();if(effective==='v20-alerts')renderAlerts();if(effective==='v20-settings')renderSettings();if(effective==='v20-account')renderAccount();if(effective==='v20-catalog')renderCatalog();
+ if(effective==='v20-closure')renderClosing();if(effective==='v20-pending')renderPending();if(effective==='v20-alerts')renderAlerts();if(effective==='v20-settings')renderSettings();if(effective==='v20-account'){renderAccount();window.sriPackAppearance?.($('v20-account-body'));}if(effective==='v20-catalog')renderCatalog();
  closeAccountMenu();syncNavigation();
 };
 function visibleNavigation(){buildNav();
@@ -5791,7 +5807,7 @@ async function sriClient(){
 window.sriGetSupabaseClient = sriClient;
 function sriAuthMessage(err){const message=String(err?.message||err||'Falha de autenticação');
  if(/invalid login credentials/i.test(message))return 'E-mail ou senha incorretos.';
- if(/email not confirmed/i.test(message))return 'Sua conta exige confirmação por e-mail. Verifique a configuração de confirmação no Supabase Auth.';
+ if(/email not confirmed/i.test(message))return 'Confirme seu e-mail antes de entrar.';
  if(/user already registered/i.test(message))return 'Este e-mail já está cadastrado.';
  return message;
 }
@@ -5808,9 +5824,10 @@ function sriToggleSignup(value){sriRegisterMode=!!value;$('sri-signup-fields').h
  $('v20-login-error').textContent='';$('sri-auth-info').textContent='';
 }
 async function sriAuthorizeUser(authUser){
+ window.sriPackResetOperator?.();
  const client=await sriClient();
  const {data:result,error}=await client.from('profiles').select('id,full_name,role').eq('id',authUser.id).single();
- if(error||!result)throw Error('Conta autenticada, mas o perfil ainda não está disponível no banco. Confira a criação de public.profiles.');
+ if(error||!result)throw Error('Seu perfil ainda não está disponível. Procure a gestão para verificar seu cadastro.');
  const valid=new Set(['operator','supervisor','manager','admin','viewer']);
  if(!valid.has(result.role))throw Error('Perfil sem autorização de acesso.');
  // manager shares gerencial dashboard with admin UI, but ADMIN-only database RPC still validates role=admin.
@@ -5826,6 +5843,7 @@ async function sriAuthorizeUser(authUser){
      await sriBootRecovery.waitForLocal();
      await window.sriSnapshotAfterAuth?.();
      await Promise.allSettled([
+       Promise.resolve().then(()=>window.sriPackIdentity?.()),
        Promise.resolve().then(()=>window.sriOperatorAfterAuth?.()),
        Promise.resolve().then(()=>window.sriUnifiedAfterAuth?.()),
        Promise.resolve().then(()=>window.sriClosureAfterAuth?.())
@@ -5851,7 +5869,7 @@ async function sriSignUp(){
  const {data:result,error}=await client.auth.signUp({email,password,options:{data:{full_name:fullName}}});
  if(error)throw Error(sriAuthMessage(error));
  if(result.session&&result.user){await sriAuthorizeUser(result.user);return;}
- $('sri-auth-info').textContent='Cadastro recebido. Para entrar sem e-mail de confirmação, desative Confirm email em Supabase → Authentication → Providers → Email; caso contrário, confirme seu e-mail.';
+ $('sri-auth-info').textContent='Cadastro recebido. Verifique sua caixa de e-mail para confirmar o acesso.';
 }
 async function sriRestoreSession(){
  try{const client=await sriClient();const {data:{session},error}=await client.auth.getSession();
@@ -5859,10 +5877,10 @@ async function sriRestoreSession(){
   const validated=await client.auth.getUser();
   if(validated.error||!validated.data.user){await client.auth.signOut();return;}
   await sriAuthorizeUser(validated.data.user);
- }catch(e){console.warn('Autenticação não disponível:',e.message);$('v20-login-error').textContent='Supabase não conectado: '+sriAuthMessage(e);}
+ }catch(e){console.warn('Autenticação não disponível:',e.message);$('v20-login-error').textContent='Não foi possível conectar ao sistema: '+(window.sriFriendly?.(sriAuthMessage(e),'error')||sriAuthMessage(e));}
 }
 async function logout(){try{const client=await sriClient();await client.auth.signOut()}catch(e){console.warn('Não foi possível encerrar sessão remota',e)}
- current=null;$('v20-email').value='';$('v20-pass').value='';$('v20-login').hidden=false;
+ window.sriPackLogout?.();window.sriPackResetOperator?.();document.body.classList.remove('sri33-operator-cloud');current=null;$('v20-email').value='';$('v20-pass').value='';$('v20-login').hidden=false;
  document.body.classList.add('v20-not-logged');document.body.classList.remove('v20-active');
  closeModal();$('v20-login-error').textContent='';
 }
@@ -6059,7 +6077,7 @@ function renderAccess(){const users=data.users.filter(scopedUser),vis=scopeEvent
 function renderImportRights(){requireRole(true);const allowed=data.users.filter(u=>u.importAuthorized&&u.active);$('v20-settings-body').innerHTML=`<div class="v20-panel"><h3>Controle Centralizado de Importações</h3>${note('A permissão de importação é independente do perfil. O Gestor/ADM autoriza um titular e substituto. Apenas uma rodada SAC + ATIVO pode ser processada por vez.')}<p><b>Responsáveis autorizados:</b> ${allowed.map(x=>esc(x.name)).join(', ')||'Nenhum'}</p>${role()==='admin'?`<div class="v20-controls"><label class="v20-field">Usuário autorizado<select id="v20-imp-user">${data.users.filter(x=>x.role!=='operator').map(x=>`<option value="${x.id}">${esc(x.name)} — ${esc(x.role)}</option>`).join('')}</select></label><label class="v20-field">Permissão<select id="v20-imp-val"><option value="true">Autorizar</option><option value="false">Revogar</option></select></label>${action('Aplicar','updateImportRights')}</div>`:''}</div>
  <div class="v20-panel"><h3>Histórico local de importações (legado)</h3>${table(['Data inicial','Responsável','SAC','ATIVO','Reimportações'],data.imports.slice(0,50).map(x=>`<tr><td>${pretty(x.firstImportedAt||x.at)}</td><td>${esc(userName(x.user))}</td><td>${esc(x.sacName)}</td><td>${esc(x.ativoName)}</td><td>${badge(String(x.revisions?.length||0),(x.revisions?.length||0)?'warn':'ok')}</td></tr>`))}<div class="v20-muted">${data.imports.flatMap(i=>(i.revisions||[]).map(r=>`<div style="padding:6px 0;border-bottom:1px solid #e2e8f0"><b>${pretty(r.at)} · ${esc(userName(r.by))}</b> — ${esc(r.reason)}</div>`)).join('')||'Nenhuma reimportação registrada.'}</div></div>`}
 function updateImportRights(){requireRole(false,true);const u=data.users.find(x=>x.id===$('v20-imp-user').value);if(u.role==='operator')throw Error('Operador não pode importar bases.');u.importAuthorized=$('v20-imp-val').value==='true';audit('permissao_importacao',u.name+': '+u.importAuthorized);renderImportRights()}
-function renderAccount(){$('v20-account-body').innerHTML=`<div class="v20-panel"><h3>${esc(current.name)}</h3><p>Login: ${esc(current.email)}</p><p>Perfil: ${esc(current.role)} · Equipe: ${esc(current.team)}</p><p class="v20-muted">Autenticação individual via Supabase. Resultados consolidados podem ser sincronizados pelo painel de importação. Os módulos sincronizados respeitam as permissões da equipe. O SIGO permanece como sistema oficial dos protocolos.</p>${action('Encerrar sessão','logout',true)}</div>`}
+function renderAccount(){$('v20-account-body').innerHTML=`<div class="v20-panel"><h3>${esc(current.name)}</h3><p>Login: ${esc(current.email)}</p><p>Perfil: ${esc(current.role)} · Equipe: ${esc(current.team)}</p><p class="v20-muted">Seu acesso respeita as permissões do seu perfil e da sua equipe. O SIGO permanece como sistema oficial dos protocolos.</p>${action('Encerrar sessão','logout',true)}</div>`}
 // Conciliação: alertas ligados às extrações, sem sobregravar status automaticamente.
 function syncAlertsFromRounds(){const rounds=(v113State.rounds||[]).slice(-20);let count=0;for(const r of rounds){for(const m of r.moves||[]){if(m.type!=='mudanca_status')continue;if(!m.beforeStatus?.startsWith('12'))continue;const key='status-'+m.id+'-'+m.at;if(data.alerts.some(a=>a.key===key))continue;
   // Mudanças de origem ficam no histórico, não são conclusões de tratativas nem finalizações.
@@ -6748,6 +6766,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   window.sriGetSavedDistributionContext=()=>({snapshotId:ctx.snapshotId,revision:ctx.revision,teamId:ctx.teamId});
   const today = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   function notify(message,kind='success'){
+    if(window.sriPackNotify){window.sriPackNotify(message,kind);return;}
     let root=$('sri-auto-toast-root');
     if(!root){root=document.createElement('div');root.id='sri-auto-toast-root';root.setAttribute('aria-live','polite');document.body.appendChild(root);}
     const item=document.createElement('div');item.className='sri-auto-toast';item.dataset.kind=kind;
@@ -6760,7 +6779,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   }
   window.sriToast=notify;
   const status = (message, type='normal') => {
-    const el=$('sri-daily-status');if(el){el.textContent=message;el.dataset.status=type;}
+    message=window.sriFriendly?.(message,type)||message;const el=$('sri-daily-status');if(el){el.textContent=message;el.dataset.status=type;}
     if(['success','error','warning'].includes(type)&&!/^Destino configurado|^Escolha uma vez/.test(message))notify(message,type);
     if(type==='success')$('sri-daily-save')?.classList.remove('sri-retry-show');
   };
@@ -7260,7 +7279,7 @@ body.sri33-modal-open{overflow:hidden}
   const TREATMENT_STATUSES=['E-MAIL','LIGAÇÃO','ASCSAC','RECUSOU','ACEITOU','ASSOCIADO','OUTROS','FILIAL','DÚVIDA','OUVIDORIA','PENDENTE','MÍDIAS NE','CARTA AR'];
   const normalize = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toUpperCase();
   let logged = null, taskRows=[], currentTask=null, inProgress=false;
-  const stateMsg = (id,msg,kind='') => {const el=$(id);if(el){el.textContent=msg;el.dataset.state=kind;}if(kind==='error'||(kind==='success'&&/salv|registr|atualiz|vinculad|conclu|publicad|fechad/i.test(msg)))window.sriToast?.(msg,kind);};
+  const stateMsg = (id,msg,kind='') => {msg=window.sriFriendly?.(msg,kind)||msg;const el=$(id);if(el){el.textContent=msg;el.dataset.state=kind;}if(kind==='error'||(kind==='success'&&/salv|registr|atualiz|vinculad|conclu|publicad|fechad/i.test(msg)))window.sriToast?.(msg,kind);};
   async function session() {
     const client = await window.sriGetSupabaseClient?.();
     if (!client) throw Error('Conexão Supabase não disponível.');
@@ -7388,11 +7407,10 @@ body.sri33-modal-open{overflow:hidden}
     const root=$('v20-mine');if(!root)return;
     root.insertAdjacentHTML('beforeend',`
       <section class="v20-panel" id="sri33-mine" style="margin-top:16px;padding:18px;border-radius:12px">
-       <div class="v20-between"><div><h3>Minha Carteira</h3><p class="v20-muted">Protocolos distribuídos para sua conta. Use Atualizar para consultar a versão salva no Supabase.</p></div><button type="button" id="sri33-mine-refresh" class="v20-button secondary">Atualizar protocolos</button></div>
+       <div class="v20-between"><div><h3>Minha Carteira</h3><p class="v20-muted">Demandas atribuídas a você. Priorize as de maior criticidade e registre a tratativa.</p></div><button type="button" id="sri33-mine-refresh" class="v20-button secondary">Atualizar protocolos</button></div>
        <p id="sri33-mine-status" role="status" aria-live="polite"></p>
-       <div id="sri33-task-table" style="overflow-x:auto"></div>
-       <h3 style="margin-top:18px">Minhas Prioridades</h3><div id="sri33-priority"></div>
-       <h3 style="margin-top:18px">Meu Histórico</h3><div id="sri33-history"></div>
+       <div id="sri-pack-carteira"><div id="sri-pack-summary" class="sri-pack-kpis"></div><div class="sri-pack-controls"><label class="v20-field">Buscar protocolo<input type="search" id="sri-pack-search" placeholder="Número do protocolo"></label><label class="v20-field">Criticidade<select id="sri-pack-filter"><option value="all">Todas</option><option>Crítico</option><option>Alto</option><option>Médio</option><option>Baixo</option><option>Não avaliado</option></select></label><label class="v20-field">Tratativa<select id="sri-pack-status-filter"><option value="all">Todas</option><option value="pending">Sem tratativa</option><option value="filled">Com tratativa</option></select></label></div><div id="sri33-task-table" style="overflow-x:auto"></div><div id="sri33-priority" hidden></div></div>
+       <div id="sri-pack-history" hidden><h3>Meu Histórico</h3><p class="v20-muted">Até 50 registros mais recentes.</p><div id="sri33-history"></div></div>
        <div id="sri33-treatment" hidden role="presentation">
          <div class="sri33-dialog" role="dialog" aria-modal="true" aria-labelledby="sri33-treatment-title" aria-describedby="sri33-treatment-owner" tabindex="-1">
            <div class="sri33-head"><div><small>SAC RETORNO INTELLIGENCE · MINHA CARTEIRA</small><h3 id="sri33-treatment-title">Registrar tratativa</h3><p id="sri33-treatment-owner" class="v20-muted"></p></div><button type="button" class="v20-button secondary" id="sri33-treatment-close" aria-label="Fechar janela de tratativa">✕</button></div>
@@ -7412,6 +7430,11 @@ body.sri33-modal-open{overflow:hidden}
       </section>`);
     document.body.appendChild($('sri33-treatment'));
     $('sri33-mine-refresh').addEventListener('click',()=>safeMine(loadTasks));
+    for(const id of ['sri-pack-search','sri-pack-filter','sri-pack-status-filter'])$(id)?.addEventListener(id==='sri-pack-search'?'input':'change',renderPackTasks);
+    $('sri-pack-summary').addEventListener('click',e=>{const b=e.target.closest('[data-level]');if(!b)return;const f=$('sri-pack-filter');f.value=f.value===b.dataset.level?'all':b.dataset.level;renderPackTasks()});
+    window.sriPackOperatorView=mode=>{const history=mode==='history';$('sri-pack-carteira').hidden=history;$('sri-pack-history').hidden=!history;};
+    window.sriPackOperatorView(document.body.dataset.sriOperatorView||'active');
+    window.sriPackResetOperator=()=>{taskRows=[];currentTask=null;operatorFingerprint='';for(const id of ['sri33-task-table','sri33-history','sri33-mine-status','sri-pack-summary'])if($(id))$(id).textContent='';if($('sri33-treatment'))$('sri33-treatment').hidden=true;document.body.classList.remove('sri33-modal-open');};
     let modalOpener=null;
     function closeTreatment(force=false){
       if(inProgress&&!force)return;
@@ -7440,29 +7463,41 @@ body.sri33-modal-open{overflow:hidden}
       openTreatment(row,btn);
     });
   }
-  async function safeMine(fn){if(inProgress)return;inProgress=true;const save=$('sri33-treatment-save');if(save&&!$('sri33-treatment').hidden)save.disabled=true;try{await fn()}catch(e){const m=e.message||String(e);stateMsg('sri33-mine-status',m,'error');if(!$('sri33-treatment').hidden){$('sri33-treatment-status').textContent=m;$('sri33-treatment-status').dataset.state='error'}}finally{inProgress=false;if(save&&!$('sri33-treatment').hidden)save.disabled=!TREATMENT_STATUSES.includes($('sri33-treatment-kind').value)}}
+  async function safeMine(fn){if(inProgress)return;inProgress=true;const save=$('sri33-treatment-save');if(save&&!$('sri33-treatment').hidden)save.disabled=true;try{await fn()}catch(e){const m=window.sriFriendly?.(e.message||String(e),'error')||e.message||String(e);stateMsg('sri33-mine-status',m,'error');if(!$('sri33-treatment').hidden){$('sri33-treatment-status').textContent=m;$('sri33-treatment-status').dataset.state='error'}}finally{inProgress=false;if(save&&!$('sri33-treatment').hidden)save.disabled=!TREATMENT_STATUSES.includes($('sri33-treatment-kind').value)}}
   async function loadTasks(){
     const {client,profile,user}=await session();
     if(profile.role!=='operator')return;
     const rows=[];let from=0;
     for(let round=0;round<20;round++){
-      const {data,error}=await client.from('daily_operator_tasks')
-        .select('id,protocol_number,criticality,due_situation,sla_band,channel,source_status,work_status,treatment_status,operational_day,shift_label,updated_at')
+      const fields='id,protocol_number,criticality,due_situation,sla_band,channel,source_status,work_status,treatment_status,operational_day,shift_label,updated_at';
+      const fetchPage=cols=>client.from('daily_operator_tasks').select(cols)
         .eq('operator_user_id',user.id).eq('active',true)
         .eq('operational_day',window.sriOperationalContext?.().day||'1900-01-01')
         .order('operational_day',{ascending:false}).order('updated_at',{ascending:false})
         .range(from,from+199);
+      let {data,error}=await fetchPage(fields+',priority_reason,due_date');
+      if(error&&['42703','PGRST204'].includes(error.code)&&/priority_reason|due_date/i.test(error.message||''))({data,error}=await fetchPage(fields));
       if(error)throw Error('Carteira: '+error.message);
       rows.push(...(data||[]));if((data||[]).length<200)break;from+=200;
     }
     taskRows=rows;
-    const rank=r=>{return /BACKLOG/i.test(r.due_situation||'')?0:/VENCE HOJE|VENCENDO HOJE/i.test(r.due_situation||'')?1:/D6/i.test(r.sla_band||'')?2:3};
-    taskRows.sort((a,b)=>rank(a)-rank(b));
-    $('sri33-task-table').innerHTML=rows.length?`<table class="v20-table" style="min-width:670px;width:100%"><thead><tr><th>Protocolo</th><th>Prioridade</th><th>Prazo</th><th>Status da tratativa</th><th>Ação</th></tr></thead><tbody>${taskRows.map(r=>`<tr><td>${h(r.protocol_number)}</td><td>${h(r.criticality||'Não informada')}</td><td>${h(r.due_situation||r.sla_band||'—')}</td><td>${h(r.treatment_status||'SEM STATUS')}</td><td><button class="v20-button secondary" type="button" data-sri33-task="${h(r.id)}">Tratar</button></td></tr>`).join('')}</tbody></table>`:'<p>Sua carteira ainda não possui protocolos atribuídos. Solicite à supervisão a vinculação de sua conta e a publicação da distribuição.</p>';
-    const priority=taskRows.filter(r=>rank(r)<3);
-    $('sri33-priority').innerHTML=priority.length?`<p>${priority.length} protocolo(s) com prazo prioritário:</p><p>${priority.slice(0,20).map(r=>h(r.protocol_number)+' ('+h(r.due_situation||r.sla_band||'')+')').join(' · ')}${priority.length>20?' · ...':''}</p>`:'<p>Nenhuma prioridade de prazo identificada na carteira publicada.</p>';
-    stateMsg('sri33-mine-status',`${rows.length} protocolo(s) carregado(s) da sua conta Supabase.`,'success');
+    taskRows.sort((a,b)=>packRank(a)-packRank(b)||packDueDate(a,b)||packDue(a)-packDue(b)||String(a.protocol_number).localeCompare(String(b.protocol_number)));
+    renderPackTasks();
+    stateMsg('sri33-mine-status',`${rows.length} protocolo(s) na sua carteira de hoje.`,'success');
     await loadHistory(client,user.id);
+  }
+  const packLevel=r=>['Crítico','Alto','Médio','Baixo'].find(x=>x.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()===String(r.criticality||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase())||'Não avaliado';
+  const packRank=r=>['Crítico','Alto','Médio','Baixo','Não avaliado'].indexOf(packLevel(r));
+  const packDue=r=>/BACKLOG/i.test(r.due_situation||'')?0:/VENCE HOJE|VENCENDO HOJE|D7/i.test((r.due_situation||'')+' '+(r.sla_band||''))?1:/D6|AMANHÃ/i.test((r.sla_band||'')+' '+(r.due_situation||''))?2:/D5/i.test(r.sla_band||'')?3:/D4/i.test(r.sla_band||'')?4:5;
+  const packDueDate=(a,b)=>a.due_date&&b.due_date?String(a.due_date).localeCompare(String(b.due_date)):a.due_date?-1:b.due_date?1:0;
+  const packDate=r=>r.due_date&&/^\d{4}-\d{2}-\d{2}$/.test(r.due_date)?r.due_date.split('-').reverse().join('/'):'';
+  function renderPackTasks(){
+    const search=$('sri-pack-search').value.trim(),level=$('sri-pack-filter').value,status=$('sri-pack-status-filter').value;
+    const filled=r=>Boolean(r.treatment_status&&r.treatment_status!=='SEM STATUS');
+    const sum=$('sri-pack-summary');
+    sum.innerHTML='<div class="v20-stat"><span>Recebidos na carteira atual</span><b>'+taskRows.length+'</b></div><div class="v20-stat"><span>Com tratativa</span><b>'+taskRows.filter(filled).length+'</b></div><div class="v20-stat"><span>Sem tratativa</span><b>'+taskRows.filter(r=>!filled(r)).length+'</b></div>'+['Crítico','Alto','Médio','Baixo','Não avaliado'].map(l=>'<button type="button" data-level="'+h(l)+'" aria-pressed="'+(level===l)+'"><span class="sri-pack-level" data-level="'+h(l)+'">'+h(l)+'</span><strong>'+taskRows.filter(r=>packLevel(r)===l).length+'</strong></button>').join('');
+    const rows=taskRows.filter(r=>(!search||String(r.protocol_number).includes(search))&&(level==='all'||packLevel(r)===level)&&(status==='all'||(status==='filled')===filled(r)));
+    $('sri33-task-table').innerHTML=rows.length?`<table class="v20-table" style="min-width:670px;width:100%"><thead><tr><th>Protocolo</th><th>Criticidade</th><th>Prazo / sinalização</th><th>Motivo da prioridade</th><th>Status da tratativa</th><th>Ação</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${h(r.protocol_number)}</td><td><span class="sri-pack-level" data-level="${h(packLevel(r))}">${h(packLevel(r))}</span></td><td>${h(r.due_situation||r.sla_band||'—')}${packDate(r)?' · '+h(packDate(r)):''}</td><td>${h(r.priority_reason||r.due_situation||r.sla_band||'Não informado')}</td><td>${h(r.treatment_status||'SEM STATUS')}</td><td><button class="v20-button secondary" type="button" data-sri33-task="${h(r.id)}">Tratar</button></td></tr>`).join('')}</tbody></table>`:'<p>Nenhuma demanda para esta seleção.</p>';
   }
   async function loadHistory(client,userId){
     const {data,error}=await client.from('daily_operator_treatments')
@@ -7476,16 +7511,16 @@ body.sri33-modal-open{overflow:hidden}
     if(!currentTask)throw Error('Selecione um protocolo da sua carteira.');
     const notes=$('sri33-treatment-notes').value.trim();
     const status=$('sri33-treatment-kind').value;
-    if(!TREATMENT_STATUSES.includes(status))throw Error('Selecione um dos 13 status válidos.');
+    if(!TREATMENT_STATUSES.includes(status))throw Error('Selecione uma situação de atendimento.');
     if(notes.length>1500)throw Error('A justificativa deve ter no máximo 1.500 caracteres.');
     const {client,profile}=await session();
     if(profile.role!=='operator')throw Error('Registro disponível somente para operadores.');
     const task=currentTask;
     if(!taskRows.some(r=>r.id===task.id))throw Error('Esta demanda não consta mais na sua carteira.');
     const {error}=await client.rpc('record_daily_operator_treatment',{p_task:task.id,p_action:status,p_notes:notes});
-    if(error)throw Error('Não foi possível gravar a tratativa: '+error.message);
+    if(error)throw Error(window.sriFriendly?.('Não foi possível gravar a tratativa: '+error.message,'error')||'Não foi possível gravar a tratativa. Tente novamente.');
     closeTreatment(true);
-    await loadTasks();stateMsg('sri33-mine-status','Status '+status+' gravado no Supabase, com histórico e data/hora.','success');
+    await loadTasks();stateMsg('sri33-mine-status','Tratativa registrada com sucesso!','success');
   }
 
   // Ao publicar uma nova distribuição, o operador recebe sua carteira atualizada
@@ -7553,11 +7588,11 @@ const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const roles={operator:'Operador',supervisor:'Supervisor',manager:'Gestor',admin:'Administrador',viewer:'Consulta'};
 const avail=['Ativo','Promovido','Férias','Afastamento','Desligado'];
-const state={rows:[],teams:[],operations:[],memberships:[],user:null,role:null,client:null,filter:'',viewRole:'all',viewTeam:'all',editing:null,loading:false};
+const state={rows:[],teams:[],operations:[],memberships:[],user:null,role:null,client:null,filter:'',viewRole:'all',viewTeam:'all',viewStatus:'all',editing:null,loading:false};
 const defaultTeamOf=id=>state.memberships.filter(m=>m.user_id===id).map(m=>state.teams.find(t=>t.id===m.team_id)).filter(Boolean)[0]||null;
 const teamName=id=>state.teams.find(t=>t.id===id)?.name||'Sem equipe';
 const supervisorName=id=>state.rows.find(u=>u.id===id)?.full_name||'—';
-const msg=(message,kind='')=>{const el=$('sri-unified-message');if(el){el.textContent=message;el.dataset.state=kind}if(kind==='error'||(kind==='success'&&/salv|registr|atualiz|vinculad|conclu|publicad|criad|altera/i.test(message)))window.sriToast?.(message,kind);};
+const msg=(message,kind='')=>{message=window.sriFriendly?.(message,kind)||message;const el=$('sri-unified-message');if(el){el.textContent=message;el.dataset.state=kind}if(kind==='error'||(kind==='success'&&/salv|registr|atualiz|vinculad|conclu|publicad|criad|altera/i.test(message)))window.sriToast?.(message,kind);};
 async function session(){
  const client=await window.sriGetSupabaseClient?.();if(!client)throw Error('Conexão Supabase indisponível.');
  const {data,error}=await client.auth.getUser();if(error||!data?.user)throw Error('Entre no sistema para acessar esta área.');
@@ -7583,10 +7618,10 @@ async function refresh(){
 function selectUsers(){return state.rows.filter(u=>{
  const term=state.filter.trim().toLocaleLowerCase('pt-BR');
  const match=(!term||[u.full_name,u.contact_email,u.id,teamName(defaultTeamOf(u.id)?.id)].some(x=>String(x||'').toLocaleLowerCase('pt-BR').includes(term)));
- return match&&(state.viewRole==='all'||u.role===state.viewRole)&&(state.viewTeam==='all'||(state.viewTeam==='none'?!defaultTeamOf(u.id):defaultTeamOf(u.id)?.id===state.viewTeam));
+ return match&&(state.viewStatus==='all'||(u.operational_status||'Ativo')===state.viewStatus)&&(state.viewRole==='all'||u.role===state.viewRole)&&(state.viewTeam==='all'||(state.viewTeam==='none'?!defaultTeamOf(u.id):defaultTeamOf(u.id)?.id===state.viewTeam));
  });}
 function stats(){const ops=state.rows.filter(u=>u.role==='operator');return `<div class="v20-grid">
- <div class="v20-stat"><span>Contas no Supabase</span><b>${state.rows.length}</b></div>
+ <div class="v20-stat"><span>Contas cadastradas</span><b>${state.rows.length}</b></div>
  <div class="v20-stat"><span>Operadores ativos</span><b>${ops.filter(u=>['Ativo','Promovido'].includes(u.operational_status||'Ativo')).length}</b></div>
  <div class="v20-stat"><span>Operadores sem equipe</span><b>${ops.filter(u=>!defaultTeamOf(u.id)).length}</b></div>
  </div>`;}
@@ -7598,7 +7633,7 @@ function table(){const data=selectUsers().sort((a,b)=>String(a.full_name).locale
 function form(u){const team=defaultTeamOf(u.id),status=u.operational_status||'Ativo';const supervisors=state.rows.filter(x=>['supervisor','manager','admin'].includes(x.role)&&(x.role!=='supervisor'||(team&&state.memberships.some(m=>m.user_id===x.id&&m.team_id===team.id))));
  return `<section id="sri-unified-editor" class="v20-panel" style="margin-top:14px;border:1px solid #b9cae6;padding:16px;border-radius:12px" aria-label="Editar usuário">
  <div class="v20-between"><h3 style="margin:0">Gerenciar ${esc(u.full_name)}</h3><button type="button" class="v20-button secondary" id="sri-unified-cancel">Fechar</button></div>
- <p class="v20-muted">Conta criada no Supabase. Perfil inicial: Operador. Nenhum cadastro paralelo será criado.</p>
+ <p class="v20-muted">Cadastro único. A gestão pode atualizar o nome, a equipe e o perfil conforme sua permissão.</p>
  <div class="v20-row" style="display:flex;flex-wrap:wrap;gap:12px;margin:12px 0">
  <label class="v20-field">Equipe<select id="sri-user-team" ${['operator','supervisor'].includes(u.role)?'':'disabled'}><option value="">Sem equipe</option>${state.teams.filter(t=>t.active||t.id===team?.id).map(t=>`<option value="${esc(t.id)}" ${t.id===team?.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select></label>
  <label class="v20-field">Situação operacional<select id="sri-user-status" ${['operator','supervisor'].includes(u.role)?'':'disabled'}>${avail.map(v=>`<option value="${esc(v)}" ${v===status?'selected':''}>${esc(v)}</option>`).join('')}</select></label>
@@ -7611,6 +7646,7 @@ function setTable(){const node=$('sri-unified-table');if(node){node.innerHTML=ta
 function openEditor(id){const u=state.rows.find(x=>x.id===id);if(!u)return;state.editing=id;const root=$('sri-unified-detail');if(!root)return;root.innerHTML=form(u);$('sri-unified-cancel').addEventListener('click',()=>{root.innerHTML='';state.editing=null});
  $('sri-user-team')?.addEventListener('change',()=>{const sup=$('sri-user-supervisor');if(!sup)return;const selected=$('sri-user-team').value;sup.innerHTML='<option value="">Não definido</option>'+state.rows.filter(x=>['supervisor','manager','admin'].includes(x.role)&&(x.role!=='supervisor'||state.memberships.some(m=>m.user_id===x.id&&m.team_id===selected))).map(x=>`<option value="${esc(x.id)}">${esc(x.full_name)}</option>`).join('');});
  $('sri-user-save')?.addEventListener('click',()=>saveTeam(id));$('sri-user-change-role')?.addEventListener('click',()=>changeRole(id));
+ window.sriPackEditName?.($('sri-unified-editor'),state,u,async()=>{await refresh();setTable();openEditor(id)});
 }
 async function saveTeam(id){const u=state.rows.find(x=>x.id===id);if(!u)return;const team=$('sri-user-team')?.value||null,status=$('sri-user-status')?.value,supervisor=$('sri-user-supervisor')?.value||null;
  if(status==='Desligado'&&!confirm('Marcar o usuário como Desligado? A publicação de novas tarefas será impedida, e carteiras ativas precisam ser redistribuídas antes.'))return;
@@ -7620,23 +7656,25 @@ async function changeRole(id){const u=state.rows.find(x=>x.id===id);const role=$
 async function createTeam(){const op=$('sri-new-team-operation')?.value;const name=$('sri-new-team-name')?.value?.trim();if(!op||!name||name.length<2){msg('Selecione uma operação e informe o nome da equipe.','error');return;}msg('Criando equipe...');try{const client=await session();const {error}=await client.rpc('create_import_team',{p_operation:op,p_name:name});if(error)throw Error(error.message);await refresh();render($('v20-settings-body'));msg('Equipe criada no banco. Agora atribua os operadores.','success');}catch(e){msg('Não foi possível criar a equipe: '+e.message,'error');}}
 function render(root){if(!root)return;root.innerHTML=`<div class="v20-panel sri-unified-users" style="padding:18px"><div class="v20-between"><div><h3>Gestão de Usuários</h3><p class="v20-muted">Um cadastro por pessoa. Perfil automático Operador; equipe e carteira definidas pela gestão.</p></div><button type="button" class="v20-button secondary" id="sri-unified-refresh">Atualizar</button></div>
  <div id="sri-unified-stats"></div>
- <div class="v20-row" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:14px 0"><label class="v20-field">Pesquisar<input id="sri-unified-search" type="search" placeholder="Nome ou e-mail" value="${esc(state.filter)}"></label><label class="v20-field">Perfil<select id="sri-unified-role"><option value="all">Todos</option>${Object.entries(roles).map(([key,label])=>`<option value="${key}" ${state.viewRole===key?'selected':''}>${label}</option>`).join('')}</select></label><label class="v20-field">Equipe<select id="sri-unified-team"><option value="all">Todas</option><option value="none">Sem equipe</option>${state.teams.map(t=>`<option value="${esc(t.id)}" ${state.viewTeam===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select></label></div>
+ <div class="v20-row" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:14px 0"><label class="v20-field">Pesquisar<input id="sri-unified-search" type="search" placeholder="Nome ou e-mail" value="${esc(state.filter)}"></label><label class="v20-field">Perfil<select id="sri-unified-role"><option value="all">Todos</option>${Object.entries(roles).map(([key,label])=>`<option value="${key}" ${state.viewRole===key?'selected':''}>${label}</option>`).join('')}</select></label><label class="v20-field">Situação<select id="sri-unified-status"><option value="all">Todas</option>${avail.map(v=>`<option value="${esc(v)}" ${state.viewStatus===v?'selected':''}>${esc(v)}</option>`).join('')}</select></label><label class="v20-field">Equipe<select id="sri-unified-team"><option value="all">Todas</option><option value="none">Sem equipe</option>${state.teams.map(t=>`<option value="${esc(t.id)}" ${state.viewTeam===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select></label></div>
  <p id="sri-unified-message" role="status" aria-live="polite" class="v20-muted"></p>
  <div id="sri-unified-table"></div><div id="sri-unified-detail"></div>
  <details style="margin-top:16px"><summary>Criar equipe</summary><div class="v20-row" style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0"><label class="v20-field">Operação<select id="sri-new-team-operation">${state.operations.filter(x=>x.active).map(o=>`<option value="${esc(o.id)}">${esc(window.sriDisplayTurnoLabel(o.name))}</option>`).join('')}</select></label><label class="v20-field">Nome da equipe<input id="sri-new-team-name" maxlength="80" placeholder="Ex.: Equipe manhã"></label><button class="v20-button secondary" type="button" id="sri-create-team">Criar equipe</button></div></details>
  <details id="sri-unified-legacy-wrap" style="margin-top:14px"><summary>Conciliação de operadores legados (uso excepcional)</summary><p class="v20-muted">Recurso reservado para recuperar carteiras antigas identificadas apenas por nome. Para operadores novos, basta o cadastro, a equipe ativa e a publicação da distribuição.</p><div id="sri-unified-legacy-target"></div></details>
  </div>`;
  $('sri-unified-stats').innerHTML=stats();setTable();
+ window.sriPackAdmin?.(root,state,()=>reload(root));
  $('sri-unified-refresh').addEventListener('click',()=>reload(root));
  $('sri-unified-search').addEventListener('input',e=>{state.filter=e.target.value;setTable()});
  $('sri-unified-role').addEventListener('change',e=>{state.viewRole=e.target.value;setTable()});
+ $('sri-unified-status').addEventListener('change',e=>{state.viewStatus=e.target.value;setTable()});
  $('sri-unified-team').addEventListener('change',e=>{state.viewTeam=e.target.value;setTable()});
  $('sri-create-team').addEventListener('click',createTeam);
  const linkPanel=$('sri33-links'),legacyTarget=$('sri-unified-legacy-target');if(linkPanel&&legacyTarget){legacyTarget.appendChild(linkPanel);}
  $('sri-unified-legacy-wrap').addEventListener('toggle',e=>{if(e.target.open){document.body.classList.add('sri-unified-legacy-visible');window.sri33LegacyRefresh?.();}else document.body.classList.remove('sri-unified-legacy-visible')});
 }
-async function reload(root){if(state.loading)return;state.loading=true;try{await refresh();render(root);msg('Diretório atualizado diretamente do Supabase.','success')}catch(e){if(root)root.innerHTML='<div class="v20-panel" style="padding:18px"><h3>Gestão de Usuários</h3><p role="alert">Não foi possível carregar o diretório do Supabase: '+esc(e.message)+'</p><button id="sri-unified-retry" class="v20-button secondary" type="button">Tentar novamente</button></div>';$('sri-unified-retry')?.addEventListener('click',()=>reload(root));}finally{state.loading=false;}}
-window.sriUnifiedUsersRender=el=>{el.innerHTML='<div class="v20-panel" style="padding:18px"><h3>Gestão de Usuários</h3><p>Carregando contas do Supabase...</p></div>';reload(el)};
+async function reload(root){if(state.loading)return;state.loading=true;try{await refresh();render(root);msg('Cadastro de usuários atualizado.','success')}catch(e){if(root)root.innerHTML='<div class="v20-panel" style="padding:18px"><h3>Gestão de Usuários</h3><p role="alert">Não foi possível carregar os usuários: '+esc(window.sriFriendly?.(e.message,'error')||e.message)+'</p><button id="sri-unified-retry" class="v20-button secondary" type="button">Tentar novamente</button></div>';$('sri-unified-retry')?.addEventListener('click',()=>reload(root));}finally{state.loading=false;}}
+window.sriUnifiedUsersRender=el=>{el.innerHTML='<div class="v20-panel" style="padding:18px"><h3>Gestão de Usuários</h3><p>Carregando usuários...</p></div>';reload(el)};
 window.sriRefreshDistributionCandidates=async()=>{
  const client=await window.sriGetSupabaseClient?.();
  if(!client)throw Error('Conexão Supabase indisponível para consultar operadores.');
@@ -7876,5 +7914,6 @@ document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.tar
 <script defer src="/sri-prd-painel.js?v=2.0-prod-20261123"></script>
 <script defer src="/assets/sri-connection-status.js?v=20261123"></script>
 <script defer src="/assets/sri-mobile-navigation.js?v=20261124-01"></script>
+<script defer src="/assets/sri-integrated-improvements.js?v=20261124-01"></script>
 </body>
 </html>
