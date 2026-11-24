@@ -7412,7 +7412,7 @@ body.sri33-modal-open{overflow:hidden}
       <section class="v20-panel" id="sri33-mine" style="margin-top:16px;padding:18px;border-radius:12px">
        <div class="v20-between"><div><h3>Minha Carteira</h3><p class="v20-muted">Demandas atribuídas a você. Priorize as de maior criticidade e registre a tratativa.</p></div><button type="button" id="sri33-mine-refresh" class="v20-button secondary">Atualizar protocolos</button></div>
        <p id="sri33-mine-status" role="status" aria-live="polite"></p>
-       <div id="sri-pack-carteira"><div id="sri-pack-summary" class="sri-pack-kpis"></div><div class="sri-pack-controls"><label class="v20-field">Buscar protocolo<input type="search" id="sri-pack-search" placeholder="Número do protocolo"></label><label class="v20-field">Criticidade<select id="sri-pack-filter"><option value="all">Todas</option><option>Crítico</option><option>Alto</option><option>Médio</option><option>Baixo</option><option>Não avaliado</option></select></label><label class="v20-field">Base<select id="sri-pack-base"><option value="">Todas</option></select></label><label class="v20-field">Área<select id="sri-pack-area"><option value="">Todas</option></select></label><label class="v20-field">Tratativa<select id="sri-pack-status-filter"><option value="all">Todas</option><option value="pending">Sem tratativa</option><option value="filled">Com tratativa</option></select></label></div><div id="sri33-task-table" style="overflow-x:auto"></div><div id="sri33-priority" hidden></div></div>
+       <div id="sri-pack-carteira"><div id="sri-pack-summary" class="sri-pack-kpis"></div><div class="sri-pack-controls"><label class="v20-field">Buscar protocolo<input type="search" id="sri-pack-search" placeholder="Número do protocolo"></label><label class="v20-field">Criticidade<select id="sri-pack-filter"><option value="all">Todas</option><option>Crítico</option><option>Alto</option><option>Médio</option><option>Baixo</option><option>Não avaliado</option></select></label><label class="v20-field">Base<select id="sri-pack-base"><option value="">Todas</option></select></label><label class="v20-field">Área<select id="sri-pack-area"><option value="">Todas</option></select></label><label class="v20-field">Tratativa<select id="sri-pack-status-filter"><option value="all">Todas</option><option value="pending">Sem tratativa</option><option value="filled">Com tratativa</option></select></label><button type="button" class="v20-button secondary" id="sri-pack-clear">Limpar filtros</button></div><div id="sri33-task-table" style="overflow-x:auto"></div><div id="sri33-priority" hidden></div></div>
        <div id="sri-pack-history" hidden><h3>Meu Histórico</h3><p class="v20-muted">Até 50 registros mais recentes.</p><div id="sri33-history"></div></div>
        <div id="sri33-treatment" hidden role="presentation">
          <div class="sri33-dialog" role="dialog" aria-modal="true" aria-labelledby="sri33-treatment-title" aria-describedby="sri33-treatment-owner" tabindex="-1">
@@ -7434,6 +7434,7 @@ body.sri33-modal-open{overflow:hidden}
     document.body.appendChild($('sri33-treatment'));
     $('sri33-mine-refresh').addEventListener('click',()=>safeMine(loadTasks));
     for(const id of ['sri-pack-search','sri-pack-filter','sri-pack-status-filter','sri-pack-base','sri-pack-area'])$(id)?.addEventListener(id==='sri-pack-search'?'input':'change',renderPackTasks);
+    $('sri-pack-clear').addEventListener('click',()=>{$('sri-pack-search').value='';$('sri-pack-filter').value='all';$('sri-pack-status-filter').value='all';$('sri-pack-base').value='';$('sri-pack-area').value='';renderPackTasks()});
     $('sri-pack-summary').addEventListener('click',e=>{const b=e.target.closest('[data-level]');if(!b)return;const f=$('sri-pack-filter');f.value=f.value===b.dataset.level?'all':b.dataset.level;renderPackTasks()});
     window.sriPackOperatorView=mode=>{const history=mode==='history';$('sri-pack-carteira').hidden=history;$('sri-pack-history').hidden=!history;};
     window.sriPackOperatorView(document.body.dataset.sriOperatorView||'active');
@@ -7458,7 +7459,7 @@ body.sri33-modal-open{overflow:hidden}
     $('sri33-treatment-close').addEventListener('click',()=>closeTreatment());
     $('sri33-treatment-cancel').addEventListener('click',()=>closeTreatment());
     $('sri33-treatment').addEventListener('click',e=>{if(e.target===$('sri33-treatment'))closeTreatment()});
-    $('sri33-treatment').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();closeTreatment()}});
+    $('sri33-treatment').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();closeTreatment();return}if(e.key==='Tab'){const focusable=[...$('sri33-treatment').querySelectorAll('button:not([disabled]),select:not([disabled]),textarea:not([disabled])')].filter(x=>x.offsetParent!==null);if(!focusable.length)return;const first=focusable[0],last=focusable.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}});
     $('sri33-treatment-save').addEventListener('click',()=>safeMine(()=>saveTreatment(false)));$('sri33-treatment-next').addEventListener('click',()=>safeMine(()=>saveTreatment(true)));
     $('sri33-task-table').addEventListener('click',e=>{
       const btn=e.target.closest('[data-sri33-task]');if(!btn)return;if(inProgress){window.sriToast?.('Aguarde a confirmação da tratativa atual.','info');return;}
@@ -7505,11 +7506,12 @@ body.sri33-modal-open{overflow:hidden}
     const rows=packFilteredRows();
     $('sri33-task-table').innerHTML=rows.length?`<table class="v20-table" style="min-width:670px;width:100%"><thead><tr><th>Protocolo</th><th>Base</th><th>Área</th><th>Criticidade</th><th>Prazo / sinalização</th><th>Motivo da prioridade</th><th>Status da tratativa</th><th>Ação</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${h(r.protocol_number)}</td><td>${h(r.base_name||"—")}</td><td>${h(r.area_name||"—")}</td><td><span class="sri-pack-level" data-level="${h(packLevel(r))}">${h(packLevel(r))}</span></td><td>${h(r.due_situation||r.sla_band||'—')}${packDate(r)?' · '+h(packDate(r)):''}</td><td>${h(r.priority_reason||r.due_situation||r.sla_band||'Não informado')}</td><td>${h(r.treatment_status||'SEM STATUS')}</td><td><button class="v20-button secondary" type="button" data-sri33-task="${h(r.id)}">Tratar</button></td></tr>`).join('')}</tbody></table>`:'<p>Nenhuma demanda para esta seleção.</p>';wrap.scrollTop=scrollTop;wrap.scrollLeft=scrollLeft;
   }
-  async function loadHistory(client,userId,epoch=operatorEpoch){
+  let historySequence=0;
+  async function loadHistory(client,userId,epoch=operatorEpoch){const seq=++historySequence;
     const {data,error}=await client.from('daily_operator_treatments')
        .select('id,action,notes,created_at,task_id').eq('actor_id',userId)
        .order('created_at',{ascending:false}).limit(50);
-    if(error)throw Error('Histórico: '+error.message);if(epoch!==operatorEpoch)return;
+    if(error)throw Error('Histórico: '+error.message);if(epoch!==operatorEpoch||seq!==historySequence)return;
     const map=new Map(taskRows.map(r=>[r.id,r.protocol_number]));
     $('sri33-history').innerHTML=(data||[]).length?`<div style="display:grid;gap:8px">${data.map(t=>`<div style="padding:10px;border:1px solid #dde4ef;border-radius:8px"><strong>${h(label(t.action))}</strong> · ${h(map.get(t.task_id)||'Protocolo anterior')} <small>${h(new Date(t.created_at).toLocaleString('pt-BR'))}</small><div>${h(t.notes||'Justificativa não informada')}</div></div>`).join('')}</div>`:'<p>Você ainda não registrou nenhuma tratativa.</p>';
   }
@@ -7525,10 +7527,10 @@ body.sri33-modal-open{overflow:hidden}
     if(!taskRows.some(r=>r.id===task.id))throw Error('Esta demanda não consta mais na sua carteira.');
     const expected=task.updated_at;const signature=JSON.stringify([task.id,status,notes,expected]);if(!savePending||savePending.signature!==signature)savePending={signature,id:crypto.randomUUID()};
     const {data,error}=await client.rpc('sri_record_treatment_v2',{p_task:task.id,p_action:status,p_notes:notes,p_expected:expected,p_request:savePending.id});
-    if(error)throw Error(window.sriFriendly?.('Não foi possível gravar a tratativa: '+error.message,'error')||'Não foi possível gravar a tratativa. Tente novamente.');
+    if(error){if(/atualizada em outra sessão|demanda indisponível/i.test(error.message||'')){const same=task.id;await loadTasks();if(epoch!==operatorEpoch)return;currentTask=taskRows.find(r=>r.id===same)||null;savePending=null;if(currentTask){const latest=currentTask;$('sri33-context').querySelectorAll('b')[4].textContent=latest.treatment_status||'Sem tratativa';throw Error('A tratativa mudou em outra sessão. Confira a última tratativa e confirme novamente se desejar salvar sua alteração.')}closeTreatment(true);throw Error('O protocolo não está mais na sua carteira.')}throw Error(window.sriFriendly?.('Não foi possível confirmar o salvamento: '+error.message,'error')||'Não foi possível confirmar o salvamento. Tente novamente.');}
     if(epoch!==operatorEpoch)return;operatorLoadSeq++;savePending=null;
     const row=taskRows.find(r=>r.id===task.id);if(row){row.treatment_status=data?.treatment_status||status;row.work_status=data?.work_status||row.work_status;row.updated_at=data?.updated_at||row.updated_at;}
-    const next=advance?packFilteredRows().find(r=>r.id!==task.id&&!r.treatment_status):null;
+    const next=advance?packFilteredRows().find(r=>r.id!==task.id&&(!r.treatment_status||r.treatment_status==='SEM STATUS')):null;
     closeTreatment(true);renderPackTasks();stateMsg('sri33-mine-status','Tratativa registrada com sucesso!','success');
     if(next)openTreatment(next,null,true);else if(advance)window.sriToast?.('Não há outro protocolo sem tratativa nos filtros atuais.','info');
     void loadHistory(client,user.id,epoch).catch(()=>window.sriToast?.('Tratativa salva; histórico será atualizado na próxima consulta.','warning'));
