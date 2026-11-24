@@ -82,4 +82,23 @@ CREATE OR REPLACE FUNCTION public.sri_rename_user(p_user uuid,p_name text)
 RETURNS void LANGUAGE sql SECURITY INVOKER SET search_path='' AS $$ SELECT private.sri_rename_user_impl(p_user,p_name) $$;
 REVOKE ALL ON FUNCTION public.sri_rename_user(uuid,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.sri_rename_user(uuid,text) TO authenticated;
+CREATE OR REPLACE FUNCTION private.sri_admin_history_impl(p_kind text,p_id uuid)
+RETURNS TABLE(occurred_at timestamptz,actor_name text,action text,details jsonb)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $
+BEGIN
+ IF auth.uid() IS NULL OR NOT private.is_manager() THEN RAISE EXCEPTION 'Ação exclusiva da gestão'; END IF;
+ IF p_kind NOT IN ('teams','operations','profile') OR p_id IS NULL THEN RAISE EXCEPTION 'Cadastro inválido'; END IF;
+ RETURN QUERY SELECT a.occurred_at,p.full_name,a.action,a.details FROM public.audit_events a
+ LEFT JOIN public.profiles p ON p.id=a.user_id
+ WHERE a.object_id=p_id::text AND (a.object_type=p_kind OR (p_kind='teams' AND a.object_type='team'))
+ AND a.action IN ('CATALOG_CREATE','CATALOG_EDIT','CATALOG_DISABLE','CATALOG_ENABLE','CATALOG_DELETE','TEAM_READY','USER_NAME_CHANGED','USER_TEAM_CONFIGURED','USER_ROLE_CHANGED')
+ ORDER BY a.occurred_at DESC LIMIT 100;
+END; $;
+REVOKE ALL ON FUNCTION private.sri_admin_history_impl(text,uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION private.sri_admin_history_impl(text,uuid) TO authenticated;
+CREATE OR REPLACE FUNCTION public.sri_admin_history(p_kind text,p_id uuid)
+RETURNS TABLE(occurred_at timestamptz,actor_name text,action text,details jsonb)
+LANGUAGE sql STABLE SECURITY INVOKER SET search_path='' AS $ SELECT * FROM private.sri_admin_history_impl(p_kind,p_id) $;
+REVOKE ALL ON FUNCTION public.sri_admin_history(text,uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.sri_admin_history(text,uuid) TO authenticated;
 COMMIT;
