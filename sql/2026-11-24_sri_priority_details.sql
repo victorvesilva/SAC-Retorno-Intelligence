@@ -300,7 +300,7 @@ BEGIN
   FOR v_user IN
     SELECT DISTINCT substring(e.value->>'opId' from 6)::uuid
       FROM jsonb_each(v_state->'assignments') e
-     WHERE e.value->>'opId' ~ '^acct:[0-9a-fA-F-]{36}
+     WHERE e.value->>'opId' ~ '^acct:[0-9a-fA-F-]{36}$'
      ORDER BY 1
   LOOP
     SELECT p.role,p.operational_status INTO v_role,v_status
