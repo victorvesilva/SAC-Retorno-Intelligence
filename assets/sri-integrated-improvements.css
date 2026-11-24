@@ -1,0 +1,27 @@
+/* Pacote integrado: temas, carteira e mensagens */
+:root{--sri-ui-bg:#f5f8fd;--sri-ui-card:#fff;--sri-ui-ink:#17314e;--sri-ui-muted:#52677f;--sri-ui-line:#d6e1ef;--sri-ui-hover:#eaf2ff;--sri-critical:#b42318;--sri-high:#b45309;--sri-medium:#856100;--sri-low:#137139}
+html[data-sri-theme="dark"]{color-scheme:dark;--sri-ui-bg:#101827;--sri-ui-card:#192638;--sri-ui-ink:#e8f0fb;--sri-ui-muted:#b2c3d9;--sri-ui-line:#354760;--sri-ui-hover:#243b58;--sri-critical:#ff9a9a;--sri-high:#ffb86a;--sri-medium:#f6d66e;--sri-low:#83dbab;--bg:var(--sri-ui-bg);--card:var(--sri-ui-card);--ink:var(--sri-ui-ink);--muted:var(--sri-ui-muted);--line:var(--sri-ui-line);--surface:var(--sri-ui-bg);--shadow:none}
+html[data-sri-theme="dark"] body,html[data-sri-theme="dark"] .v5-app,html[data-sri-theme="dark"] main{background:var(--sri-ui-bg)!important;color:var(--sri-ui-ink)!important}
+html[data-sri-theme="dark"] :is(.topbar,.v5-nav-panel,.v20-panel,.v20-stat,.v20-dialog,.v20-profile-popover,.v2-kpi,.kpi,.card,.panel,.v2-panel,.v3-panel,.v20-module-tabs,.sri33-dialog,.sri-auto-toast,.v20-tablewrap,.v194-team,.alert-row,.v20-notice,.v20-login-form,.v20-login-wrap){background:var(--sri-ui-card)!important;color:var(--sri-ui-ink)!important;border-color:var(--sri-ui-line)!important;box-shadow:none!important}
+html[data-sri-theme="dark"] :is(h1,h2,h3,h4,.v20-hero-title,.v20-stat b,.v5-top-name,.v5-top-subtitle,.v20-nav-group-title,.v20-nav-entry,.nav-link,.v20-profile-button,.v20-module-tab,.v20-button.secondary){color:var(--sri-ui-ink)!important}
+html[data-sri-theme="dark"] :is(.v20-muted,.v20-stat span,.v20-stat small,.v20-field,.mini-explain,.alert-detail,caption){color:var(--sri-ui-muted)!important}
+html[data-sri-theme="dark"] :is(input,select,textarea,.v20-button.secondary,.v20-module-tab){background:var(--sri-ui-card)!important;color:var(--sri-ui-ink)!important;border-color:var(--sri-ui-line)!important}
+html[data-sri-theme="dark"] :is(table,thead,tbody,tr,th,td){border-color:var(--sri-ui-line)!important;background:var(--sri-ui-card)!important;color:var(--sri-ui-ink)!important}
+html[data-sri-theme="dark"] :is(tr:hover td,.nav-link:hover,.nav-link.active,.v20-module-tab.active){background:var(--sri-ui-hover)!important}
+html[data-sri-theme="dark"] svg text{fill:var(--sri-ui-ink)}
+.sri-pack-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin:12px 0}
+.sri-pack-controls>*{min-width:0}
+.sri-pack-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:12px 0}
+.sri-pack-kpis button,.sri-pack-theme{border:1px solid var(--sri-ui-line);background:var(--sri-ui-card);color:var(--sri-ui-ink);border-radius:9px;padding:10px;cursor:pointer;text-align:left}
+.sri-pack-kpis button[aria-pressed=true]{outline:2px solid #3984db;outline-offset:1px}
+.sri-pack-kpis button strong{display:block;font-size:1.35rem}
+.sri-pack-level{font-weight:700;white-space:nowrap}
+.sri-pack-level[data-level="Crítico"]{color:var(--sri-critical)}.sri-pack-level[data-level="Alto"]{color:var(--sri-high)}.sri-pack-level[data-level="Médio"]{color:var(--sri-medium)}.sri-pack-level[data-level="Baixo"]{color:var(--sri-low)}
+.sri-pack-admin{margin-top:16px}.sri-pack-admin summary{font-weight:700;cursor:pointer}.sri-pack-admin td{vertical-align:top}.sri-pack-admin td button{margin:2px}
+#sri-pack-theme-shortcut{white-space:nowrap;padding:7px 10px}
+.sri-pack-toast{position:fixed;right:16px;bottom:16px;z-index:10000;display:grid;gap:8px;width:min(400px,calc(100vw - 32px))}
+.sri-pack-toast article{padding:12px;border:1px solid var(--sri-ui-line);border-left:4px solid #3984db;border-radius:10px;background:var(--sri-ui-card);color:var(--sri-ui-ink);box-shadow:0 4px 18px #0002;display:flex;gap:8px;align-items:start}
+.sri-pack-toast article[data-kind=error]{border-left-color:var(--sri-critical)}.sri-pack-toast article[data-kind=warning]{border-left-color:var(--sri-high)}.sri-pack-toast article[data-kind=success]{border-left-color:var(--sri-low)}
+.sri-pack-toast article span{flex:1}.sri-pack-toast article button{border:0;background:transparent;color:inherit;font-size:18px}
+@media(max-width:640px){.sri-pack-controls>*{flex:1 1 130px}.sri-pack-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#sri-pack-theme-shortcut{padding:6px;font-size:12px}}
+@media print{html[data-sri-theme="dark"]{color-scheme:light;--sri-ui-bg:#fff;--sri-ui-card:#fff;--sri-ui-ink:#111;--sri-ui-muted:#333;--sri-ui-line:#ccc}.sri-pack-toast,#sri-pack-theme-shortcut{display:none!important}}
