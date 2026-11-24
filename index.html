@@ -4505,7 +4505,7 @@ function v55RefreshView(){const historic=v55Elements.source.value==='history',av
  document.getElementById('sri-p03-report-preview-body').hidden=true;
  v55Elements.warning.classList.toggle('is-warning',historic);
  v55Elements.warning.innerHTML=historic?
- (snap?.cloud?'<b>Histórico recuperado do Supabase:</b> indicadores consolidados da data operacional e turno. Não há detalhes individuais nem confirmação de encerramento no SIGO.':'<b>Histórico agregado:</b> apenas os indicadores efetivamente preservados estão disponíveis.')+(v55CloudError?' '+safe(v55CloudError):''):
+ (snap?.cloud?'<b>Histórico recuperado do Supabase:</b> indicadores consolidados da data operacional e turno. Não há detalhes individuais nem confirmação de encerramento no SIGO.':available?'<b>Histórico agregado:</b> apenas os indicadores efetivamente preservados estão disponíveis.':v55CloudPromise?'<b>Consultando histórico no Supabase...</b>':'<b>Nenhuma extração histórica disponível neste recorte.</b>')+(v55CloudError?' '+safe(v55CloudError):''):
  '<b>Carteira atual:</b> PDFs individuais e completo com gráficos e informações disponíveis. Os filtros gerais aplicados à análise serão respeitados quando houver detalhamento da carteira.';
 }
 function v55GetRows(){const rows=v3LiveRows(),unique=[...new Map(rows.map(r=>[String(r.id),r])).values()];return {rows,unique};}
