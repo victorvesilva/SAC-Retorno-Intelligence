@@ -1835,7 +1835,7 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
 <div class="inline-notice" id="state-banner"><div class="notice-left"><span class="i" data-icon="info"></span><span><b>Dashboard sem dados:</b> importe os arquivos SAC e ATIVO e clique em “Processar SAC + ATIVO” para começar.</span></div><button class="btn btn-ghost" id="notice-upload" style="padding:7px 10px">Importar agora</button></div>
 </div>
 <section class="tab-content active fade-in go-dashboard" id="overview">
-<div class="go-head"><div class="go-head-title"><span class="go-eyebrow">SAC RETORNO INTELLIGENCE · PAINEL INTEGRADO</span><h2>Gestão Operacional</h2><p>Visão consolidada da carteira, dos prazos e dos pontos de atenção.</p></div><span class="mini-pill" id="metric-scope">Aguardando importação</span></div>
+<div class="go-head"><div class="go-head-title"><span class="go-eyebrow">SAC RETORNO INTELLIGENCE · PAINEL INTEGRADO</span><h2>Gestão Operacional</h2><p>Visão consolidada da carteira, dos prazos e dos pontos de atenção.</p><button type="button" id="v55-prior-day-shortcut" class="btn btn-ghost" style="margin-top:10px">Relatório de dias anteriores</button></div><span class="mini-pill" id="metric-scope">Aguardando importação</span></div>
 <div aria-label="Acesso rápido às atividades do dia" class="v114-journey">
 <div class="v114-journey-title"><strong>Fluxo do dia</strong><span>Importar → Priorizar → Distribuir → Acompanhar</span></div>
 <div class="v114-journey-actions">
@@ -2074,7 +2074,7 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
 </div>
 <div class="v55-right-panel">
 <h3 class="v55-section-title">2 · Escolha os dados de referência</h3>
-<div class="v55-inputrow"><label for="v55-source">Origem dos dados</label><select id="v55-source"><option value="current">Última extração processada (carteira atual)</option><option value="history">Extração anterior (histórico salvo)</option></select></div>
+<div class="v55-inputrow"><label for="v55-source">Origem dos dados</label><select id="v55-source"><option value="current">Última extração processada (carteira atual)</option><option value="history">Extração anterior (histórico local ou Supabase)</option></select></div>
 <div hidden="" id="v55-history-fields">
 <div class="v55-inputrow"><label for="v55-day">Data da importação</label><select id="v55-day"></select></div>
 <div class="v55-inputrow"><label for="v55-snapshot">Horário da importação</label><select id="v55-snapshot"></select></div>
@@ -4421,6 +4421,35 @@ V5_TABS.reports=['Central de Relatórios','PDFs por categoria, extração e hor�
 const V55_KINDS={completo:'Relatório completo',gestao:'Gestão Operacional',prioridades:'Central de Prioridades',distribuicao:'Distribuição',carteira:'Carteira por Operador',inteligencia:'Inteligência e Tendências',qualidade:'Base e Qualidade',retornos:'Retornos da Filial',historico:'Histórico do Dia'};
 const V55_HIST_KINDS=new Set(['completo','gestao','inteligencia','historico']);
 const v55Elements={source:document.getElementById('v55-source'),day:document.getElementById('v55-day'),snapshot:document.getElementById('v55-snapshot'),format:document.getElementById('v55-format'),warning:document.getElementById('v55-history-warning'),meta:document.getElementById('v55-extraction-meta'),run:document.getElementById('v55-generate')};
+
+let v55CloudHistory=[],v55CloudError='',v55CloudPromise=null,v55CloudActor=null;
+function v55CloudSummary(s){
+ const m=s.indicators||{},finite=k=>m[k]==null||m[k]===''?null:Number.isFinite(Number(m[k]))?Number(m[k]):null;
+ const ret=finite('sac_retorno'),what=finite('whatssac');
+ return {cloud:true,cloudId:String(s.id),operationalDay:String(s.operational_day),shiftLabel:s.shift_label||'',timestamp:s.created_at,reference:s.reference_serial??null,sacName:'',ativoName:'',
+ total:ret==null||what==null?null:ret+what,unique:finite('protocolos_monitorados'),ret,what,d7:finite('vencem_hoje'),d6:finite('sla_d6'),backlog:finite('backlog'),crit:null,bko:{},bkoMetrics:{},added:null,missing:null,changed:null,retained:null};
+}
+function v55LoadCloudHistory(){
+ if(v55CloudPromise)return v55CloudPromise;
+ v55CloudPromise=(async()=>{
+ try{
+  if(typeof window.sriGetSupabaseClient!=='function')throw Error('Conexão indisponível');
+  const client=await window.sriGetSupabaseClient();
+  const {data:auth,error:authError}=await client.auth.getUser();
+  if(authError||!auth?.user){v55CloudHistory=[];v55CloudActor=null;return;}
+  if(v55CloudActor!==auth.user.id){v55CloudHistory=[];v55CloudActor=auth.user.id;}
+  const {data:profile,error:profileError}=await client.from('profiles').select('role').eq('id',auth.user.id).single();
+  if(profileError||!['admin','manager','supervisor'].includes(profile?.role))throw Error('Perfil sem permissão');
+  const {data,error}=await client.from('daily_result_snapshots').select('id,operational_day,shift_label,reference_serial,indicators,created_at,team_id')
+   .is('team_id',null).order('created_at',{ascending:false}).limit(500);
+  if(error)throw Error('Consulta histórica indisponível');
+  v55CloudHistory=(data||[]).filter(x=>x?.id&&x?.operational_day&&x?.created_at).map(v55CloudSummary);
+  v55CloudError=(data||[]).length===500?'Limite de 500 extrações carregadas; datas mais antigas exigem paginação.':'';
+ }catch(e){v55CloudError='Histórico do Supabase indisponível. Verifique a conexão e o perfil.';v55CloudHistory=[];}
+ finally{v55RefreshDays();}
+ })().finally(()=>{v55CloudPromise=null;v55RefreshView()});
+ return v55CloudPromise;
+}
 const v55When=value=>{if(!value)return 'Não registrado';const d=value instanceof Date?value:new Date(value);return Number.isFinite(d.getTime())?d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):String(value)};
 const v55FileWhen=name=>{const d=v52DateTime(name||'');return d?v55When(d):'Não identificado';};
 const v55Value=(value)=>value===null||value===undefined||value===''?'—':v51Number(value);
@@ -4434,20 +4463,29 @@ function v55MetaFor(snapshot,isCurrent){
  const processed=isCurrent?(snapshot?.timestamp? v55When(snapshot.timestamp):(activeExtractionInfo?.time||'Não registrado')):v55When(snapshot?.timestamp);
  return {sac,ativo,sacAt:v55FileWhen(sac),ativoAt:v55FileWhen(ativo),processed,reference:Number.isFinite(Number(ref))&&ref!==null?longDate(Number(ref)):'Não informada',generated:v55When(new Date()),mode:isCurrent?'Carteira atual':'Histórico agregado'};
 }
-function v55AvailableHistory(){return v2History.map((h,index)=>({h,index})).filter(x=>x.h?.timestamp&&Number.isFinite(new Date(x.h.timestamp).getTime()));}
+function v55AvailableHistory(){
+ const local=v2History.map((h,index)=>({h,index})).filter(x=>x.h?.timestamp&&Number.isFinite(new Date(x.h.timestamp).getTime()));
+ const cloud=v55CloudHistory.map(h=>({h,index:'cloud:'+h.cloudId}));
+ return [...local,...cloud].sort((a,b)=>new Date(a.h.timestamp)-new Date(b.h.timestamp));
+}
+function v55HistoryAt(key){
+ if(String(key).startsWith('cloud:'))return v55CloudHistory.find(h=>'cloud:'+h.cloudId===String(key))||null;
+ return /^[0-9]+$/.test(String(key))?v2History[Number(key)]||null:null;
+}
+function v55HistoryDay(h){return h?.operationalDay||v52DayKey(h?.timestamp);}
 function v55ReportChosen(){return document.querySelector('[name="v55-kind"]:checked')?.value||'completo';}
-function v55RefreshDays(){const list=v55AvailableHistory(),days=[...new Set(list.map(x=>v52DayKey(x.h.timestamp)))].filter(Boolean).sort().reverse(),prior=v55Elements.day.value;
+function v55RefreshDays(){const list=v55AvailableHistory(),days=[...new Set(list.map(x=>v55HistoryDay(x.h)))].filter(Boolean).sort().reverse(),prior=v55Elements.day.value;
  v55Elements.day.innerHTML=days.map(d=>`<option value="${safe(d)}">${safe(new Date(d+'T12:00:00').toLocaleDateString('pt-BR'))}</option>`).join('');
  if(prior&&days.includes(prior))v55Elements.day.value=prior;
  v55RefreshSnapshots();
 }
 function v55RefreshSnapshots(){const chosen=v55Elements.day.value,prior=v55Elements.snapshot.value;
- const matches=v55AvailableHistory().filter(x=>v52DayKey(x.h.timestamp)===chosen).reverse();
+ const matches=v55AvailableHistory().filter(x=>v55HistoryDay(x.h)===chosen).reverse();
  v55Elements.snapshot.innerHTML=matches.map(x=>`<option value="${x.index}">${safe(new Date(x.h.timestamp).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}))} · ${v55Value(x.h.unique??x.h.total)} protocolos</option>`).join('');
  if(prior&&matches.some(x=>String(x.index)===prior))v55Elements.snapshot.value=prior;
  v55RefreshView();
 }
-function v55SelectedSnapshot(){const idx=Number(v55Elements.snapshot.value);return v55Elements.snapshot.value!==''?v2History[idx]||null:null;}
+function v55SelectedSnapshot(){return v55Elements.snapshot.value!==''?v55HistoryAt(v55Elements.snapshot.value):null;}
 function v55RefreshView(){const historic=v55Elements.source.value==='history',available=v55AvailableHistory().length>0,snap=historic?v55SelectedSnapshot():v55CurrentSnapshot();
  document.getElementById('v55-history-fields').hidden=!historic;
  for(const radio of document.querySelectorAll('[name="v55-kind"]')){
@@ -4481,7 +4519,7 @@ function v55Carteira(){const {unique}=v55GetRows();const assigned=unique.filter(
 function v55Returns(){const events=[...v53Events].sort((a,b)=>String(b.at).localeCompare(String(a.at)));const pending=events.filter(e=>!e.reviewed),verified=events.filter(e=>e.verified);const displayed=events.slice(0,9);
  return v55Page('Retornos da Filial','Monitoramento de mudanças após a tratativa FILIAL',`<div class="v51-kpis">${v51Kpi('Eventos monitorados',events.length)}${v51Kpi('Aguardando revisão',pending.length,'#FF7800')}${v51Kpi('Mudança confirmada',verified.length,'#24A18C')}${v51Kpi('Eventos revisados',events.length-pending.length)}</div><div class="v51-panel"><h3>Últimos eventos identificados</h3><table class="v55-matrix"><thead><tr><th>Protocolo</th><th>Detectado em</th><th>Responsável</th><th>Situação</th></tr></thead><tbody>${displayed.map(e=>`<tr><td>${safe(e.id)}</td><td>${safe(v55When(e.at))}</td><td>${safe(e.operator||'Não informado')}</td><td>${e.reviewed?'Revisado':'Pendente'}</td></tr>`).join('')||'<tr><td colspan="4">Nenhum retorno registrado.</td></tr>'}</tbody></table></div><div class="v51-insight">Regra operacional: tratativa anterior FILIAL + CD_STATUS 12 (descrição sistêmica AGENTE) = retorno sinalizado. A classificação original FILIAL é preservada. O quadro mostra o histórico de eventos local, não somente os protocolos da extração atual.</div>`);
 }
-function v55HistoryPage(day){const records=v55AvailableHistory().filter(x=>v52DayKey(x.h.timestamp)===day).map(x=>x.h),latest=records.at(-1),previous=records.length>1?records.at(-2):null;const count=k=>records.reduce((sum,h)=>sum+Math.max(0,Number(h[k])||0),0);const fmtDay=day?new Date(day+'T12:00:00').toLocaleDateString('pt-BR'):'Não informada';
+function v55HistoryPage(day){const records=v55AvailableHistory().filter(x=>v55HistoryDay(x.h)===day).map(x=>x.h),latest=records.at(-1),previous=records.length>1?records.at(-2):null;const count=k=>records.reduce((sum,h)=>sum+Math.max(0,Number(h[k])||0),0);const fmtDay=day?new Date(day+'T12:00:00').toLocaleDateString('pt-BR'):'Não informada';
  const rows=records.slice(-10).map((h,i)=>`<tr><td>${safe(new Date(h.timestamp).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}))}</td><td>${v55Value(h.unique??h.total)}</td><td>${v55Value(h.added)}</td><td>${v55Value(h.missing)}</td><td>${v55Value(h.changed)}</td><td>${v55Value(h.filialReturns)}</td></tr>`).join('');
  return v55Page('Histórico do Dia',`Importações SAC + ATIVO de ${fmtDay}`,`<div class="v51-kpis">${v51Kpi('Rodadas registradas',records.length)}${v51Kpi('Última carteira única',latest?.unique??latest?.total??0)}${v51Kpi('Novos nas rodadas',count('added'),'#24A18C')}${v51Kpi('Alterados nas rodadas',count('changed'),'#FF7800')}</div><div class="v51-two"><div class="v51-panel"><h3>Variação de linhas monitoradas</h3>${v51TrendSvg(records)}<p>As rodadas do dia são fotografias independentes da operação.</p></div><div class="v51-panel"><h3>Importações por horário</h3><table class="v55-matrix"><thead><tr><th>Hora</th><th>Únicos</th><th>Novos</th><th>Ausentes</th><th>Alterados</th><th>Ret. filial</th></tr></thead><tbody>${rows||'<tr><td colspan="6">Nenhuma rodada registrada.</td></tr>'}</tbody></table></div></div><div class="v51-insight">Os números por importação não devem ser somados como carteira única. Ausência no recorte não comprova conclusão; as listas históricas detalhadas são limitadas.</div>`);
 }
@@ -4498,7 +4536,7 @@ function v55BuildReportPages(source,kind,snapshot){const pages=[];
  if(source==='history'){
   if(kind==='completo'||kind==='gestao')pages.push(v55HistoricSummary(snapshot));
   if(kind==='completo'||kind==='inteligencia')pages.push(v55HistoricBko(snapshot));
-  if(kind==='completo'||kind==='inteligencia'||kind==='historico')pages.push(v55HistoryPage(v52DayKey(snapshot.timestamp)));
+  if(kind==='completo'||kind==='inteligencia'||kind==='historico')pages.push(v55HistoryPage(v55HistoryDay(snapshot)));
   return pages;
  }
  const tpl=document.createElement('div');tpl.innerHTML=v51ReportHTML({history:true,distribution:true,quality:true});const legacy=[...tpl.querySelectorAll('.v51-pdf-page')];
@@ -4538,7 +4576,7 @@ document.getElementById('v55-report-kinds').addEventListener('change',p03ReportC
 document.getElementById('sri-p03-report-preview').onclick=p03ReportPreview;
 document.getElementById('sri-p03-report-csv').onclick=()=>{const d=p03ReportMetrics();if(!d){v2Toast('Selecione uma extração disponível.');return;}csvDownload([['Fonte',p03CsvCell(d.meta.mode)],['Referência',p03CsvCell(d.meta.reference)],['Processado',p03CsvCell(d.meta.processed)],['Indicador','Quantidade'],...d.values.map(([k,v])=>[k,v??'Não disponível'])],'indicadores_relatorio.csv');};
 function p03CompareOptions(){const list=v55AvailableHistory().sort((a,b)=>new Date(a.h.timestamp)-new Date(b.h.timestamp));for(const id of ['sri-p03-compare-a','sri-p03-compare-b']){const el=document.getElementById(id),old=el.value;el.replaceChildren(new Option('Selecione uma extração',''));for(const {h,index} of list)el.add(new Option(new Date(h.timestamp).toLocaleString('pt-BR')+' · '+fmt.format(h.total??0)+' registros',String(index)));if([...el.options].some(o=>o.value===old))el.value=old;}}
-function p03CompareData(){const a=document.getElementById('sri-p03-compare-a').value,b=document.getElementById('sri-p03-compare-b').value;if(!a||!b)return null;const x=v2History[Number(a)],y=v2History[Number(b)];if(!x||!y||new Date(x.timestamp)>=new Date(y.timestamp))return null;return {x,y,rows:[['Linhas monitoradas','total'],['Protocolos únicos','unique'],['SAC Retorno','ret'],['WhatsSAC','what'],['Vence hoje','d7'],['D6','d6'],['Backlog SAC Retorno','backlog'],['Fila crítica','crit']].map(([label,k])=>{const v=x[k],w=y[k],valid=typeof v==='number'&&typeof w==='number'&&Number.isFinite(v)&&Number.isFinite(w);return [label,v??null,w??null,valid?w-v:null,valid&&v!==0?100*(w-v)/v:null];})};}
+function p03CompareData(){const a=document.getElementById('sri-p03-compare-a').value,b=document.getElementById('sri-p03-compare-b').value;if(!a||!b)return null;const x=v55HistoryAt(a),y=v55HistoryAt(b);if(!x||!y||new Date(x.timestamp)>=new Date(y.timestamp))return null;return {x,y,rows:[['Linhas monitoradas','total'],['Protocolos únicos','unique'],['SAC Retorno','ret'],['WhatsSAC','what'],['Vence hoje','d7'],['D6','d6'],['Backlog SAC Retorno','backlog'],['Fila crítica','crit']].map(([label,k])=>{const v=x[k],w=y[k],valid=typeof v==='number'&&typeof w==='number'&&Number.isFinite(v)&&Number.isFinite(w);return [label,v??null,w??null,valid?w-v:null,valid&&v!==0?100*(w-v)/v:null];})};}
 const p03CompareDisplay=v=>v==null?'Não disponível':fmt.format(v);
 document.getElementById('sri-p03-compare').addEventListener('toggle',e=>{if(e.currentTarget.open)p03CompareOptions();});
 document.getElementById('sri-p03-compare-run').onclick=()=>{const el=document.getElementById('sri-p03-compare-result'),d=p03CompareData();el.innerHTML=d?'<div style="overflow:auto"><table class="v20-table"><thead><tr><th>Indicador</th><th>Anterior</th><th>Posterior</th><th>Variação absoluta</th><th>Variação %</th></tr></thead><tbody>'+d.rows.map(([k,a,b,delta,pct])=>'<tr><th>'+safe(k)+'</th><td>'+p03CompareDisplay(a)+'</td><td>'+p03CompareDisplay(b)+'</td><td>'+p03CompareDisplay(delta)+'</td><td>'+(pct==null?'—':safe(pct.toLocaleString('pt-BR',{maximumFractionDigits:1}))+'%')+'</td></tr>').join('')+'</tbody></table></div>':'Selecione duas extrações em ordem cronológica.';};
@@ -4564,9 +4602,17 @@ v55Elements.format.addEventListener('change',v55RefreshView);
 for(const radio of document.querySelectorAll('[name="v55-kind"]'))radio.addEventListener('change',v55RefreshView);
 v55Elements.run.addEventListener('click',v55Generate);
 const v55OldSwitchTab=switchTab;
-switchTab=function(tab){v55OldSwitchTab(tab);if(tab==='reports'){v55RefreshDays();v55RefreshView()}};
+switchTab=function(tab){v55OldSwitchTab(tab);if(tab==='reports'){v55RefreshDays();v55RefreshView();void v55LoadCloudHistory();}};
 const v55OldPostLoad=postLoad;
 postLoad=function(...args){const result=v55OldPostLoad.apply(this,args);v55RefreshView();return result};
+document.getElementById('v55-prior-day-shortcut')?.addEventListener('click',async()=>{
+ v55Elements.source.value='history';
+ const radio=document.querySelector('[name="v55-kind"][value="gestao"]');if(radio)radio.checked=true;
+ switchTab('reports');if(v55CloudPromise)await v55CloudPromise;
+ const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Fortaleza',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ const previous=[...v55Elements.day.options].map(o=>o.value).find(d=>d<today);
+ if(previous){v55Elements.day.value=previous;v55RefreshSnapshots();}else v55RefreshView();
+});
 v55RefreshDays();v55RefreshView();
 
 
