@@ -7514,12 +7514,11 @@ body.sri33-modal-open{overflow:hidden}
   }
   let historySequence=0;
   async function loadHistory(client,userId,epoch=operatorEpoch){const seq=++historySequence;
-    const {data,error}=await client.from('daily_operator_treatments')
-       .select('id,action,notes,created_at,task_id').eq('actor_id',userId)
-       .order('created_at',{ascending:false}).limit(50);
+    let {data,error}=await client.rpc('sri_my_treatment_history');
+    if(error&&error.code==='PGRST202')({data,error}=await client.from('daily_operator_treatments').select('id,action,notes,created_at,task_id').eq('actor_id',userId).order('created_at',{ascending:false}).limit(50));
     if(error)throw Error('Histórico: '+error.message);if(epoch!==operatorEpoch||seq!==historySequence)return;
     const map=new Map(taskRows.map(r=>[r.id,r.protocol_number]));
-    $('sri33-history').innerHTML=(data||[]).length?`<div style="display:grid;gap:8px">${data.map(t=>`<div style="padding:10px;border:1px solid #dde4ef;border-radius:8px"><strong>${h(label(t.action))}</strong> · ${h(map.get(t.task_id)||'Protocolo anterior')} <small>${h(new Date(t.created_at).toLocaleString('pt-BR'))}</small><div>${h(t.notes||'Justificativa não informada')}</div></div>`).join('')}</div>`:'<p>Você ainda não registrou nenhuma tratativa.</p>';
+    $('sri33-history').innerHTML=(data||[]).length?`<div style="display:grid;gap:8px">${data.map(t=>`<div style="padding:10px;border:1px solid #dde4ef;border-radius:8px"><strong>${h(label(t.action))}</strong> · ${h(t.protocol_number||map.get(t.task_id)||'Protocolo anterior')} <small>${h(new Date(t.created_at).toLocaleString('pt-BR'))}</small><div>${h(t.notes||'Justificativa não informada')}</div></div>`).join('')}</div>`:'<p>Você ainda não registrou nenhuma tratativa.</p>';
   }
   async function saveTreatment(advance=false){
     if(!currentTask)throw Error('Selecione um protocolo da sua carteira.');
@@ -7936,6 +7935,6 @@ document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.tar
 <script defer src="/assets/sri-connection-status.js?v=20261123"></script>
 <script defer src="/assets/sri-mobile-navigation.js?v=20261124-01"></script>
 <script defer src="/assets/sri-integrated-improvements.js?v=20261124-02"></script>
-<script src="/assets/sri-cloud-treatments.js?v=20261124-02"></script>
+<script src="/assets/sri-cloud-treatments.js?v=20261124-03"></script>
 </body>
 </html>
