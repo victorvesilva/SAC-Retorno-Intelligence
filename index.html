@@ -1790,7 +1790,7 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
 </script>
 <link rel="stylesheet" href="/assets/sri-mobile-navigation.css?v=20261124-01"/>
 <link rel="stylesheet" href="/assets/sri-integrated-improvements.css?v=20261124-02">
-<style>.sri-p03-history-card{border:1px solid var(--border,#dce5ef);border-radius:12px;padding:14px;margin:8px 0}.sri-p03-history-card summary{cursor:pointer;display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px}.sri-p03-history-card summary span,.sri-p03-event small{font-size:.82em;opacity:.8}.sri-p03-event{border-inline-start:3px solid #3475ce;padding:8px 14px;margin:10px 0;overflow-wrap:anywhere;display:grid;gap:5px}#sri33-task-table thead th{position:sticky;top:0;z-index:1}</style>
+<style>.sri-p03-history-card{border:1px solid var(--border,#dce5ef);border-radius:12px;padding:14px;margin:8px 0}.sri-p03-history-card summary{cursor:pointer;display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px}.sri-p03-history-card summary span,.sri-p03-event small{font-size:.82em;opacity:.8}.sri-p03-event{border-inline-start:3px solid #3475ce;padding:8px 14px;margin:10px 0;overflow-wrap:anywhere;display:grid;gap:5px}#sri33-task-table thead th{position:sticky;top:0;z-index:2;background:var(--card,#f3f7fc)}</style>
 <style>.sri-p03-report-tools{display:flex;flex-wrap:wrap;align-items:end;gap:10px;margin:12px 0}.sri-p03-report-tools label{display:grid;gap:4px}.sri-p03-report-tools input{max-width:100%;padding:8px;border:1px solid var(--border,#b8c6d5);border-radius:8px;background:transparent;color:inherit}.v55-report-option[hidden]{display:none!important}.sri-p03-favorite b::before{content:"★ ";color:#c28b22}.sri-p03-preview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}.sri-p03-heat-card{margin-bottom:16px}.sri-p03-heat-scroll{overflow:auto;max-height:420px}.sri-p03-heat-cell{width:100%;min-width:48px;border:1px solid transparent;border-radius:5px;padding:8px;background:color-mix(in srgb,#16458d var(--heat),transparent);color:inherit;font-weight:600;cursor:pointer}.sri-p03-heat-cell:hover:not(:disabled){outline:2px solid #3475ce}.sri-p03-heat-cell:disabled{opacity:.5;cursor:default}</style>
 <style>#sri-p03-shortcuts [aria-pressed="true"]{outline:2px solid #3475ce;font-weight:700}.sri-p03-processed td{background:color-mix(in srgb,#16a34a 10%,transparent)}#sri33-task-table.sri-p03-detail td{padding-block:16px;white-space:normal}</style>
 </head>
@@ -5954,7 +5954,7 @@ async function sriAuthorizeUser(authUser){
  await window.sriLoadLocalIdentity?.({id:result.id,role:result.role});
  if(authorizationEpoch!==sriAuthEpoch)return;
  data={...seed(),...jsonLocalGet(SKEY,seed())};v20InitTeams();
- data.turnClosures||=[];data.generalClosures||=[];
+ data.turnClosures||=[];data.generalClosures||=[];data.goalDrafts||=[];
  current={id:result.id,name:result.full_name||authUser.email,email:authUser.email,role:uiRole,serverRole:result.role,
    team:'Não vinculada',active:true,importAuthorized:false,supervisorId:null,rosterId:null};
  document.body.dataset.v20Role=result.role;
@@ -6634,6 +6634,7 @@ function v20GoalTabs(){return `<div class="v20-goals-tabs">${[
  ['definition','Definição de Metas'],['indicators','Indicadores'],['parameters','Parâmetros de Acompanhamento']
  ].map(([k,l])=>`<button type="button" class="v20-goals-tab ${goalSettingsPane===k?'active':''}" data-v20="goalPane_${k}">${l}</button>`).join('')}</div>`}
 function v20RenderGoalSettings(){requireRole(true);const root=$('v20-settings-body'),teams=v20GoalAllowedTeams();
+ if(window.sriP03GoalSettings){root.replaceChildren();window.sriP03GoalSettings(root);return;}
  const tabs=v20GoalTabs();const header=`<div class="v20-goals-title"><div><h3 class="v20-goals-subhead">Metas e Indicadores</h3><p class="v20-goals-descr">Configure parâmetros sem alterar a apuração operacional. Valores nesta versão são rascunhos de homologação.</p></div>${action('Ver acompanhamento','goGoalsView',true)}</div>`;
  if(goalSettingsPane==='indicators'){
   root.innerHTML=`<div class="v20-panel">${header}${tabs}<div class="v20-goals-note"><b>Catálogo preliminar.</b> As fórmulas e os critérios de elegibilidade ainda não foram aprovados. Portanto, não há resultados automáticos.</div>${table(['Indicador','Objetivo','Situação'],GOAL_METRICS.map(m=>`<tr><td><b>${esc(m.label)}</b></td><td>${esc(m.hint)}</td><td>${badge('Definição pendente','warn')}</td></tr>`))}</div>`;return;
@@ -6700,7 +6701,9 @@ function v20GoalsInitUI(){
   if(['v20-goal-view','v20-goal-period-filter','v20-goal-team-filter','v20-goal-date-filter'].includes(e.target?.id)){if(e.target.id==='v20-goal-view')goalView=e.target.value;v20RenderGoalPerformance()}
  });
 }
-function v20RenderGoalPerformance(){if(!authManager())return;const target=$('v20-goals-performance-body');if(!target)return;
+function v20RenderGoalPerformance(){
+ if(!authManager())return;
+ if(window.sriP03GoalPerformance){window.sriP03GoalPerformance($('v20-goals-performance-body'));return;}if(!authManager())return;const target=$('v20-goals-performance-body');if(!target)return;
  const prev={view:$('v20-goal-view')?.value||goalView,period:$('v20-goal-period-filter')?.value||'day',team:$('v20-goal-team-filter')?.value||'all',date:$('v20-goal-date-filter')?.value||dayKey()};
  const teams=v20GoalAllowedTeams().filter(t=>v20GoalAllTeams().some(x=>x.id===t.id));
  if(role()==='supervisor')prev.team=current.teamId||teams[0]?.id||'all';
@@ -6720,7 +6723,7 @@ function v20RenderGoalPerformance(){if(!authManager())return;const target=$('v20
 function v20GoalsRenderMine(){/* Indicadores individuais indisponíveis ao Operador por decisão de produto. */}
 function v20GoalsRenderOverview(){if(!authManager())return;const root=$('overview');if(!root)return;let panel=$('v20-goals-overview');if(!panel){panel=document.createElement('div');panel.id='v20-goals-overview';panel.className='v20-goals-overview';const head=root.querySelector('.go-header,.go-main-head,.section-heading');if(head&&head.parentNode===root)head.insertAdjacentElement('afterend',panel);else root.prepend(panel)}
  const goalDrafts=data.goalDrafts.filter(v20GoalVisible).length;
- const goalHelp=goalDrafts===0?'Nenhuma meta configurada. Defina metas para iniciar o acompanhamento.':BR(goalDrafts)+' meta(s) em rascunho neste navegador. Ainda não são resultados oficiais publicados.';
+ const goalHelp='Conclusão diária: protocolos concluídos sobre protocolos distintos trabalhados. Consulte resultados e metas publicadas na Central de Relatórios.';
  panel.innerHTML=`<div><strong>Metas e Desempenho</strong><p>${esc(goalHelp)}</p></div>${action('Ver desempenho','goGoalsView',true)}`;
 }
 
@@ -8253,8 +8256,10 @@ document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.tar
 <script defer src="/assets/sri-mobile-navigation.js?v=20261124-01"></script>
 <script defer src="/assets/sri-integrated-improvements.js?v=20261124-02"></script>
 <script src="/assets/sri-cloud-treatments.js?v=20261124-03"></script>
-<script defer src="/assets/sri-p03-rpc-monitor.js?v=20261125-01"></script>
-<script defer src="/assets/sri-pacote03.js?v=20261125-04"></script>
+<script defer src="/assets/sri-p03-rpc-monitor.js?v=20261125-02"></script>
+<script defer src="/assets/sri-pacote03.js?v=20261125-05"></script>
+<link rel="stylesheet" href="/assets/sri-p03-reporting.css?v=20261125-01">
+<script defer src="/assets/sri-p03-reporting.js?v=20261125-01"></script>
 <script defer src="/assets/sri-p03-navigation.js?v=20261125-02"></script>
 </body>
 </html>

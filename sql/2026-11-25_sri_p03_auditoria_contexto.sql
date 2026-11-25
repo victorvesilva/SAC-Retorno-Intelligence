@@ -18,7 +18,9 @@ BEGIN
   SELECT * INTO task FROM public.daily_operator_tasks WHERE id=CASE WHEN NEW.object_id ~ '^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$' THEN NEW.object_id::uuid END;
   IF FOUND THEN
    NEW.details:=NEW.details||jsonb_build_object('event_protocol',task.protocol_number,'event_base',task.base_name,
-    'event_area',task.area_name,'event_team_id',task.team_id,'event_snapshot_id',task.snapshot_id);
+    'event_area',task.area_name,'event_team_id',task.team_id,'event_snapshot_id',task.snapshot_id,
+    'event_operator_id',task.operator_user_id,'event_operator_name',(SELECT full_name FROM public.profiles WHERE id=task.operator_user_id),
+    'event_team_name',(SELECT name FROM public.teams WHERE id=task.team_id));
   END IF;
  END IF;
  RETURN NEW;

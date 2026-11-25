@@ -24,6 +24,27 @@
    };
    return request;
   };
+  if(typeof client.from==='function'){
+   const from=client.from.bind(client);
+   client.from=function(...args){
+    const proxies=new WeakMap();let recorded=false;
+    const record=failed=>{if(recorded)return;recorded=true;if(failed)window.sriMonitorEvent?.('ERROR','REST_ERROR','Supabase');};
+    const wrap=builder=>{
+     if(!builder||typeof builder!=='object')return builder;
+     if(proxies.has(builder))return proxies.get(builder);
+     const proxy=new Proxy(builder,{get(target,property){
+      const value=Reflect.get(target,property,target);
+      if(typeof value!=='function')return value;
+      if(property==='then')return (resolve,reject)=>value.call(target,result=>{
+       record(Boolean(result?.error));return resolve?resolve(result):result;
+      },error=>{record(true);if(reject)return reject(error);throw error;});
+      return (...methodArgs)=>wrap(value.apply(target,methodArgs));
+     }});
+     proxies.set(builder,proxy);return proxy;
+    };
+    return wrap(from(...args));
+   };
+  }
   return client;
  };
  const getter=window.sriGetSupabaseClient;

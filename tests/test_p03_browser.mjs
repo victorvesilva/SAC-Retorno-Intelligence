@@ -8,6 +8,8 @@ import vm from 'node:vm';
 const root=new URL('../',import.meta.url);
 const html=readFileSync(new URL('index.html',root),'utf8');
 const source=readFileSync(new URL('assets/sri-pacote03.js',root),'utf8');
+const style=[...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(match=>match[1]).find(css=>css.includes('.sri-p03-history-card'));
+assert.ok(style);
 const from=html.indexOf('    root.insertAdjacentHTML(\'beforeend\',`\n      <section class="v20-panel" id="sri33-mine"');
 assert.ok(from>0);
 const start=html.indexOf('`',from)+1,end=html.indexOf('</section>`);',start)+10;
@@ -69,6 +71,11 @@ const probe=`
 window.onerror=message=>{document.body.dataset.error=message;};
 const button=()=>[...document.querySelectorAll('#sri-p03-go-history button')].find(el=>el.textContent==='Consultar data');
 setTimeout(()=>{
+ const wallet=document.getElementById('sri33-task-table'),head=wallet.querySelector('th'),body=wallet.querySelector('tbody');
+ const copies=[];for(let i=0;i<80;i++){const row=body.firstElementChild.cloneNode(true);body.append(row);copies.push(row);}
+ const before=head.getBoundingClientRect().top;wallet.scrollTop=180;
+ if(getComputedStyle(head).position!=='sticky'||Math.abs(head.getBoundingClientRect().top-before)>2)throw Error('Cabeçalho não permanece visível na rolagem');
+ copies.forEach(row=>row.remove());wallet.scrollTop=0;document.body.dataset.sticky='PASS';
  let printed=null;
  window.open=()=>({
   document:(()=>{const doc=document.implementation.createHTMLDocument('');Object.defineProperty(doc,'fonts',{value:{ready:Promise.resolve()}});return doc;})(),closed:false,opener:null,
@@ -148,7 +155,7 @@ window.sriGetSupabaseClient=async()=>({
 `;
 const folder=mkdtempSync(join(tmpdir(),'sri-p03-browser-'));
 const fixture=join(folder,'fixture.html');
-writeFileSync(fixture,'<!doctype html><meta charset="utf-8"><div id="overview"></div><div id="operator"></div><div id="v20-settings"></div><div id="v20-pending"></div><section id="agents"><div class="card"><h3>Gráfico sintético</h3><div id="chart-areas"><svg xmlns="http://www.w3.org/2000/svg" width="200" height="60"><text x="5" y="20">10</text></svg></div></div></section><script>'+mock+harness+'</script><script>'+source+'</script><script>'+probe+'</script>');
+writeFileSync(fixture,'<!doctype html><meta charset="utf-8"><style>'+style+'</style><div id="overview"></div><div id="operator"></div><div id="v20-settings"></div><div id="v20-pending"></div><section id="agents"><div class="card"><h3>Gráfico sintético</h3><div id="chart-areas"><svg xmlns="http://www.w3.org/2000/svg" width="200" height="60"><text x="5" y="20">10</text></svg></div></div></section><script>'+mock+harness+'</script><script>'+source+'</script><script>'+probe+'</script>');
 const chromium=process.env.CHROME_BIN||['/usr/bin/chromium','/usr/bin/google-chrome'].find(existsSync);
 assert.ok(chromium);
 const dom=execFileSync(chromium,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--disable-background-networking','--virtual-time-budget=1500','--user-data-dir='+join(folder,'profile'),'--dump-dom','file://'+fixture],{encoding:'utf8',timeout:60000,maxBuffer:8*1024*1024});
@@ -158,5 +165,6 @@ assert.match(dom,/<body[^>]*data-monitor="PASS"/);
 assert.match(dom,/<body[^>]*data-treatments="PASS"/);
 assert.match(dom,/<body[^>]*data-graph="PASS"/);
 assert.match(dom,/<body[^>]*data-reopen="PASS"/);
+assert.match(dom,/<body[^>]*data-sticky="PASS"/);
 assert.doesNotMatch(dom,/<body[^>]*data-error=/);
 console.log('PASS: Chromium executou filtros múltiplos, colunas, favoritos por conta e consulta histórica por data sem reaproveitar recorte vazio.');

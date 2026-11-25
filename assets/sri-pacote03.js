@@ -30,6 +30,7 @@ function exportP03Report(title,cols,rows,period,format){
  for(const values of matrix.slice(1)){const row=body.insertRow();for(const value of values){const td=doc.createElement('td');td.textContent=String(value);row.append(td);}}
  doc.body.append(table);preview.focus();preview.print();
 }
+window.sriP03ExportReport=exportP03Report;
 function make(root,id,monitor){if(!root||$(id))return;const section=document.createElement('section');section.id=id;section.className='v20-panel';section.style.margin='16px 0';const h=document.createElement('h3');h.textContent=monitor?'Console de Monitoramento':'Histórico de Movimentações';section.append(h);const controls=document.createElement('div');controls.className='v20-row';controls.style.flexWrap='wrap';section.append(controls);const from=field(controls,'De','date'),to=field(controls,'Até','date');const today=new Date();const start=new Date(today);start.setDate(start.getDate()-6);const civil=d=>d.toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});from.value=civil(start);to.value=civil(today);const search=field(controls,monitor?'Buscar código, módulo ou responsável':'Protocolo ou responsável');let level;if(monitor){level=document.createElement('select');for(const v of ['Todos','INFO','SUCCESS','WARN','ERROR','FATAL']){const o=document.createElement('option');o.value=v;o.textContent=v;level.append(o)}controls.append(level)}
 const actorFilter=field(controls,'Responsável'),moduleFilter=monitor?field(controls,'Módulo'):null;
 function matches(row){

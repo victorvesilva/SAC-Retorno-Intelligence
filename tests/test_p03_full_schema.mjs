@@ -22,7 +22,7 @@ for(const policy of rls.policies){
  await db.exec(ddl);
 }
 await db.exec('SET check_function_bodies=on');
-const files=['2026-11-24_sri_pacote03_historico_carteira.sql','2026-11-24_sri_pacote03_produtividade.sql','2026-11-24_sri_pacote03_protecao_incidentes.sql','2026-11-24_sri_criticos_persistencia_status.sql','2026-11-24_sri_p03_historico_datas.sql','2026-11-24_sri_p03_perfil_assistente.sql','2026-11-25_sri_p03_historico_imutavel.sql','2026-11-25_sri_p03_escopo_publicacao.sql','2026-11-25_sri_p03_metricas_rpc.sql','2026-11-25_sri_p03_produtividade_carga.sql','2026-11-25_sri_p03_monitor_ocorrencias.sql','2026-11-25_sri_p03_continuidade_carteira.sql','2026-11-25_sri_p03_auditoria_contexto.sql','2026-11-25_sri_p03_escopo_apuracao_geral.sql','2026-11-25_sri_p03_guard_distribuicao_fechada.sql','2026-11-25_sri_p03_reabertura_protocolo.sql'];
+const files=['2026-11-24_sri_pacote03_historico_carteira.sql','2026-11-24_sri_pacote03_produtividade.sql','2026-11-24_sri_pacote03_protecao_incidentes.sql','2026-11-24_sri_criticos_persistencia_status.sql','2026-11-24_sri_p03_historico_datas.sql','2026-11-24_sri_p03_perfil_assistente.sql','2026-11-25_sri_p03_historico_imutavel.sql','2026-11-25_sri_p03_escopo_publicacao.sql','2026-11-25_sri_p03_metricas_rpc.sql','2026-11-25_sri_p03_produtividade_carga.sql','2026-11-25_sri_p03_monitor_ocorrencias.sql','2026-11-25_sri_p03_continuidade_carteira.sql','2026-11-25_sri_p03_auditoria_contexto.sql','2026-11-25_sri_p03_escopo_apuracao_geral.sql','2026-11-25_sri_p03_guard_distribuicao_fechada.sql','2026-11-25_sri_p03_reabertura_protocolo.sql','2026-11-25_sri_p03_relatorios_integrados.sql','2026-11-25_sri_p03_meta_conclusao.sql'];
 for(const file of files){await db.exec(readFileSync(new URL('../sql/'+file,import.meta.url),'utf8'));console.log('PASS migration '+file);}
 
 // Use today's civil date for flows whose production authorization requires the current day.
@@ -267,4 +267,39 @@ await db.exec('SET ROLE authenticated');
 await assert.rejects(db.query("UPDATE daily_result_distributions SET revision=revision+1,updated_by=auth.uid() WHERE snapshot_id="+id(13)),/encerrado|bloqueada/i);
 await db.exec('RESET ROLE');
 console.log('PASS: dia fechado impede alteração direta de distribuição, inclusive para administrador, preservando o fechamento existente.');
+// Reporting pagination must be complete and enforce the same team boundaries as wallets.
+await db.exec('SET request.jwt.claim.sub='+id(10));
+await db.exec("INSERT INTO audit_events(user_id,action,object_type,details) SELECT "+id(10)+",'REPORT_SYNTHETIC','test',jsonb_build_object('sequence',n) FROM generate_series(1,450) n");
+await db.exec('SET ROLE authenticated');
+let reporting=[],reportCursor=null;
+for(;;){const page=(await db.query('SELECT sri_p03_reporting_page($1::date,$2::date,$3) result',[day,day,reportCursor])).rows.map(r=>r.result);reporting.push(...page);if(page.length<400)break;assert.notEqual(page.at(-1).cursor,reportCursor);reportCursor=page.at(-1).cursor;}
+assert.ok(reporting.filter(r=>r.kind==='movement'&&r.action==='REPORT_SYNTHETIC').length===450);
+assert.equal(new Set(reporting.map(r=>r.cursor)).size,reporting.length);
+assert.ok(reporting.some(r=>r.kind==='treatment'&&r.status==='OUTROS'));
+assert.ok(reporting.some(r=>r.kind==='movement'&&r.action==='TASK_REOPENED'));
+assert.ok(reporting.some(r=>r.kind==='closure'));
+const globalGoal=(await db.query("SELECT sri_p03_goal_save('general',NULL,$1,70,NULL) id",[day])).rows[0].id;
+await assert.rejects(db.query("SELECT sri_p03_goal_save('general',NULL,$1,75,NULL)",[day]),/outro usuário/);
+const revisedGoal=(await db.query("SELECT sri_p03_goal_save('general',NULL,$1,75,$2) id",[day,globalGoal])).rows[0].id;
+assert.notEqual(globalGoal,revisedGoal);
+await db.exec('RESET ROLE; SET request.jwt.claim.sub='+id(1)+'; SET ROLE authenticated');
+const teamReports=(await db.query('SELECT sri_p03_reporting_page($1::date,$2::date,NULL) result',[day,day])).rows.map(r=>r.result);
+assert.ok(teamReports.some(r=>r.kind==='assignment'&&r.protocol==='A'));
+assert.ok(teamReports.every(r=>r.protocol!=='B'));
+assert.ok(teamReports.every(r=>r.action!=='REPORT_SYNTHETIC'));
+await assert.rejects(db.query("SELECT sri_p03_goal_save('general',NULL,$1,80,NULL)",[day]),/fora do escopo/);
+await assert.rejects(db.query("SELECT sri_p03_goal_save('team',"+id(7)+",$1,80,NULL)",[day]),/fora do escopo/);
+const teamGoal=(await db.query("SELECT sri_p03_goal_save('team',"+id(6)+",$1,80,NULL) id",[day])).rows[0].id;
+await db.query("SELECT sri_p03_goal_save('operator',"+id(2)+",$1,85,NULL)",[day]);
+await assert.rejects(db.query('UPDATE private.sri_p03_completion_goals SET percentage=0'),/permission denied/);
+await db.exec('RESET ROLE; SET request.jwt.claim.sub='+id(4)+'; SET ROLE authenticated');
+const goals=(await db.query('SELECT sri_p03_goals() result')).rows.map(r=>r.result);
+assert.ok(goals.some(g=>g.id===String(teamGoal)));
+assert.equal(goals.filter(g=>g.scope==='general').length,2,'versões gerais preservadas');
+await db.exec('RESET ROLE; SET request.jwt.claim.sub='+id(2)+'; SET ROLE authenticated');
+await assert.rejects(db.query('SELECT sri_p03_reporting_page($1::date,$2::date,NULL)',[day,day]),/restritos/);
+await assert.rejects(db.query('SELECT sri_p03_goals()'),/restrito/);
+await assert.rejects(db.query("SELECT sri_p03_goal_save('general',NULL,$1,90,NULL)",[day]),/fora do escopo/);
+await db.exec('RESET ROLE');
+console.log('PASS: relatórios paginados preservam 450 eventos sem duplicar, com recorte por equipe, metas versionadas e proteção contra gravação direta e concorrente.');
 await db.close();

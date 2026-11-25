@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 const calls=[],events=[];
 let time=0;
-const client={rpc(name,args){
+const client={from(name){return {select(){return {range(){return this;},then(resolve,reject){return Promise.resolve({data:['private data'],error:name==='fail'?{message:'private error'}:null}).then(resolve,reject);}};}};},rpc(name,args){
  calls.push({name,args});
  if(name==='sri_p03_rpc_measure')return Promise.resolve({data:null});
  const request={
@@ -38,4 +38,8 @@ assert.equal(events.length,2);
 await window.sriGetSupabaseClient();
 await instrumented.rpc('query');
 assert.equal(calls.filter(call=>call.name==='sri_p03_rpc_measure').length,4,'instrumentação aplicada uma vez por cliente');
+await instrumented.from('ok').select('*').range(0,10);
+await instrumented.from('fail').select('*');
+assert.equal(events.length,3);assert.deepEqual(events[2],['ERROR','REST_ERROR','Supabase']);
+assert.equal(JSON.stringify(events).includes('private'),false);
 console.log('PASS: medições reais preservam encadeamento, propagam falhas e excluem argumentos e respostas dos registros.');
