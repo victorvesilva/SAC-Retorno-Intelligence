@@ -7640,6 +7640,7 @@ body.sri33-modal-open{overflow:hidden}
     const isCurrent=()=>request===historySessionRequest&&epoch===operatorEpoch;
     if(!more){
       historySequence++;
+      p03History=[];p03HistoryCursor=null;
       $('sri33-history').replaceChildren();
       $('sri-p03-history-more').hidden=true;
       $('sri-p03-history-count').textContent='Consultando tratativas do período...';

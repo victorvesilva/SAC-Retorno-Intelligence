@@ -78,17 +78,17 @@ const historyElements={
   'sri-p03-history-more':{hidden:false,disabled:false},
   'sri33-history':{textContent:'resultado antigo',replaceChildren(){this.textContent='';}},
 };
-const historyRequests=[];
+const historyRequests=[],sessionRequests=[];
 const historyClient={rpc(name,args){
   return new Promise(resolve=>historyRequests.push({name,args,resolve}));
 }};
-const historyCode=html.slice(html.indexOf('  let historySequence=0;'),html.indexOf('  function renderP03History()'));
+const historyCode=html.slice(html.indexOf('  let historySessionRequest=0;'),html.indexOf('  function renderP03History()'));
 const historyHarness=vm.runInNewContext(`
   let operatorEpoch=1, p03History=[], p03HistoryCursor=null, taskRows=[];
   const renderP03History=()=>{$('sri33-history').textContent=p03History.map(t=>t.protocol_number).join(',');};
   ${historyCode}
-  ({loadHistory});
-`,{$:id=>historyElements[id]});
+  ({loadHistory,refreshHistory});
+`,{$:id=>historyElements[id],session:()=>new Promise(resolve=>sessionRequests.push(resolve))});
 const oldHistory=historyHarness.loadHistory(historyClient,'operator');
 assert.equal(historyElements['sri33-history'].textContent,'');
 historyElements['sri-p03-history-from'].value='2026-11-24';
@@ -107,3 +107,18 @@ await failedHistory;
 assert.equal(historyElements['sri33-history'].textContent,'');
 assert.match(historyElements['sri-p03-history-count'].textContent,/Histórico por data indisponível/);
 console.log('PASS: histórico do operador limpa o recorte anterior e descarta resposta atrasada.');
+
+const previousSelection=historyHarness.refreshHistory();
+historyElements['sri-p03-history-from'].value='2026-11-25';
+historyElements['sri-p03-history-to'].value='2026-11-25';
+const latestSelection=historyHarness.refreshHistory();
+sessionRequests[0]({client:historyClient,user:{id:'operator'}});
+await previousSelection;
+assert.equal(historyRequests.length,3,'seleção antiga descartada antes de iniciar RPC');
+sessionRequests[1]({client:historyClient,user:{id:'operator'}});
+await new Promise(resolve=>setImmediate(resolve));
+assert.equal(historyRequests[3].args.p_from,'2026-11-25');
+historyRequests[3].resolve({data:[{id:3,protocol_number:'P25'}],error:null});
+await latestSelection;
+assert.equal(historyElements['sri33-history'].textContent,'P25');
+console.log('PASS: trocas rápidas no calendário mantêm apenas a consulta mais recente, inclusive durante autenticação.');
