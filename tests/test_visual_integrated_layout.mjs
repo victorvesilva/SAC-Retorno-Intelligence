@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
+import { startChromium } from './helpers/chromium_cdp.mjs';
 
 const base=fileURLToPath(new URL('../',import.meta.url));
 const html=fs.readFileSync(path.join(base,'index.html'),'utf8');
@@ -160,54 +160,29 @@ const devices=[
  [1024,768,['overview','distribution','intelligence','reports','import','details','v20-closure']],
  [390,844,['reports-integrated','overview','distribution','priorities','agents','intelligence','reports','import','details','v20-mine','v20-closure','v20-settings']]
 ];
-if(process.env.SRI_CAPTURE_INTEGRATED_SCREENSHOT==='1') {
- const destination=path.join(base,'.tmp','visual-integrada');
- fs.mkdirSync(destination,{recursive:true});
- for(const [width,height,tab] of [[1440,900,'overview'],[1440,900,'distribution'],
-   [1440,900,'reports'],[1440,900,'details'],[390,844,'overview'],
-   [390,844,'distribution'],[390,844,'reports'],[390,844,'import'],
-   [1440,900,'reports-integrated'],[390,844,'reports-integrated']]){
-  const image=path.join(destination,tab+'-'+width+'.png');
-  const screenshotDom=execFileSync(chrome,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
-   '--disable-background-networking','--allow-file-access-from-files',
-   '--virtual-time-budget=2000','--run-all-compositor-stages-before-draw','--force-device-scale-factor=1',
-   '--window-size='+width+','+height,
-   '--user-data-dir='+path.join(tmp,'s-'+width+'-'+tab),
-   '--dump-dom','--screenshot='+image,'file://'+fixture+'?tab='+(tab==='reports-integrated'?'reports&focus=integrated':tab)],
-   {timeout:50000,stdio:['ignore','pipe','pipe'],encoding:'utf8'});
-  if(tab==='reports-integrated')fs.writeFileSync(image+'.html',screenshotDom);
-  assert.ok(fs.statSync(image).size>3500,'Captura visual vazia '+tab);
-  console.log('SCREENSHOT',image);
+const browser=await startChromium(chrome,path.join(tmp,'cdp-profile'));
+try{
+ for(const [width,height,tabs] of devices){
+  for(const tab of tabs){
+   const url='file://'+fixture+'?tab='+(tab==='reports-integrated'?'reports&focus=integrated':encodeURIComponent(tab));
+   const page=await browser.page(url,width,height);
+   try{
+    const result=await page.waitFor("document.getElementById('sri-integrated-probe')?JSON.parse(document.getElementById('sri-integrated-probe').textContent):null");
+    assert.equal(result.width,width,'Viewport deve ter a largura solicitada');assert.equal(result.height,height);
+    if(tab==='reports-integrated'){assert.ok(result.integratedBounds?.height>200,JSON.stringify(result));assert.ok(result.integratedBounds.top>=-3&&result.integratedBounds.top<150,JSON.stringify(result));}
+    assert.equal(result.sectionOpacity,'1','Módulo deve estar opaco e renderizado');assert.equal(result.sectionVisibility,'visible');
+    assert.equal(result.loginPresent,false,'Login deve estar ausente da fixture de módulos');assert.equal(result.topLayerLogin,false);
+    assert.equal(result.integratedReports,true,'Relatórios novos devem apresentar dados do modelo sintético');
+    assert.equal(result.screenVisible,true,'Módulo não visível: '+tab);assert.ok(result.screenWidth>100);
+    assert.ok(result.mainWidth<=result.width+3,'Conteúdo principal ultrapassa viewport '+tab);
+    assert.ok(result.rootScroll<=result.rootWidth+5,'Rolagem horizontal '+tab+' '+width+': '+JSON.stringify(result));
+    if(process.env.SRI_CAPTURE_INTEGRATED_SCREENSHOT==='1'&&[1440,390].includes(width)&&['overview','distribution','reports','details','import','reports-integrated'].includes(tab)){
+     const dest=path.join(base,'.tmp','visual-integrada');fs.mkdirSync(dest,{recursive:true});
+     const image=path.join(dest,tab+'-'+width+'.png');fs.writeFileSync(image,await page.screenshot());assert.ok(fs.statSync(image).size>3500,'Captura vazia '+tab);console.log('SCREENSHOT',image);
+    }
+    console.log('PASS visual integrado',tab,width+'x'+height,'cards='+result.cards,'overflow='+Math.max(0,result.rootScroll-result.rootWidth));
+   }finally{await page.close();}
+  }
  }
-}
-
-for(const [width,height,tabs] of devices){
- for(const tab of tabs){
-  const url='file://'+fixture+'?tab='+(tab==='reports-integrated'?'reports&focus=integrated':encodeURIComponent(tab));
-  const args=['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
-   '--disable-background-networking','--allow-file-access-from-files',
-   '--virtual-time-budget=2000','--run-all-compositor-stages-before-draw','--force-device-scale-factor=1',
-   '--window-size='+width+','+height,'--user-data-dir='+path.join(tmp,'p-'+width+'-'+height+'-'+tab),
-   '--dump-dom',url];
-  const dom=execFileSync(chrome,args,{encoding:'utf8',timeout:50000,stdio:['ignore','pipe','pipe']});
-  const match=dom.match(/<pre id="sri-integrated-probe"[^>]*>([\s\S]*?)<\/pre>/);
-  if(!match){const dest=path.join(base,'.tmp','visual-integrada');fs.mkdirSync(dest,{recursive:true});fs.writeFileSync(path.join(dest,'diagnostic-'+tab+'-'+width+'.html'),dom);}
-  assert.ok(match,'Teste visual não executou: '+tab+' em '+width+'x'+height);
-  const result=JSON.parse(match[1].replace(/&quot;/g,'"').replace(/&amp;/g,'&'));
-  if(tab==='reports-integrated'){assert.ok(result.integratedBounds?.height>200,JSON.stringify(result));assert.ok(result.integratedBounds.top>=-3&&result.integratedBounds.top<150,JSON.stringify(result));}
-  assert.equal(result.sectionOpacity,'1','Módulo deve estar opaco e renderizado');
-  assert.equal(result.sectionVisibility,'visible');
-  assert.equal(result.loginPresent,false,'Login deve estar ausente da fixture de módulos');
-  assert.equal(result.topLayerLogin,false,'Login não pode cobrir o módulo');
-  assert.equal(result.integratedReports,true,'Relatórios novos devem apresentar dados reais do modelo sintético');
-  assert.equal(result.screenVisible,true,'Módulo não visível: '+tab);
-  assert.ok(result.screenWidth>100,'Módulo sem largura: '+tab);
-  assert.ok(result.mainWidth<=result.width+3,'Conteúdo principal ultrapassa viewport '+tab+' '+width+'x'+height);
-  assert.ok(result.rootScroll<=result.rootWidth+5,
-   'Rolagem horizontal na página '+tab+' '+width+'x'+height+
-   ': scroll='+result.rootScroll+' viewport='+result.rootWidth);
-  console.log('PASS visual integrado',tab,width+'x'+height,
-    'cards='+result.cards,'overflow='+Math.max(0,result.rootScroll-result.rootWidth));
- }
-}
+}finally{await browser.close();}
 console.log('PASS: revisão visual integrada em 3 resoluções, 11 módulos e dados sintéticos.');
