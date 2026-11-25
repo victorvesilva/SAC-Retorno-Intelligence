@@ -124,6 +124,9 @@ async function fixtureProbe(){
   topLayerLogin:!!document.elementFromPoint(Math.floor(innerWidth*.75),Math.floor(innerHeight*.5))?.closest('#v20-login'),
   integratedReports:tab!=='reports'||!!document.querySelector('#sri-p03-integrated-reports tbody tr'),
   integratedBounds:(()=>{const box=document.getElementById('sri-p03-integrated-reports')?.getBoundingClientRect();return box?{top:box.top,left:box.left,width:box.width,height:box.height}:null;})(),
+  sectionOpacity:getComputedStyle(section).opacity,
+  sectionVisibility:getComputedStyle(section).visibility,
+  scrollY:window.scrollY,
   topElement:document.elementFromPoint(Math.floor(innerWidth*.75),Math.floor(innerHeight*.5))?.tagName,
   cards:section?.querySelectorAll('.card,.v3-card,.dist-panel,.v20-panel').length||0
  };
@@ -132,7 +135,7 @@ async function fixtureProbe(){
  result.textContent=JSON.stringify(output);document.body.appendChild(result);
 }
 const head='<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
- '<style>*,*::before,*::after{box-sizing:border-box}</style><style>'+headStyles+'\n'+externalStyles+'</style></head>';
+ '<style>*,*::before,*::after{box-sizing:border-box;animation:none!important;transition:none!important;scroll-behavior:auto!important}</style><style>'+headStyles+'\n'+externalStyles+'</style></head>';
 const menu='<aside class="sidebar v5-sidebar"><div class="v5-rail"><div class="v5-rail-links">'+
  '<button class="v5-rail-link active">◎</button></div></div>'+
  '<div class="v5-nav-panel"><nav class="side-nav" id="nav"><button class="nav-link active">'+
@@ -165,13 +168,14 @@ if(process.env.SRI_CAPTURE_INTEGRATED_SCREENSHOT==='1') {
    [390,844,'distribution'],[390,844,'reports'],[390,844,'import'],
    [1440,900,'reports-integrated'],[390,844,'reports-integrated']]){
   const image=path.join(destination,tab+'-'+width+'.png');
-  execFileSync(chrome,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
+  const screenshotDom=execFileSync(chrome,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
    '--disable-background-networking','--allow-file-access-from-files',
    '--virtual-time-budget=2000','--run-all-compositor-stages-before-draw','--force-device-scale-factor=1',
    '--window-size='+width+','+height,
    '--user-data-dir='+path.join(tmp,'s-'+width+'-'+tab),
-   '--screenshot='+image,'file://'+fixture+'?tab='+(tab==='reports-integrated'?'reports&focus=integrated':tab)],
-   {timeout:50000,stdio:['ignore','pipe','pipe']});
+   '--dump-dom','--screenshot='+image,'file://'+fixture+'?tab='+(tab==='reports-integrated'?'reports&focus=integrated':tab)],
+   {timeout:50000,stdio:['ignore','pipe','pipe'],encoding:'utf8'});
+  if(tab==='reports-integrated')fs.writeFileSync(image+'.html',screenshotDom);
   assert.ok(fs.statSync(image).size>3500,'Captura visual vazia '+tab);
   console.log('SCREENSHOT',image);
  }
@@ -191,6 +195,8 @@ for(const [width,height,tabs] of devices){
   assert.ok(match,'Teste visual não executou: '+tab+' em '+width+'x'+height);
   const result=JSON.parse(match[1].replace(/&quot;/g,'"').replace(/&amp;/g,'&'));
   if(tab==='reports-integrated'){assert.ok(result.integratedBounds?.height>200,JSON.stringify(result));assert.ok(result.integratedBounds.top>=-3&&result.integratedBounds.top<150,JSON.stringify(result));}
+  assert.equal(result.sectionOpacity,'1','Módulo deve estar opaco e renderizado');
+  assert.equal(result.sectionVisibility,'visible');
   assert.equal(result.loginPresent,false,'Login deve estar ausente da fixture de módulos');
   assert.equal(result.topLayerLogin,false,'Login não pode cobrir o módulo');
   assert.equal(result.integratedReports,true,'Relatórios novos devem apresentar dados reais do modelo sintético');
