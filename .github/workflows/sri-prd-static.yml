@@ -54,6 +54,7 @@ jobs:
           node tests/test_p03_browser.mjs
           node tests/test_p03_navigation.mjs
           node tests/test_p03_reporting_browser.mjs
+          node tests/test_layout_clarity.mjs
       - name: Verificar layouts integrados de todos os modulos em dados sinteticos
         env:
           SRI_CAPTURE_INTEGRATED_SCREENSHOT: '1'
@@ -63,7 +64,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: revisao-visual-integrada-dados-sinteticos
-          path: .tmp/visual-integrada/**
+          path: |
+            .tmp/visual-integrada/**
+            .tmp/layout-clarity/**
           if-no-files-found: error
           retention-days: 7
       - name: Validar layout do login e cadastro no Chromium

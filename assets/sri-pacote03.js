@@ -148,37 +148,33 @@ root.append(section);}
 
 function makePendingPanel(){
  if($('sri-p03-reconcile'))return;
- const root=$('sri-pack-carteira')||$('sri33-mine');
- if(!root)return;
- const section=document.createElement('section');section.id='sri-p03-reconcile';section.className='v20-panel';section.style.margin='18px 0';
- const heading=document.createElement('h3');heading.textContent='Pendências antigas para conferência';section.append(heading);
- const desc=document.createElement('p');desc.textContent='Protocolos fora da carteira que exigem conciliação, sem incluir conclusões internas reconhecidas pela matriz oficial. Divergências do SIGO permanecem na conciliação. Consulta somente leitura; não reativar nem presumir conclusão no SIGO.';section.append(desc);
- const btn=document.createElement('button');btn.className='v20-button secondary';btn.type='button';btn.textContent='Conferir pendências';section.append(btn);
- const status=document.createElement('p');status.setAttribute('role','status');section.append(status);
+ const root=$('sri33-mine');if(!root)return;
+ const section=document.createElement('section');section.id='sri-p03-reconcile';section.className='v20-panel';section.hidden=document.body.dataset.sriOperatorView!=='pending';
+ const heading=document.createElement('h3');heading.textContent='Pendências de dias anteriores';section.append(heading);
+ const desc=document.createElement('p');desc.textContent='Protocolos atribuídos a você que permanecem sem conclusão na ferramenta e estão fora da carteira ativa do dia ou vieram de dias anteriores. Cada linha informa o motivo da conferência. Esta consulta não confirma divergência nem conclusão no SIGO e não reativa protocolos.';section.append(desc);
+ const btn=button(section,'Atualizar pendências',()=>void load());
+ const status=document.createElement('p');status.setAttribute('role','status');status.setAttribute('aria-live','polite');section.append(status);
  const wrap=document.createElement('div');wrap.style.overflowX='auto';section.append(wrap);
  let request=0;async function load(){
-  const seq=++request,e=epoch;btn.disabled=true;status.textContent='Consultando...';
+  const seq=++request,e=epoch;btn.disabled=true;section.setAttribute('aria-busy','true');status.textContent='Consultando pendências…';wrap.replaceChildren();
   try{
    const auth=await identity();if(!auth||auth.p.role!=='operator')throw Error('Consulta restrita ao operador.');
    const {data,error}=await auth.c.rpc('sri_p03_my_unresolved');
-   if(error)throw Error('Fila de conciliação ainda não disponibilizada no banco.');
+   if(error)throw Error('Não foi possível consultar as pendências. Tente atualizar novamente.');
    if(e!==epoch||seq!==request||!section.isConnected)return;
-   wrap.replaceChildren();const rows=data||[];
-   status.textContent=rows.length?rows.length+' protocolo(s) para conferência.':'Nenhuma pendência histórica.';
+   const rows=data||[];status.textContent=rows.length?rows.length+' protocolo(s) para conferência. Consulta somente leitura.':'Nenhuma pendência de dias anteriores para conferir.';
    if(rows.length){
     const table=document.createElement('table');table.className='v20-table';
-    const operator=field(controls,'Operador'),teamFilter=field(controls,'Equipe'),treatment=field(controls,'Status da tratativa');
- const filtered=()=>rows.filter(row=>[[operator,'operator_name'],[teamFilter,'team_name'],[treatment,'treatment_status']].every(([input,key])=>String(row[key]||'').toLocaleLowerCase('pt-BR').includes(input.value.trim().toLocaleLowerCase('pt-BR'))));
- for(const input of [operator,teamFilter,treatment])input.addEventListener('input',render);
- const cols=[['team_name','Equipe'],['protocol_number','Protocolo'],['last_day','Último dia'],['work_status','Estado histórico'],['treatment_status','Última tratativa'],['sigo_reference','Referência SIGO'],['due_date','Prazo'],['base_name','Base']];
-    const hr=table.createTHead().insertRow();for(const [,label]of cols){const th=document.createElement('th');th.textContent=label;hr.append(th);}
-    const body=table.createTBody();for(const row of rows){const tr=body.insertRow();for(const [key]of cols)cell(tr,row[key]??'—');}
+    const cols=[['protocol_number','Protocolo'],['last_day','Último dia na carteira'],['reason','Motivo da conferência'],['treatment_status','Última tratativa'],['sigo_reference','Referência SIGO'],['due_date','Prazo'],['base_name','Base'],['area_name','Área']];
+    const hr=table.createTHead().insertRow();for(const [,label]of cols){const th=document.createElement('th');th.scope='col';th.textContent=label;hr.append(th);}
+    const today=new Date().toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});
+    const body=table.createTBody();for(const row of rows){const tr=body.insertRow();for(const [key]of cols)cell(tr,key==='reason'?(row.last_day<today?'Pendência de dia anterior':'Fora da carteira ativa do dia'):row[key]??'—');}
     wrap.append(table);
    }
-  }catch(error){if(e===epoch&&seq===request){wrap.replaceChildren();status.textContent=error.message;}}
-  finally{if(seq===request)btn.disabled=false;}
+  }catch(error){if(e===epoch&&seq===request&&section.isConnected){wrap.replaceChildren();status.textContent=error.message;}}
+  finally{if(seq===request){btn.disabled=false;section.setAttribute('aria-busy','false');}}
  }
- btn.addEventListener('click',load);root.append(section);void load();
+ root.append(section);void load();
 }
 
 
