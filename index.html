@@ -5912,6 +5912,7 @@ async function sriAuthorizeUser(authUser){
  const uiRole=result.role==='manager'?'admin':result.role==='viewer'?'operator':result.role==='assistant'?'supervisor':result.role;
  current={id:result.id,name:result.full_name||authUser.email,email:authUser.email,role:uiRole,serverRole:result.role,
    team:'Não vinculada',active:true,importAuthorized:false,supervisorId:null,rosterId:null};
+ document.body.dataset.v20Role=result.role;
  $('v20-login').hidden=true;document.body.classList.remove('v20-not-logged');document.body.classList.add('v20-active');
  visibleNavigation();switchTab(uiRole==='operator'?'v20-mine':'overview');
  const warn=document.getElementById('sri-stage2-warning');if(warn)warn.hidden=false;
@@ -5959,6 +5960,7 @@ async function sriRestoreSession(){
 }
 async function logout(){try{const client=await sriClient();await client.auth.signOut()}catch(e){console.warn('Não foi possível encerrar sessão remota',e)}
  window.sriClearHistoricalSession?.();window.sriPackLogout?.();window.sriPackResetOperator?.();window.sriCloudTreatmentReset?.();window.sriOperatorReviewReset?.();document.body.classList.remove('sri33-operator-cloud');current=null;$('v20-email').value='';$('v20-pass').value='';$('v20-login').hidden=false;
+ delete document.body.dataset.v20Role;
  document.body.classList.add('v20-not-logged');document.body.classList.remove('v20-active');
  closeModal();$('v20-login-error').textContent='';
 }
@@ -7629,21 +7631,33 @@ body.sri33-modal-open{overflow:hidden}
   let historySequence=0;
   async function loadHistory(client,userId,epoch=operatorEpoch,more=false){const seq=++historySequence;
     const from=$('sri-p03-history-from')?.value||null,to=$('sri-p03-history-to')?.value||null;
-    if(from&&to&&from>to)throw Error('A data inicial não pode ser posterior à data final.');
-    if(!more){$('sri-p03-history-count').textContent='Consultando tratativas do período...';$('sri-p03-history-more').hidden=true;}
-    let {data,error}=await client.rpc('sri_p03_my_treatments_page',{p_from:from,p_to:to,p_before:more?p03HistoryCursor:null,p_limit:200});
-    let paged=!error;
-    if(error&&error.code==='PGRST202'&&!more&&!from&&!to)({data,error}=await client.rpc('sri_my_history_page',{p_before:null,p_limit:200}));
-    if(error&&error.code==='PGRST202'&&!more&&!from&&!to)({data,error}=await client.rpc('sri_my_treatment_history'));
-    if(error)throw Error('Histórico por data indisponível: '+error.message);
-    if(epoch!==operatorEpoch||seq!==historySequence)return;
-    const map=new Map(taskRows.map(r=>[r.id,r.protocol_number]));
-    const batch=(data||[]).map(t=>({...t,protocol_number:t.protocol_number||map.get(t.task_id)||null}));
-    const combined=more?[...p03History,...batch]:batch;
-    p03History=[...new Map(combined.map(t=>[String(t.id),t])).values()];
-    p03HistoryCursor=batch.at(-1)?.id??null;
-    $('sri-p03-history-more').hidden=!paged||batch.length<200;
-    renderP03History();
+    const count=$('sri-p03-history-count'),next=$('sri-p03-history-more'),history=$('sri33-history');
+    if(!more){
+      p03History=[];p03HistoryCursor=null;history.replaceChildren();
+      count.textContent='Consultando tratativas do período...';next.hidden=true;
+    }
+    next.disabled=true;
+    const isCurrent=()=>epoch===operatorEpoch&&seq===historySequence;
+    try{
+      if(from&&to&&from>to)throw Error('A data inicial não pode ser posterior à data final.');
+      let {data,error}=await client.rpc('sri_p03_my_treatments_page',{p_from:from,p_to:to,p_before:more?p03HistoryCursor:null,p_limit:200});
+      const paged=!error;
+      if(isCurrent()&&error?.code==='PGRST202'&&!more&&!from&&!to)({data,error}=await client.rpc('sri_my_history_page',{p_before:null,p_limit:200}));
+      if(isCurrent()&&error?.code==='PGRST202'&&!more&&!from&&!to)({data,error}=await client.rpc('sri_my_treatment_history'));
+      if(!isCurrent())return;
+      if(error)throw Error('Histórico por data indisponível. Selecione novamente o período para tentar outra vez.');
+      const map=new Map(taskRows.map(r=>[r.id,r.protocol_number]));
+      const batch=(data||[]).map(t=>({...t,protocol_number:t.protocol_number||map.get(t.task_id)||null}));
+      const combined=more?[...p03History,...batch]:batch;
+      p03History=[...new Map(combined.map(t=>[String(t.id),t])).values()];
+      p03HistoryCursor=batch.at(-1)?.id??null;
+      next.hidden=!paged||batch.length<200;
+      renderP03History();
+    }catch(err){
+      if(isCurrent())count.textContent=err.message;
+    }finally{
+      if(isCurrent())next.disabled=false;
+    }
   }
   function renderP03History(){
     const root=$('sri33-history');if(!root)return;
@@ -7651,12 +7665,12 @@ body.sri33-modal-open{overflow:hidden}
     const expanded=new Set([...root.querySelectorAll('details[open]')].map(el=>el.dataset.historyKey));
     const rows=p03History.filter(t=>{const d=new Date(t.created_at).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});return (!query||String(t.protocol_number||'').includes(query))&&(!from||d>=from)&&(!to||d<=to)}).sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
     const groups=new Map();for(const t of rows){const key=t.protocol_number?'p:'+t.protocol_number:'t:'+String(t.task_id||t.id);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(t);}
-    const event=t=>'<article class="sri-p03-event"><small>'+h(new Date(t.created_at).toLocaleString('pt-BR'))+'</small><strong>'+h(label(t.action))+'</strong><div>'+h(t.notes||'Justificativa não informada')+'</div></article>';
+    const event=t=>'<article class="sri-p03-event"><small>'+h(new Date(t.created_at).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}))+'</small><strong>'+h(label(t.action))+'</strong><div>'+h(t.notes||'Justificativa não informada')+'</div></article>';
     const siga3=new Set(['E-MAIL','LIGAÇÃO','ASCSAC','ACEITOU','OUTROS','MÍDIAS NE','CARTA AR']);
     const sigapend=new Set(['DÚVIDA','PENDENTE','FILIAL','ASSOCIADO','RECUSOU','OUVIDORIA']);
     const concluded=rows.filter(t=>siga3.has(t.action)).length,waiting=rows.filter(t=>sigapend.has(t.action)).length;
     $('sri-p03-history-count').textContent=groups.size+' protocolos distintos · '+rows.length+' movimentações carregadas · '+concluded+' conclusões registradas · '+waiting+' pendências/encaminhamentos (não equivale a conclusão no SIGO).';
-    root.innerHTML=!rows.length?'<p>Nenhuma tratativa encontrada para o período.</p>':mode==='log'?rows.map(t=>'<div class="sri-p03-history-card"><b>Protocolo '+h(t.protocol_number||'não identificado')+'</b>'+event(t)+'</div>').join(''):[...groups].map(([key,items])=>'<details class="sri-p03-history-card" data-history-key="'+h(key)+'"'+(expanded.has(key)?' open':'')+'><summary><b>Protocolo '+h(items[0].protocol_number||'não identificado')+'</b><span>'+items.length+' movimentação(ões) · '+h(new Date(items[0].created_at).toLocaleString('pt-BR'))+'</span></summary><div>'+[...items].reverse().map(event).join('')+'</div></details>').join('');
+    root.innerHTML=!rows.length?'<p>Nenhuma tratativa encontrada para o período.</p>':mode==='log'?rows.map(t=>'<div class="sri-p03-history-card"><b>Protocolo '+h(t.protocol_number||'não identificado')+'</b>'+event(t)+'</div>').join(''):[...groups].map(([key,items])=>'<details class="sri-p03-history-card" data-history-key="'+h(key)+'"'+(expanded.has(key)?' open':'')+'><summary><b>Protocolo '+h(items[0].protocol_number||'não identificado')+'</b><span>'+items.length+' movimentação(ões) · '+h(new Date(items[0].created_at).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}))+'</span></summary><div>'+[...items].reverse().map(event).join('')+'</div></details>').join('');
   }
   async function saveTreatment(advance=false){
     if(!currentTask)throw Error('Selecione um protocolo da sua carteira.');
@@ -8074,7 +8088,7 @@ document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.tar
 <script defer src="/assets/sri-mobile-navigation.js?v=20261124-01"></script>
 <script defer src="/assets/sri-integrated-improvements.js?v=20261124-02"></script>
 <script src="/assets/sri-cloud-treatments.js?v=20261124-03"></script>
-<script defer src="/assets/sri-pacote03.js?v=20261124-03"></script>
-<script defer src="/assets/sri-p03-navigation.js?v=20261124-01"></script>
+<script defer src="/assets/sri-pacote03.js?v=20261125-01"></script>
+<script defer src="/assets/sri-p03-navigation.js?v=20261125-01"></script>
 </body>
 </html>

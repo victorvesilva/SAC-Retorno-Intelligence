@@ -1,6 +1,6 @@
 /* MEL-EXTRA-004 — navegação interna; não usa histórico do navegador. */
 (()=>{'use strict';
- let previous=null,stack=[],goingBack=false,profile='',current=null;
+ let stack=[],goingBack=false,profile='',current=null;
  const $=id=>document.getElementById(id);
  const active=()=>document.querySelector('.tab-content.active')?.id||null;
  const loggedOut=()=>document.body.classList.contains('v20-not-logged');
@@ -9,8 +9,8 @@
  btn.textContent='← Voltar';btn.className='v20-button secondary';btn.disabled=true;
  btn.setAttribute('aria-label','Voltar à última categoria visitada');
  function restoreFocus(){if(btn.isConnected)return;const mount=$('v5-active-context')?.parentElement||document.querySelector('.v5-topbar')||document.querySelector('.topbar')||document.querySelector('main');mount?.append(btn);}
- function clear(){stack=[];previous=null;current=null;goingBack=false;btn.disabled=true;}
- function observe(){if(loggedOut()){if(stack.length)clear();return;}
+ function clear(){stack=[];current=null;goingBack=false;btn.disabled=true;}
+ function observe(){if(loggedOut()){clear();profile='';return;}
   const role=authKey();if(profile&&role&&role!==profile)clear();if(role)profile=role;
   const id=active();if(!id||id===current)return;
   if(current&&!goingBack)stack.push({id:current,y:window.scrollY});
@@ -32,6 +32,6 @@
  document.addEventListener('submit',e=>{const f=e.target.closest?.('form');if(f)delete f.dataset.sriP03Dirty;},true);
  const prior=window.sriPackLogout;
  window.sriPackLogout=(...args)=>{clear();profile='';return typeof prior==='function'?prior(...args):undefined;};
- function boot(){restoreFocus();current=active();const obs=new MutationObserver(()=>{restoreFocus();observe()});obs.observe(document.body,{subtree:true,attributes:true,attributeFilter:['class']});observe();}
+ function boot(){restoreFocus();current=active();const obs=new MutationObserver(()=>{restoreFocus();observe()});obs.observe(document.body,{subtree:true,attributes:true,attributeFilter:['class','data-v20-role','data-role']});observe();}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();

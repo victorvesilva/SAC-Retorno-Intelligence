@@ -67,6 +67,7 @@ function makeManagementHistory(){
  const day=field(controls,'Data operacional','date');day.value=today();day.max=today();
  const snapshotSelect=document.createElement('select');snapshotSelect.setAttribute('aria-label','Extração e turno');
  snapshotSelect.style.minWidth='220px';snapshotSelect.hidden=true;controls.append(snapshotSelect);
+ button(controls,'Consultar data',queryDay);
  const back=button(controls,'Voltar para a carteira atual',()=>{day.value=today();reset()});back.disabled=true;
  const status=document.createElement('p');status.setAttribute('role','status');root.append(status);
  const summary=document.createElement('div');summary.className='v20-grid';root.append(summary);
@@ -113,13 +114,15 @@ function makeManagementHistory(){
    setTimeout(()=>URL.revokeObjectURL(url),1000);
  }
  async function queryDay(){
-   if(!day.value||day.value===today()){reset();return;}
+   if(!day.value){reset();return;}
+   const requestedDay=day.value;
    const request=++seq;overview.classList.add('sri-p03-historical');back.disabled=false;
    rows=[];cursor=null;snapshot=null;summary.replaceChildren();tableWrap.replaceChildren();more.hidden=true;csv.disabled=true;
    snapshotSelect.hidden=true;status.textContent='Consultando apurações históricas...';
    try{
     const a=await identity();if(!a||!['admin','manager','supervisor','assistant'].includes(a.p.role))throw Error('Acesso à consulta não autorizado.');
-    const {data,error}=await a.c.rpc('sri_p03_history_snapshots',{p_day:day.value});
+    if(request!==seq||!root.isConnected)return;
+    const {data,error}=await a.c.rpc('sri_p03_history_snapshots',{p_day:requestedDay});
     if(error)throw Error('Histórico por data indisponível: '+error.message);
     if(request!==seq||!root.isConnected)return;
     snapshots=(data||[]).filter(x=>x?.id&&x.operational_day===selectedDay());
@@ -135,10 +138,15 @@ function makeManagementHistory(){
   const currentSnapshot=snapshots.find(s=>s.id===requestedSnapshot);
   if(!currentSnapshot)return;
   snapshot=currentSnapshot;
-  if(!append){rows=[];cursor=null;}
+  more.disabled=true;
+  if(!append){
+   rows=[];cursor=null;more.hidden=true;csv.disabled=true;
+   summary.replaceChildren();tableWrap.replaceChildren();
+  }
   status.textContent='Consultando protocolos do snapshot '+currentSnapshot.shift_label+'...';
   try{
    const a=await identity();if(!a)throw Error('Sessão indisponível.');
+   if(request!==seq||!root.isConnected)return;
    const {data,error}=await a.c.rpc('sri_p03_history_tasks',{p_snapshot:currentSnapshot.id,p_after:append?cursor:null,p_limit:200});
    if(error)throw Error('Consulta histórica indisponível: '+error.message);
    if(request!==seq||!root.isConnected||selectedDay()!==currentSnapshot.operational_day)return;
@@ -148,7 +156,8 @@ function makeManagementHistory(){
    more.hidden=batch.length<200;
    status.textContent=rows.length+' protocolos atribuídos no snapshot carregados. Dados somente leitura; os status podem refletir atualizações posteriores no banco, não comprovam a situação no SIGO.';
    render();
-  }catch(err){if(request===seq){status.textContent=err.message;more.hidden=true;}}
+  }catch(err){if(request===seq){status.textContent=err.message;}}
+  finally{if(request===seq)more.disabled=false;}
  }
  snapshotSelect.addEventListener('change',()=>loadTasks(false));
  day.addEventListener('change',queryDay);

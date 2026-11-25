@@ -62,3 +62,41 @@ assert.match(sql,/private\.sri_p03_guard_transfer/);
 assert.match(sql,/private\.sri_p03_status_sigo\(old\.treatment_status\)/);
 assert.match(sql,/private\.sri_p03_status_work\(p_action\)/);
 console.log('PASS: sintaxe JS/HTML e regras estáticas P03 (histórico, Assistente, navegação, status, carteira).');
+
+// Exercita o carregador real com respostas fora de ordem e falha de consulta.
+const historyElements={
+  'sri-p03-history-from':{value:'2026-11-23'},
+  'sri-p03-history-to':{value:'2026-11-23'},
+  'sri-p03-history-count':{textContent:''},
+  'sri-p03-history-more':{hidden:false,disabled:false},
+  'sri33-history':{textContent:'resultado antigo',replaceChildren(){this.textContent='';}},
+};
+const historyRequests=[];
+const historyClient={rpc(name,args){
+  return new Promise(resolve=>historyRequests.push({name,args,resolve}));
+}};
+const historyCode=html.slice(html.indexOf('  let historySequence=0;'),html.indexOf('  function renderP03History()'));
+const historyHarness=vm.runInNewContext(`
+  let operatorEpoch=1, p03History=[], p03HistoryCursor=null, taskRows=[];
+  const renderP03History=()=>{$('sri33-history').textContent=p03History.map(t=>t.protocol_number).join(',');};
+  ${historyCode}
+  ({loadHistory});
+`,{$:id=>historyElements[id]});
+const oldHistory=historyHarness.loadHistory(historyClient,'operator');
+assert.equal(historyElements['sri33-history'].textContent,'');
+historyElements['sri-p03-history-from'].value='2026-11-24';
+historyElements['sri-p03-history-to'].value='2026-11-24';
+const newHistory=historyHarness.loadHistory(historyClient,'operator');
+assert.deepEqual(historyRequests.map(r=>r.args.p_from),['2026-11-23','2026-11-24']);
+assert.ok(historyRequests.every(r=>r.name==='sri_p03_my_treatments_page'));
+historyRequests[1].resolve({data:[{id:2,protocol_number:'P24'}],error:null});
+await newHistory;
+historyRequests[0].resolve({data:[{id:1,protocol_number:'P23'}],error:null});
+await oldHistory;
+assert.equal(historyElements['sri33-history'].textContent,'P24');
+const failedHistory=historyHarness.loadHistory(historyClient,'operator');
+historyRequests[2].resolve({data:null,error:{code:'NETWORK',message:'erro sintético'}});
+await failedHistory;
+assert.equal(historyElements['sri33-history'].textContent,'');
+assert.match(historyElements['sri-p03-history-count'].textContent,/Histórico por data indisponível/);
+console.log('PASS: histórico do operador limpa o recorte anterior e descarta resposta atrasada.');
