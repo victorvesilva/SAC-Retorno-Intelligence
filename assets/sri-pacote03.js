@@ -168,7 +168,7 @@ function makePendingPanel(){
     const cols=[['protocol_number','Protocolo'],['last_day','Último dia na carteira'],['reason','Motivo da conferência'],['treatment_status','Última tratativa'],['sigo_reference','Referência SIGO'],['due_date','Prazo'],['base_name','Base'],['area_name','Área']];
     const hr=table.createTHead().insertRow();for(const [,label]of cols){const th=document.createElement('th');th.scope='col';th.textContent=label;hr.append(th);}
     const today=new Date().toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});
-    const body=table.createTBody();for(const row of rows){const tr=body.insertRow();for(const [key]of cols)cell(tr,key==='reason'?(row.last_day<today?'Pendência de dia anterior':'Fora da carteira ativa do dia'):row[key]??'—');}
+    const body=table.createTBody();for(const row of rows){const tr=body.insertRow();for(const [key]of cols){const value=row[key];cell(tr,key==='reason'?(row.last_day<today?'Pendência de dia anterior':'Fora da carteira ativa do dia'):['last_day','due_date'].includes(key)&&/^\d{4}-\d{2}-\d{2}$/.test(value||'')?value.split('-').reverse().join('/'):value??'—');}}
     wrap.append(table);
    }
   }catch(error){if(e===epoch&&seq===request&&section.isConnected){wrap.replaceChildren();status.textContent=error.message;}}

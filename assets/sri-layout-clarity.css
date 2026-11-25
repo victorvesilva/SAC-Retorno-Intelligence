@@ -20,6 +20,7 @@ body[data-sri-operator-view=history] #sri33-mine>.v20-between,body[data-sri-oper
 .sri-clarity-pagination{padding:14px 0;border-top:1px solid #dae3ed;margin-top:12px;align-items:center}
 .sri-clarity-pagination #sri-p03-count{margin-left:auto;font-size:13px}
 #sri-pack-summary .v20-stat{min-width:0;text-align:left;padding:12px!important}
+#sri-pack-summary .v20-stat strong{display:block;font-size:1.35rem;margin-top:6px;color:#16458d}
 #sri-p03-reconcile{margin:16px 0;min-width:0}
 #sri-p03-reconcile p{line-height:1.6;max-width:1000px}
 .sri-clarity-results{display:flex;flex-wrap:wrap;gap:10px;align-items:start;margin:14px 0;padding-top:12px;border-top:1px solid #dce4ef}
