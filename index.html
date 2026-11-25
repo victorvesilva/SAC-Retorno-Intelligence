@@ -2440,8 +2440,16 @@ const V2_ALERTS=[
  {id:'qualidade',name:'Pendências de qualidade',desc:'Linhas malformadas, sem filial e BKO desconhecido',tone:'#7387A3'}
 ];
 const V2_STORE_HISTORY='sac_pulse_v2_fotos_agregadas',V2_STORE_ALERTS='sac_pulse_v2_alertas';
-function jsonLocalGet(key,fallback){try{const v=JSON.parse(localStorage.getItem(key));return v===null?fallback:v}catch{return fallback}}
-function jsonLocalSet(key,value){try{localStorage.setItem(key,JSON.stringify(value));return true}catch{return false}}
+// Legacy copies remain intact. Only ADM/Gestor may recover an unowned legacy copy.
+function sriLocalKey(key){const identity=window.sriLocalIdentity;return identity?.id?'sri_account_'+identity.id+'_'+key:key}
+function sriLocalGet(key){const identity=window.sriLocalIdentity;if(identity&&!identity.id)return null;
+ const own=localStorage.getItem(sriLocalKey(key));if(own!==null)return own;
+ return identity&&['admin','manager'].includes(identity.role)?localStorage.getItem(key):null;
+}
+function sriLocalSet(key,value){if(window.sriLocalIdentity&&!window.sriLocalIdentity.id)throw Error('Sessão não autenticada');localStorage.setItem(sriLocalKey(key),value)}
+function sriLocalDel(key){if(window.sriLocalIdentity?.id)localStorage.removeItem(sriLocalKey(key))}
+function jsonLocalGet(key,fallback){try{const v=JSON.parse(sriLocalGet(key));return v===null?fallback:v}catch{return fallback}}
+function jsonLocalSet(key,value){try{sriLocalSet(key,JSON.stringify(value));return true}catch{return false}}
 let v2History=jsonLocalGet(V2_STORE_HISTORY,[]);if(!Array.isArray(v2History))v2History=[];
 let v2AlertConfig=jsonLocalGet(V2_STORE_ALERTS,V2_ALERTS.map(a=>a.id));if(!Array.isArray(v2AlertConfig))v2AlertConfig=V2_ALERTS.map(a=>a.id);
 let toastTimer=null;
@@ -2770,7 +2778,7 @@ multiConfigs.forEach(multiInit);setupDrop('sac');setupDrop('ativo');updatePage()
 
 /* SAC PULSE · DISTRIBUIÇÃO DE PROTOCOLOS · SEM DEPENDÊNCIAS */
 const DIST_KEY='sac-pulse-distribution-v1';
-function distReadLocal(){try{return JSON.parse(localStorage.getItem(DIST_KEY)||'{}')}catch{return {}}}
+function distReadLocal(){try{return JSON.parse(sriLocalGet(DIST_KEY)||'{}')}catch{return {}}}
 const distStored=distReadLocal();
 const DIST_OPERATOR_SITUATIONS=['Ativo','Promovido','Férias','Desligado','Afastamento'];
 function distSituation(o){return DIST_OPERATOR_SITUATIONS.includes(o?.situation)?o.situation:(o?.active===false?'Desligado':'Ativo')}
@@ -2797,7 +2805,7 @@ function distSetCriticity(id,choice){const row=distState.rows.find(r=>String(r.i
 function distSupervisor(r){const op=distOwner(r.id);return op?op.supervisor||'Sem supervisor':'Sem supervisor'}
 function distAssignmentDays(r){const a=distAssignments[r.id];if(!a?.when)return '';const t=new Date(a.when);if(!Number.isFinite(t.getTime()))return '';const today=new Date();const d0=Date.UTC(today.getFullYear(),today.getMonth(),today.getDate()),d1=Date.UTC(t.getFullYear(),t.getMonth(),t.getDate());return Math.max(0,Math.floor((d0-d1)/86400000))}
 
-function distPersist(){try{localStorage.setItem(DIST_KEY,JSON.stringify({roster:distRoster,archivedRoster:distArchivedRoster,assignments:distAssignments,statuses:distStatuses,criticities:distCriticities,events:v194Events,rules:v194Rules}));document.getElementById('dist-persist-warning').textContent='Alterações locais registradas. Quando houver uma apuração do dia carregada, a sincronização com o Supabase será solicitada.';try{window.sriQueueDistributionSave?.()}catch(e){console.warn('Sincronização da distribuição',e)}return true}catch(e){document.getElementById('dist-persist-warning').textContent='Cache local indisponível. Tentando sincronizar a distribuição com o Supabase; confira o status do resultado do dia.';try{window.sriQueueDistributionSave?.()}catch(_){}return false}}
+function distPersist(){try{sriLocalSet(DIST_KEY,JSON.stringify({roster:distRoster,archivedRoster:distArchivedRoster,assignments:distAssignments,statuses:distStatuses,criticities:distCriticities,events:v194Events,rules:v194Rules}));document.getElementById('dist-persist-warning').textContent='Alterações locais registradas. Quando houver uma apuração do dia carregada, a sincronização com o Supabase será solicitada.';try{window.sriQueueDistributionSave?.()}catch(e){console.warn('Sincronização da distribuição',e)}return true}catch(e){document.getElementById('dist-persist-warning').textContent='Cache local indisponível. Tentando sincronizar a distribuição com o Supabase; confira o status do resultado do dia.';try{window.sriQueueDistributionSave?.()}catch(_){}return false}}
 function distNormalize(s){return String(s||'').trim().replace(/\s+/g,' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase()}
 function distUniqueId(){return 'op'+Date.now().toString(36)+Math.random().toString(36).slice(2,9)}
 function distOperator(id){return distRoster.find(o=>o.id===id)}
@@ -3613,9 +3621,9 @@ const v38BrandImage=document.querySelector('.brand-mark img');if(v38BrandImage)d
 /* SAC RETORNO INTELLIGENCE 4.2 · HISTÓRICO LOCAL (sem IndexedDB e sem servidor) */
 const V42_CURRENT_KEY='sri_v42_latest_gzip_v1',V42_PROTOCOL_KEY='sri_v42_last_protocols_v1';
 let v42Restoring=false,v42SavePending=false,v42SaveToken=0,v42StorageAvailable=false,v42LastSummary=null;
-function v42SafeGet(key){try{return localStorage.getItem(key)}catch{return null}}
-function v42SafeSet(key,v){try{localStorage.setItem(key,v);return true}catch(e){console.warn('Armazenamento local indisponível',e);return false}}
-function v42SafeDel(key){try{localStorage.removeItem(key)}catch{}}
+function v42SafeGet(key){try{return sriLocalGet(key)}catch{return null}}
+function v42SafeSet(key,v){try{sriLocalSet(key,v);return true}catch(e){console.warn('Armazenamento local indisponível',e);return false}}
+function v42SafeDel(key){try{sriLocalDel(key)}catch{}}
 function v42CanStore(){try{const k='sri_v42_test';localStorage.setItem(k,'ok');localStorage.removeItem(k);return true}catch{return false}}
 function v42SetStatus(label,good,msg){const pill=document.getElementById('v42-store-badge'),note=document.getElementById('v42-save-message');if(pill){pill.textContent=label;pill.classList.toggle('warn',!good)}if(note&&msg)note.textContent=msg.replace('Somente a última base completa pode ser recuperada; ','').replace('as importações anteriores preservam indicadores, não os CSVs originais.','Históricos anteriores preservam indicadores.')}
 function v42UniqueRows(){const m=new Map();for(const r of ui.apured)if(['SAC RETORNO','WHATSSAC'].includes(r.where)&&r.id&&!m.has(String(r.id)))m.set(String(r.id),r);return m}
@@ -3663,8 +3671,8 @@ async function v42ApplyCurrent(payload,opts={}){ui.sriPresenceEvidence=payload.p
   renderExtractionManager();v42RenderStats();switchTab(opts.tab||ui.tab||'overview');
  }finally{v42Restoring=false}
 }
-async function v42RestoreSavedOnOpen(){v42RenderStats();const raw=v42SafeGet(V42_CURRENT_KEY);if(!raw){v42SetStatus(v42CanStore()?'Aguardando importação':'Backup recomendado',v42CanStore(),v42CanStore()?'Importe SAC + ATIVO para iniciar. As próximas importações terão histórico automático.':'Armazenamento indisponível: importe as bases e use o backup completo.');return true}
- try{v42SetStatus('Recuperando última base…',true,'Recuperando a cópia compacta da importação mais recente.');const payload=await v42Uncompress(raw);
+async function v42RestoreSavedOnOpen(){const identity=window.sriLocalIdentity;v42RenderStats();const raw=v42SafeGet(V42_CURRENT_KEY);if(!raw){v42SetStatus(v42CanStore()?'Aguardando importação':'Backup recomendado',v42CanStore(),v42CanStore()?'Importe SAC + ATIVO para iniciar. As próximas importações terão histórico automático.':'Armazenamento indisponível: importe as bases e use o backup completo.');return true}
+ try{v42SetStatus('Recuperando última base…',true,'Recuperando a cópia compacta da importação mais recente.');const payload=await v42Uncompress(raw);if(identity!==window.sriLocalIdentity)return false;
  // Salvamento de cache não é uma nova importação; somente a data da origem valida o dia.
  const importedDay=sriCivilDay(payload.importedAt||payload.quality?.importedAt)||payload.operationalDay||'';
  if(importedDay!==sriCivilDay(new Date())){
@@ -3871,7 +3879,7 @@ let v47History=[];
 let v47SelectedImport='';
 let v47SelectedOperator='all';
 let v47DayInitialized=false;
-function v47ReadHistory(){try{const data=JSON.parse(localStorage.getItem(V47_HISTORY_KEY)||'[]');return Array.isArray(data)?v47ValidateHistory(data):[]}catch(e){return []}}
+function v47ReadHistory(){try{const data=JSON.parse(sriLocalGet(V47_HISTORY_KEY)||'[]');return Array.isArray(data)?v47ValidateHistory(data):[]}catch(e){return []}}
 function v47ValidateHistory(arr){return arr.filter(x=>x&&Number.isFinite(Date.parse(x.at))&&Array.isArray(x.operators)&&Array.isArray(x.changes)).slice(-V47_HISTORY_LIMIT).map(x=>({
   id:String(x.id||x.at),at:String(x.at),filename:String(x.filename||'Arquivo Excel').slice(0,150),sourceLines:Math.max(0,Number(x.sourceLines)||0),uniqueProtocols:Math.max(0,Number(x.uniqueProtocols)||0),updatedProtocols:Math.max(0,Number(x.updatedProtocols)||0),statusUpdates:Math.max(0,Number(x.statusUpdates)||0),criticUpdates:Math.max(0,Number(x.criticUpdates)||0),assignedUpdates:Math.max(0,Number(x.assignedUpdates)||0),
   total:Math.max(0,Number(x.total)||0),withStatus:Math.max(0,Number(x.withStatus)||0),withoutStatus:Math.max(0,Number(x.withoutStatus)||0),newStatus:Math.max(0,Number(x.newStatus)||0),changedStatus:Math.max(0,Number(x.changedStatus)||0),
@@ -3880,10 +3888,10 @@ function v47ValidateHistory(arr){return arr.filter(x=>x&&Number.isFinite(Date.pa
 }))}
 function v47PersistHistory(){
   let ok=false;
-  try{localStorage.setItem(V47_HISTORY_KEY,JSON.stringify(v47History));ok=true}catch(err){
+  try{sriLocalSet(V47_HISTORY_KEY,JSON.stringify(v47History));ok=true}catch(err){
     // Quotas dependem do navegador. Preservar na sessão e tentar manter os registros mais recentes.
     for(let n=Math.max(0,v47History.length-10);n<v47History.length;n++){
-      try{localStorage.setItem(V47_HISTORY_KEY,JSON.stringify(v47History.slice(n)));ok=true;break}catch(e){}
+      try{sriLocalSet(V47_HISTORY_KEY,JSON.stringify(v47History.slice(n)));ok=true;break}catch(e){}
     }
   }
   const el=document.getElementById('v47-storage-msg');if(el)el.textContent=ok?'Histórico salvo neste navegador.':'Histórico somente nesta sessão: baixe o backup completo para não perder os dados.';
@@ -4306,9 +4314,9 @@ v52RenderDaily();v52RefreshPair();
 
 /* V5.3 · FILIAL (tratativa) + CD_STATUS 12 (SAC) = RETORNO operacional. */
 const V53_EVENT_KEY='sac-retorno-intelligence-filial-returns-v53';
-const v53SafeEvents=()=>{try{const a=JSON.parse(localStorage.getItem(V53_EVENT_KEY)||'[]');return Array.isArray(a)?a.filter(e=>e&&/^\d{7,}$/.test(String(e.id))&&e.at).slice(-500):[]}catch{return []}};
+const v53SafeEvents=()=>{try{const a=JSON.parse(sriLocalGet(V53_EVENT_KEY)||'[]');return Array.isArray(a)?a.filter(e=>e&&/^\d{7,}$/.test(String(e.id))&&e.at).slice(-500):[]}catch{return []}};
 let v53Events=v53SafeEvents(),v53PriorSource=new Map(),v53VisibleIds=null,v53CurrentNew=[];
-function v53Persist(){try{localStorage.setItem(V53_EVENT_KEY,JSON.stringify(v53Events.slice(-500)));return true}catch{return false}}
+function v53Persist(){try{sriLocalSet(V53_EVENT_KEY,JSON.stringify(v53Events.slice(-500)));return true}catch{return false}}
 function v53RestoreEvents(items){v53Events=Array.isArray(items)?items.filter(e=>e&&/^\d{7,}$/.test(String(e.id))&&e.at).slice(-500):[];v53Persist();v53UpdateAlerts()}
 function v53CaptureBefore(){v53PriorSource=new Map();if(!ui.live||!ui.source?.length)return;for(const r of ui.source){if(distStatus(r.id)!=='FILIAL')continue;let a=v53PriorSource.get(r.id);if(!a){a=new Set();v53PriorSource.set(r.id,a)}a.add(String(r.status||''))}}
 function v53RowMarker(id){const ev=v53Events.findLast?.(e=>String(e.id)===String(id)&&!e.reviewed)||[...v53Events].reverse().find(e=>String(e.id)===String(id)&&!e.reviewed);return ev?`<button type="button" class="v53-row-marker" data-v53-id="${safe(id)}" title="Retorno identificado após FILIAL. Clique para consultar a alteração.">↪ RETORNO</button>`:''}
@@ -5614,11 +5622,30 @@ let v113State={latestByDay:{},rounds:[]},v113Pending=null,v113StorageWarning='',
 let v113RestorePromise=null;
 function v113ValidState(p){return !!p&&typeof p==='object'&&!Array.isArray(p)&&p.latestByDay&&typeof p.latestByDay==='object'&&Array.isArray(p.rounds)}
 function v113ExportPayload(){return {schema:1,latestByDay:v113State.latestByDay,rounds:v113State.rounds}}
-async function v113Restore(){const packed=v42SafeGet(V113_STORE);if(!packed)return;
- try{const parsed=await v42Uncompress(packed);if(v113ValidState(parsed))v113State={latestByDay:parsed.latestByDay,rounds:parsed.rounds.slice(-V113_MAX_ROUNDS)};}
+async function v113Restore(){const identity=window.sriLocalIdentity;const packed=v42SafeGet(V113_STORE);if(!packed)return;
+ try{const parsed=await v42Uncompress(packed);if(identity===window.sriLocalIdentity&&v113ValidState(parsed))v113State={latestByDay:parsed.latestByDay,rounds:parsed.rounds.slice(-V113_MAX_ROUNDS)};}
  catch(e){console.warn('Comparações não recuperadas',e);v113StorageWarning='Não foi possível restaurar as comparações anteriores; faça backup JSON.'}
 }
 const v113Ready=v113Restore();
+window.sriLoadLocalIdentity=async identity=>{
+ window.sriLocalIdentity=identity||{id:'',role:''};window.sriResetCloudSnapshot?.();
+ v42SaveToken++;v42SavePending=false;v113PersistTicket++;
+ resetLoadedData();ui.files={sac:null,ativo:null};ui.sriPresenceEvidence=null;
+ v2History=jsonLocalGet(V2_STORE_HISTORY,[]);if(!Array.isArray(v2History))v2History=[];
+ const saved=identity?distReadLocal():{};
+ distRoster=Array.isArray(saved.roster)?saved.roster:[];distArchivedRoster=Array.isArray(saved.archivedRoster)?saved.archivedRoster:[];
+ distAssignments=saved.assignments||{};distStatuses=saved.statuses||{};distCriticities=saved.criticities||{};
+ v194RestorePayload(saved);distState.selected.clear();distState.filters={};distState.query='';distState.rows=[];distState.visible=[];distState.page=0;
+ v47History=identity?v47ReadHistory():[];v47SelectedImport='';v47SelectedOperator='all';
+ v53Events=identity?v53SafeEvents():[];v53PriorSource=new Map();v53VisibleIds=null;v53CurrentNew=[];
+ v52PreviousIndex=null;v52MemoryIndex=null;v52ChosenDay='';v52SelectedHistory=-1;
+ v113State={latestByDay:{},rounds:[]};if(identity)await v113Restore();
+ if(identity&&identity!==window.sriLocalIdentity)return;
+ v47DayInitialized=false;v47Render();v53CloseModal();v53UpdateAlerts();
+ distTargetOptions();distBuildFilterOptions();distRenderRoster();distRefresh();v2RenderHistory();renderExtractionManager();updatePage();
+ if(identity&&['admin','manager','supervisor','assistant'].includes(identity.role))await v42RestoreSavedOnOpen();
+};
+
 function v113ImportPayload(raw){v113PersistTicket++;
  v113State=v113ValidState(raw)?{latestByDay:raw.latestByDay,rounds:raw.rounds.slice(-V113_MAX_ROUNDS)}:{latestByDay:{},rounds:[]};
  v113Save();
@@ -5764,7 +5791,7 @@ const pretty=t=>t?new Date(t).toLocaleString('pt-BR',{dateStyle:'short',timeStyl
 const dayKey=t=>(t?new Date(t):new Date()).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});
 const mkid=()=>('u'+Date.now().toString(36)+Math.random().toString(36).slice(2,9));
 function seed(){return {users:[],access:[],treatments:[],corrections:[],alerts:[],closures:[],imports:[],support:[],audit:[],processedHashes:[],sourceStamp:[],settings:{allowSample:false}}}
-let data=seed();try{const stored=JSON.parse(localStorage.getItem(SKEY)||'null');if(stored&&Array.isArray(stored.users)&&Array.isArray(stored.treatments))data={...seed(),...stored}}catch(e){}
+let data=seed();try{const stored=JSON.parse(sriLocalGet(SKEY)||'null');if(stored&&Array.isArray(stored.users)&&Array.isArray(stored.treatments))data={...seed(),...stored}}catch(e){}
 if(!Array.isArray(data.corrections))data.corrections=[];
 // Migração não destrutiva: IDs de equipes estáveis; campo team de versões anteriores continua como alias legível.
 function v20TeamKey(x){return String(x||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR')}
@@ -5782,9 +5809,10 @@ if(!Array.isArray(data.generalClosures))data.generalClosures=[];
 function v20FindTeam(name){return data.teamRecords.find(t=>v20TeamKey(t.name)===v20TeamKey(name))}
 function v20TeamName(id){return data.teamRecords.find(t=>t.id===id)?.name||''}
 
+let sriAuthEpoch=0;
 let current=null,settingsPage='users',activeClosing='hour',activeClosingDay=dayKey();
 window.sac20ActorId=()=>current?.id||'';
-function save(){try{localStorage.setItem(SKEY,JSON.stringify(data))}catch(e){console.warn('Armazenamento local indisponível',e)}}
+function save(){try{sriLocalSet(SKEY,JSON.stringify(data))}catch(e){console.warn('Armazenamento local indisponível',e)}}
 function audit(action,detail){data.audit.unshift({at:time(),user:current?.id||'',action,detail:String(detail||'')});data.audit=data.audit.slice(0,3000);save()}
 function role(){return current?.role||''}
 function authManager(){return role()==='admin'||role()==='supervisor'}
@@ -5912,6 +5940,7 @@ function sriToggleSignup(value){sriRegisterMode=!!value;$('sri-signup-fields').h
  $('v20-login-error').textContent='';$('sri-auth-info').textContent='';
 }
 async function sriAuthorizeUser(authUser){
+ const authorizationEpoch=++sriAuthEpoch;
  window.sriClearHistoricalSession?.();window.sriPackResetOperator?.();window.sriCloudTreatmentReset?.();window.sriOperatorReviewReset?.();
  const client=await sriClient();
  const {data:result,error}=await client.from('profiles').select('id,full_name,role').eq('id',authUser.id).single();
@@ -5920,6 +5949,12 @@ async function sriAuthorizeUser(authUser){
  if(!valid.has(result.role))throw Error('Perfil sem autorização de acesso.');
  // manager shares gerencial dashboard with admin UI, but ADMIN-only database RPC still validates role=admin.
  const uiRole=result.role==='manager'?'admin':result.role==='viewer'?'operator':result.role==='assistant'?'supervisor':result.role;
+ await sriBootRecovery.waitForLocal();await v113Ready;
+ if(authorizationEpoch!==sriAuthEpoch)return;
+ await window.sriLoadLocalIdentity?.({id:result.id,role:result.role});
+ if(authorizationEpoch!==sriAuthEpoch)return;
+ data={...seed(),...jsonLocalGet(SKEY,seed())};v20InitTeams();
+ data.turnClosures||=[];data.generalClosures||=[];
  current={id:result.id,name:result.full_name||authUser.email,email:authUser.email,role:uiRole,serverRole:result.role,
    team:'Não vinculada',active:true,importAuthorized:false,supervisorId:null,rosterId:null};
  document.body.dataset.v20Role=result.role;
@@ -5930,7 +5965,9 @@ async function sriAuthorizeUser(authUser){
  queueMicrotask(async()=>{
    try{
      await sriBootRecovery.waitForLocal();
+     if(authorizationEpoch!==sriAuthEpoch||current?.id!==authUser.id)return;
      await window.sriSnapshotAfterAuth?.();
+     if(authorizationEpoch!==sriAuthEpoch||current?.id!==authUser.id)return;
      await Promise.allSettled([
        Promise.resolve().then(()=>window.sriPackIdentity?.()),
        Promise.resolve().then(()=>window.sriOperatorAfterAuth?.()),
@@ -5969,7 +6006,7 @@ async function sriRestoreSession(){
  }catch(e){console.warn('Autenticação não disponível:',e.message);$('v20-login-error').textContent='Não foi possível conectar ao sistema: '+(window.sriFriendly?.(sriAuthMessage(e),'error')||sriAuthMessage(e));}
 }
 async function logout(){try{const client=await sriClient();await client.auth.signOut()}catch(e){console.warn('Não foi possível encerrar sessão remota',e)}
- window.sriClearHistoricalSession?.();window.sriPackLogout?.();window.sriPackResetOperator?.();window.sriCloudTreatmentReset?.();window.sriOperatorReviewReset?.();document.body.classList.remove('sri33-operator-cloud');current=null;$('v20-email').value='';$('v20-pass').value='';$('v20-login').hidden=false;
+ window.sriClearHistoricalSession?.();window.sriPackLogout?.();window.sriPackResetOperator?.();window.sriCloudTreatmentReset?.();window.sriOperatorReviewReset?.();document.body.classList.remove('sri33-operator-cloud');sriAuthEpoch++;current=null;data=seed();void window.sriLoadLocalIdentity?.(null);$('v20-email').value='';$('v20-pass').value='';$('v20-login').hidden=false;
  delete document.body.dataset.v20Role;
  document.body.classList.add('v20-not-logged');document.body.classList.remove('v20-active');
  closeModal();$('v20-login-error').textContent='';
@@ -6854,6 +6891,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const managerRoles = new Set(['admin','manager','supervisor','assistant']);
   const ctx = {client:null,user:null,profile:null,operationalDay:null,teams:[],operations:[],snapshotId:null,revision:0,busy:false,restoring:false,saveTimer:null,initialized:false,fileStaged:false,localDataUnsaved:false,syncedDistributionState:null,syncedPayloadHash:null,cloudTimer:null,cloudChecking:false,cloudPendingId:null,pendingSnapshot:null};
+  window.sriResetCloudSnapshot=()=>{clearTimeout(ctx.saveTimer);clearInterval(ctx.cloudTimer);Object.assign(ctx,{client:null,user:null,profile:null,operationalDay:null,teams:[],operations:[],snapshotId:null,revision:0,busy:false,restoring:false,saveTimer:null,fileStaged:false,localDataUnsaved:false,syncedDistributionState:null,syncedPayloadHash:null,cloudTimer:null,cloudChecking:false,cloudPendingId:null,pendingSnapshot:null});clearSharedNotice();};
+  function assertSnapshotIdentity(identity){if(identity!==window.sriLocalIdentity)throw Error('A sessão mudou. Consulte novamente os dados.');}
   window.sriGetSavedDistributionContext=()=>({snapshotId:ctx.snapshotId,revision:ctx.revision,teamId:ctx.teamId});
   const today = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   function notify(message,kind='success'){
@@ -6938,11 +6977,13 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     finally{ctx.busy=false;for(const id of ['sri-daily-save','sri-daily-load','sri-daily-distribution','sri-daily-refresh'])if($(id))$(id).disabled=false;}
   }
   async function auth(){
+    const identity=window.sriLocalIdentity;
     if(typeof window.sriGetSupabaseClient!=='function')throw Error('A conexão do Supabase ainda não foi inicializada.');
     const client=await window.sriGetSupabaseClient();const {data,error}=await client.auth.getUser();if(error||!data?.user)throw Error('Entre no sistema para continuar.');
     const u=data.user;const {data:p,error:pe}=await client.from('profiles').select('id,role,full_name').eq('id',u.id).single();
     if(pe||!p)throw Error('Seu perfil não pôde ser consultado.');
     if(!managerRoles.has(p.role))throw Error('A apuração completa é restrita à supervisão e gestão.');
+    assertSnapshotIdentity(identity);if(identity&&identity.id!==u.id)throw Error('A sessão mudou. Entre novamente.');
     ctx.client=client;ctx.user=u;ctx.profile=p;return client;
   }
   // Compatibilidade: preferências legadas ficam inativas para a importação geral.
@@ -7192,6 +7233,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     distPersist();if(typeof distRefreshAfterLoad==='function')distRefreshAfterLoad();
   }
   async function loadSnapshot(snapshot){
+    const identity=window.sriLocalIdentity;
     const client=await auth();if(!snapshot)throw Error('Nenhum resultado consolidado foi encontrado nas equipes autorizadas.');
     status('Recuperando apuração do Supabase...');
     const {data,error}=await client.from('daily_result_snapshots')
@@ -7199,7 +7241,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       .eq('id',snapshot.id).single();
     if(error||!data)throw Error('Não foi possível ler o resultado: '+(error?.message||'registro indisponível'));
     if(data.operational_day!==operationalContext().day)throw Error('Esta apuração é de um dia anterior; consulte o histórico.');
-    const payload=await v42Uncompress(data.payload_gzip);
+    const payload=await v42Uncompress(data.payload_gzip);assertSnapshotIdentity(identity);
     if(!payload||payload.schema!==1||!Array.isArray(payload.source))throw Error('Resultado consolidado em formato incompatível.');
     // O horário do usuário que importou foi gravado no payload; não substituí-lo pelo created_at no Supabase.
     if(Number(payload.reference)!==Number(data.reference_serial))throw Error('Referência da apuração não confere.');
@@ -7207,7 +7249,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     try{
       await v42ApplyCurrent(payload,{tab:ui.tab||'overview'});ui.sriPresenceEvidence=payload.presenceEvidence||null;
       const dist=await client.from('daily_result_distributions').select('state,revision').eq('snapshot_id',data.id).maybeSingle();
-      if(dist.error)throw Error('Falha ao carregar distribuição: '+dist.error.message);
+      assertSnapshotIdentity(identity);if(dist.error)throw Error('Falha ao carregar distribuição: '+dist.error.message);
       ctx.revision=dist.data?.revision||0;
       if(dist.data?.state)setLoadedDistribution(dist.data.state);
       ctx.snapshotId=data.id;ctx.teamId=data.team_id;void window.sriCloudTreatmentRefresh?.();
@@ -7219,11 +7261,11 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       status('Indicadores e carteira de distribuição carregados do Supabase. Os arquivos SAC/ATIVO não são necessários neste navegador.','success');window.sriUnifiedAfterSnapshot?.();
     }finally{ctx.restoring=false;}
   }
-  async function loadLast({startup=false}={}){const client=await auth();
+  async function loadLast({startup=false}={}){const identity=window.sriLocalIdentity;const client=await auth();
     const currentDay=operationalContext().day;
     const {data,error}=await client.from('daily_result_snapshots').select('id,team_id,operational_day,shift_label,created_at,payload_sha256')
       .is('team_id',null).eq('operational_day',currentDay).order('created_at',{ascending:false}).limit(10);
-    if(error)throw Error('Consulta de resultados: '+error.message);
+    assertSnapshotIdentity(identity);if(error)throw Error('Consulta de resultados: '+error.message);
     const latest=(data||[])[0];
     if(!latest){
       if(ui.live)resetLoadedData();
@@ -7247,8 +7289,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
   // SRI 2.0 — sincronização compartilhada sem exclusão de dados locais não publicados.
   const sharedDigestKey='sri_cloud_shared_digest_v1';
-  function readSharedDigest(){try{return localStorage.getItem(sharedDigestKey)||''}catch(_){return ''}}
-  function markSharedDigest(digest){ctx.syncedPayloadHash=digest||'';try{if(digest)localStorage.setItem(sharedDigestKey,digest)}catch(_){}}
+  function readSharedDigest(){try{return sriLocalGet(sharedDigestKey)||''}catch(_){return ''}}
+  function markSharedDigest(digest){ctx.syncedPayloadHash=digest||'';try{if(digest)sriLocalSet(sharedDigestKey,digest)}catch(_){}}
   function hasLocalChanges(){
     if(ctx.fileStaged||ctx.localDataUnsaved||ui.busy||ctx.saveTimer)return true;
     if(ctx.syncedDistributionState===null)return false;

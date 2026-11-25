@@ -71,13 +71,29 @@ const button=()=>[...document.querySelectorAll('#sri-p03-go-history button')].fi
 setTimeout(()=>{
  let printed=null;
  window.open=()=>({
-  document:document.implementation.createHTMLDocument(''),closed:false,opener:null,
+  document:(()=>{const doc=document.implementation.createHTMLDocument('');Object.defineProperty(doc,'fonts',{value:{ready:Promise.resolve()}});return doc;})(),closed:false,opener:null,
   close(){this.closed=true;},focus(){},print(){printed=this.document;document.body.dataset.graph='PASS';}
  });
  const chart=document.querySelector('.sri-p03-chart-export');
  if(!chart)throw Error('Exportação individual ausente');
  chart.click();
  if(!document.querySelector('.sri-p03-chart-nav')?.textContent.includes('Riscos Operacionais'))throw Error('Categorias de gráficos ausentes');
+ const reopen=document.getElementById('sri-p03-reopen');
+ if(!reopen)throw Error('Reabertura administrativa ausente');
+ reopen.querySelector('input').value='500';
+ [...reopen.querySelectorAll('button')].find(button=>button.textContent==='Consultar protocolo').click();
+ setTimeout(()=>{
+  const save=[...reopen.querySelectorAll('button')].find(button=>button.textContent==='Reabrir para tratativa');
+  save.click();
+  if(window.reopenRequests.length)throw Error('Reabertura sem justificativa foi enviada');
+  const reason=reopen.querySelector('textarea');reason.value='Encerramento feito por engano';reason.dispatchEvent(new Event('input',{bubbles:true}));
+  save.click();
+  setTimeout(()=>{
+   if(window.reopenRequests.length!==1||window.reopenRequests[0].p_reason!=='Encerramento feito por engano')throw Error('Justificativa de reabertura perdida');
+   if(!reopen.textContent.includes('justificativa foi registrada'))throw Error('Resultado de reabertura ausente');
+   document.body.dataset.reopen='PASS';
+  },40);
+ },40);
  const day=document.querySelector('#sri-p03-go-history input[type=date]');
  if(!day||!button())throw Error('Consulta histórica ausente');
  day.value='2026-11-23';button().click();
@@ -114,13 +130,15 @@ setTimeout(()=>{
 },50);
 `;
 const mock=`
-window.notifications=[];window.sriPackNotify=(message,kind)=>window.notifications.push({message,kind});
+window.reopenRequests=[];window.notifications=[];window.sriPackNotify=(message,kind)=>window.notifications.push({message,kind});
 window.sriGetSupabaseClient=async()=>({
  auth:{getUser:async()=>({data:{user:{id:'admin'}}}),onAuthStateChange:()=>{}},
  from:()=>({select:()=>({eq:()=>({single:async()=>({data:{id:'admin',role:'admin'}})})})}),
  rpc:async(name,args)=>{
   if(name==='sri_p03_history_snapshots')return {data:args.p_day==='2026-11-23'?[{id:'s23',operational_day:args.p_day,created_at:'2026-11-23T18:00Z'}]:[]};
   if(name==='sri_p03_history_tasks')return {data:[{protocol_number:'P23',operator_name:'Operador',team_name:'Equipe A'}]};
+  if(name==='sri_p03_reopen_candidate')return {data:{id:'closed-task',protocol_number:args.p_protocol,operator_name:'Operador sintético',operational_day:'2026-11-25',treatment_status:'OUTROS',work_status:'completed_in_tool',updated_at:'2026-11-25T10:00Z',can_reopen:true}};
+  if(name==='sri_p03_reopen_task'){window.reopenRequests.push(args);return {data:{id:args.p_task,work_status:'pending'}};}
   if(name==='sri_monitor_read')return {data:[{id:'100',severity:'FATAL',module:'Supabase',code:'RPC_ERROR',responsavel:'Operador sintético',version:'pacote03-20261124',occurred_at:'2026-11-25T10:00Z',occurrences:2}]};
   if(name==='sri_p03_rpc_metrics')return {data:{calls:2,errors:1,average_ms:30,p95_ms:40,maximum_ms:40}};
   if(name==='sri_p03_monitor_occurrences')return {data:[{id:'1',event_id:'100',occurred_at:'2026-11-25T10:00Z'},{id:'2',event_id:'100',occurred_at:'2026-11-25T10:01Z'}]};
@@ -130,7 +148,7 @@ window.sriGetSupabaseClient=async()=>({
 `;
 const folder=mkdtempSync(join(tmpdir(),'sri-p03-browser-'));
 const fixture=join(folder,'fixture.html');
-writeFileSync(fixture,'<!doctype html><meta charset="utf-8"><div id="overview"></div><div id="operator"></div><div id="v20-settings"></div><section id="agents"><div class="card"><h3>Gráfico sintético</h3><div id="chart-areas"><svg xmlns="http://www.w3.org/2000/svg" width="200" height="60"><text x="5" y="20">10</text></svg></div></div></section><script>'+mock+harness+'</script><script>'+source+'</script><script>'+probe+'</script>');
+writeFileSync(fixture,'<!doctype html><meta charset="utf-8"><div id="overview"></div><div id="operator"></div><div id="v20-settings"></div><div id="v20-pending"></div><section id="agents"><div class="card"><h3>Gráfico sintético</h3><div id="chart-areas"><svg xmlns="http://www.w3.org/2000/svg" width="200" height="60"><text x="5" y="20">10</text></svg></div></div></section><script>'+mock+harness+'</script><script>'+source+'</script><script>'+probe+'</script>');
 const chromium=process.env.CHROME_BIN||['/usr/bin/chromium','/usr/bin/google-chrome'].find(existsSync);
 assert.ok(chromium);
 const dom=execFileSync(chromium,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--disable-background-networking','--virtual-time-budget=1500','--user-data-dir='+join(folder,'profile'),'--dump-dom','file://'+fixture],{encoding:'utf8',timeout:60000,maxBuffer:8*1024*1024});
@@ -139,5 +157,6 @@ assert.match(dom,/<body[^>]*data-history="PASS"/);
 assert.match(dom,/<body[^>]*data-monitor="PASS"/);
 assert.match(dom,/<body[^>]*data-treatments="PASS"/);
 assert.match(dom,/<body[^>]*data-graph="PASS"/);
+assert.match(dom,/<body[^>]*data-reopen="PASS"/);
 assert.doesNotMatch(dom,/<body[^>]*data-error=/);
 console.log('PASS: Chromium executou filtros múltiplos, colunas, favoritos por conta e consulta histórica por data sem reaproveitar recorte vazio.');

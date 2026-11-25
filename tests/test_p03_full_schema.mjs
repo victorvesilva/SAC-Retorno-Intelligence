@@ -22,7 +22,7 @@ for(const policy of rls.policies){
  await db.exec(ddl);
 }
 await db.exec('SET check_function_bodies=on');
-const files=['2026-11-24_sri_pacote03_historico_carteira.sql','2026-11-24_sri_pacote03_produtividade.sql','2026-11-24_sri_pacote03_protecao_incidentes.sql','2026-11-24_sri_criticos_persistencia_status.sql','2026-11-24_sri_p03_historico_datas.sql','2026-11-24_sri_p03_perfil_assistente.sql','2026-11-25_sri_p03_historico_imutavel.sql','2026-11-25_sri_p03_escopo_publicacao.sql','2026-11-25_sri_p03_metricas_rpc.sql','2026-11-25_sri_p03_produtividade_carga.sql','2026-11-25_sri_p03_monitor_ocorrencias.sql','2026-11-25_sri_p03_continuidade_carteira.sql','2026-11-25_sri_p03_auditoria_contexto.sql'];
+const files=['2026-11-24_sri_pacote03_historico_carteira.sql','2026-11-24_sri_pacote03_produtividade.sql','2026-11-24_sri_pacote03_protecao_incidentes.sql','2026-11-24_sri_criticos_persistencia_status.sql','2026-11-24_sri_p03_historico_datas.sql','2026-11-24_sri_p03_perfil_assistente.sql','2026-11-25_sri_p03_historico_imutavel.sql','2026-11-25_sri_p03_escopo_publicacao.sql','2026-11-25_sri_p03_metricas_rpc.sql','2026-11-25_sri_p03_produtividade_carga.sql','2026-11-25_sri_p03_monitor_ocorrencias.sql','2026-11-25_sri_p03_continuidade_carteira.sql','2026-11-25_sri_p03_auditoria_contexto.sql','2026-11-25_sri_p03_escopo_apuracao_geral.sql','2026-11-25_sri_p03_guard_distribuicao_fechada.sql','2026-11-25_sri_p03_reabertura_protocolo.sql'];
 for(const file of files){await db.exec(readFileSync(new URL('../sql/'+file,import.meta.url),'utf8'));console.log('PASS migration '+file);}
 
 // Use today's civil date for flows whose production authorization requires the current day.
@@ -212,6 +212,56 @@ await db.exec('RESET ROLE');
 console.log('PASS: RLS da apuração geral impede leitura de outro importador e edição de carteira fora da equipe, mantendo visão administrativa.');
 
 await db.exec(readFileSync(new URL('../sql/2026-11-25_sri_p03_guard_distribuicao_fechada.sql',import.meta.url),'utf8'));
+
+await db.exec(readFileSync(new URL('../sql/2026-11-25_sri_p03_reabertura_protocolo.sql',import.meta.url),'utf8'));
+for(const [actor,protocol]of [[10,'ReopenAdmin'],[11,'ReopenManager']]){
+ await db.exec('RESET ROLE');
+ await db.exec("INSERT INTO daily_operator_tasks(snapshot_id,team_id,operational_day,shift_label,protocol_number,operator_user_id,source_status) VALUES ("+id(14)+","+id(6)+",'2026-11-25','Tarde',$$"+protocol+"$$,"+id(2)+",'AGENTE')");
+ await db.exec('SET request.jwt.claim.sub='+id(2)+'; SET ROLE authenticated');
+ const row=(await db.query('SELECT id,updated_at FROM daily_operator_tasks WHERE protocol_number=$1',[protocol])).rows[0];
+ await db.query("SELECT sri_record_treatment_v2($1,'OUTROS','Encerramento sintético',$2,$3)",[row.id,row.updated_at,'00000000-0000-0000-0000-'+String(actor+100).padStart(12,'0')]);
+ for(const forbidden of [1,2,4,12]){
+  await db.exec('RESET ROLE; SET request.jwt.claim.sub='+id(forbidden)+'; SET ROLE authenticated');
+  await assert.rejects(db.query('SELECT sri_p03_reopen_candidate($1)',[protocol]),/exclusiva/);
+  await assert.rejects(db.query('SELECT sri_p03_reopen_task($1,$2,$3)',[row.id,row.updated_at,'Tentativa não autorizada']),/exclusiva/);
+ }
+ await db.exec('RESET ROLE; SET request.jwt.claim.sub='+id(actor)+'; SET ROLE authenticated');
+ const candidate=(await db.query('SELECT sri_p03_reopen_candidate($1) result',[protocol])).rows[0].result;
+ assert.equal(candidate.can_reopen,true);
+ await assert.rejects(db.query('SELECT sri_p03_reopen_task($1,$2,$3)',[candidate.id,candidate.updated_at,'   ']),/Justificativa obrigatória/);
+ const result=(await db.query('SELECT sri_p03_reopen_task($1,$2,$3) result',[candidate.id,candidate.updated_at,'Encerramento indevido confirmado pela gestão'])).rows[0].result;
+ assert.equal(result.work_status,'pending');
+ await assert.rejects(db.query('SELECT sri_p03_reopen_task($1,$2,$3)',[candidate.id,candidate.updated_at,'Repetição de tentativa']),/alterado|não está concluído/);
+ const task=(await db.query('SELECT active,source_status,treatment_status FROM daily_operator_tasks WHERE id=$1',[result.id])).rows[0];
+ assert.equal(task.active,true);assert.equal(task.source_status,'AGENTE');assert.equal(task.treatment_status,null);
+ await db.exec('RESET ROLE');
+ const events=(await db.query("SELECT action FROM daily_operator_treatments WHERE task_id=$1",[row.id])).rows;
+ assert.deepEqual(events.map(event=>event.action),['OUTROS'],'reabertura não altera a tratativa anterior');
+ const audit=(await db.query("SELECT details FROM audit_events WHERE action='TASK_REOPENED' AND object_id=$1",[result.id])).rows;
+ assert.equal(audit.length,1);assert.equal(audit[0].details.reason,'Encerramento indevido confirmado pela gestão');
+ assert.equal(audit[0].details.actor_role_at_event,actor===10?'admin':'manager');
+}
+
+await db.exec('RESET ROLE; SET request.jwt.claim.sub='+id(11));
+await db.exec(`
+INSERT INTO daily_result_snapshots(id,operational_day,shift_label,reference_serial,imported_by,payload_sha256,payload_gzip,protocol_count,created_at)
+VALUES (${id(22)},(now() AT TIME ZONE 'America/Sao_Paulo')::date-1,'Tarde',1,${id(11)},repeat('7',64),repeat('x',20),1,now()-interval '1 day');
+INSERT INTO daily_operator_tasks(id,snapshot_id,team_id,operational_day,shift_label,protocol_number,operator_user_id,source_status,work_status,treatment_status,active,completed_operational_day)
+VALUES (${id(23)},${id(22)},${id(6)},(now() AT TIME ZONE 'America/Sao_Paulo')::date-1,'Tarde','ReopenPast',${id(2)},'AGENTE','completed_in_tool','OUTROS',false,(now() AT TIME ZONE 'America/Sao_Paulo')::date-1);
+INSERT INTO daily_operator_treatments(task_id,actor_id,action,notes,created_at)
+VALUES (${id(23)},${id(2)},'OUTROS','Evento sintético do dia anterior',now()-interval '1 day');
+SET ROLE authenticated;
+`);
+const past=(await db.query("SELECT sri_p03_reopen_candidate('ReopenPast') result")).rows[0].result;
+const reopened=(await db.query("SELECT sri_p03_reopen_task($1,$2,$3) result",[past.id,past.updated_at,'Correção de encerramento do dia anterior'])).rows[0].result;
+assert.notEqual(reopened.id,past.id,'reabertura de dia anterior cria atribuição atual');
+await db.exec('RESET ROLE');
+const prior=(await db.query('SELECT work_status,treatment_status,active FROM daily_operator_tasks WHERE id='+id(23))).rows[0];
+assert.deepEqual(prior,{work_status:'completed_in_tool',treatment_status:'OUTROS',active:false});
+const current=(await db.query('SELECT active,work_status,carried_from_task_id FROM daily_operator_tasks WHERE id=$1',[reopened.id])).rows[0];
+assert.equal(current.active,true);assert.equal(current.work_status,'pending');assert.equal(current.carried_from_task_id,past.id);
+assert.equal(Number((await db.query('SELECT count(*) FROM daily_operator_treatments WHERE task_id='+id(23))).rows[0].count),1);
+console.log('PASS: somente Administrador/Gestor reabre com justificativa obrigatória, preservando autoria, histórico e origem SIGO.');
 await db.exec("INSERT INTO sri_general_day_closures(operational_day,snapshot_id,protocol_count) VALUES ('2026-11-25',"+id(13)+",2)");
 await db.exec('SET ROLE authenticated');
 await assert.rejects(db.query("UPDATE daily_result_distributions SET revision=revision+1,updated_by=auth.uid() WHERE snapshot_id="+id(13)),/encerrado|bloqueada/i);

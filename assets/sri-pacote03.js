@@ -42,7 +42,7 @@ actorFilter.addEventListener('input',render);moduleFilter?.addEventListener('inp
 const metrics=document.createElement('div');metrics.className='v20-grid';section.append(metrics);const latency=document.createElement('p');latency.setAttribute('role','status');if(monitor)section.append(latency);
 const critical=document.createElement('p');critical.setAttribute('role','alert');critical.hidden=true;if(monitor)section.append(critical);
 const alerted=new Set();
-const status=document.createElement('p');status.setAttribute('role','status');section.append(status);const wrap=document.createElement('div');wrap.style.overflow='auto';wrap.style.maxHeight='500px';const table=document.createElement('table');table.className='v20-table';wrap.append(table);section.append(wrap);let rows=[],cursor=null,request=0,incidents=new Map();const cols=monitor?[['occurred_at','Data/hora'],['severity','Nível'],['module','Módulo'],['code','Código'],['responsavel','Responsável'],['version','Versão'],['occurrences','Ocorrências'],['last_at','Última ocorrência']]:[['occurred_at','Data/hora'],['protocol','Protocolo'],['base','Base'],['area','Área'],['action','Movimentação'],['anterior','Anterior'],['novo','Novo'],['responsavel','Responsável'],['perfil','Perfil'],['origin','Origem da ação']];
+const status=document.createElement('p');status.setAttribute('role','status');section.append(status);const wrap=document.createElement('div');wrap.style.overflow='auto';wrap.style.maxHeight='500px';const table=document.createElement('table');table.className='v20-table';wrap.append(table);section.append(wrap);let rows=[],cursor=null,request=0,incidents=new Map();const cols=monitor?[['occurred_at','Data/hora'],['severity','Nível'],['module','Módulo'],['code','Código'],['responsavel','Responsável'],['version','Versão'],['occurrences','Ocorrências'],['last_at','Última ocorrência']]:[['occurred_at','Data/hora'],['protocol','Protocolo'],['base','Base'],['area','Área'],['action','Movimentação'],['anterior','Anterior'],['novo','Novo'],['responsavel','Responsável'],['perfil','Perfil'],['origin','Origem da ação'],['justificativa','Justificativa']];
 function render(){metrics.replaceChildren();table.replaceChildren();const hr=table.createTHead().insertRow();for(const [,label] of cols){const th=document.createElement('th');th.textContent=label;hr.append(th)}if(monitor){const th=document.createElement('th');th.textContent='Incidente';hr.append(th)}const body=table.createTBody(),q=search.value.toLowerCase().trim();const filtered=rows.filter(matches);const cards=monitor?['SUCCESS','INFO','WARN','ERROR','FATAL'].map(k=>[k,filtered.filter(r=>r.severity===k).reduce((n,r)=>n+Number(r.occurrences||1),0)]):[['Movimentações',filtered.length],['Protocolos distintos',new Set(filtered.map(r=>r.protocol).filter(Boolean)).size],['Tipos de ação',new Set(filtered.map(r=>r.action).filter(Boolean)).size]];for(const [label,value] of cards){const card=document.createElement('div');card.className='v20-stat';const l=document.createElement('span');l.textContent=label;const b=document.createElement('b');b.textContent=String(value);card.append(l,b);metrics.append(card);}for(const r of filtered){const tr=body.insertRow();for(const [k] of cols)cell(tr,k.endsWith('_at')&&r[k]?new Date(r[k]).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}):r[k]);
  if(monitor){
   const td=document.createElement('td');tr.append(td);
@@ -102,7 +102,7 @@ if(monitor){
 }
 const batch=(data||[]).map(row=>{
  if(monitor)return row;
- const actions={TASK_ASSIGNED:'Atribuição',TASK_CARRIED:'Continuidade da atribuição',TASK_REASSIGNED:'Redistribuição',TASK_ACTIVATED:'Ativação',TASK_ARCHIVED:'Arquivamento da atribuição',TASK_METADATA_CHANGED:'Atualização dos dados do protocolo',DAY_TASK_TREATMENT:'Registro de tratativa',STATUS_RECONCILIATION:'Decisão de conciliação',GENERAL_OPERATOR_TASKS_PUBLISHED:'Publicação de carteiras',P03_UNFINISHED_CARRIED:'Preservação de pendências'};
+ const actions={TASK_ASSIGNED:'Atribuição',TASK_CARRIED:'Continuidade da atribuição',TASK_REASSIGNED:'Redistribuição',TASK_ACTIVATED:'Ativação',TASK_ARCHIVED:'Arquivamento da atribuição',TASK_METADATA_CHANGED:'Atualização dos dados do protocolo',DAY_TASK_TREATMENT:'Registro de tratativa',STATUS_RECONCILIATION:'Decisão de conciliação',GENERAL_OPERATOR_TASKS_PUBLISHED:'Publicação de carteiras',P03_UNFINISHED_CARRIED:'Preservação de pendências',TASK_REOPENED:'Reabertura de protocolo'};
  const roles={admin:'Administrador',manager:'Gestor',supervisor:'Supervisor',assistant:'Assistente',operator:'Operador',viewer:'Consulta'};
  return {...row,action:actions[row.action]||row.action,perfil:roles[row.perfil]||row.perfil,origin:({user:'Usuário autenticado',database:'Banco de dados'})[row.origin]||row.origin};
 });
@@ -296,6 +296,60 @@ function makeManagementHistory(){
  reset();
 }
 
+function makeReopenPanel(){
+ const root=$('v20-pending');if(!root||$('sri-p03-reopen'))return;
+ const section=document.createElement('section');section.id='sri-p03-reopen';section.className='v20-panel';section.style.margin='16px 0';
+ const heading=document.createElement('h3');heading.textContent='Reabrir protocolo concluído';section.append(heading);
+ const note=document.createElement('p');note.textContent='Correção de encerramento indevido pelo operador. A reabertura exige justificativa e mantém o histórico e o status de origem SIGO.';section.append(note);
+ const controls=document.createElement('div');controls.className='v20-row';section.append(controls);
+ const protocol=field(controls,'Protocolo');protocol.maxLength=100;
+ const state=document.createElement('p');state.setAttribute('role','status');section.append(state);
+ const context=document.createElement('div');section.append(context);
+ const form=document.createElement('form');section.append(form);
+ const label=document.createElement('label');label.className='v20-field';label.textContent='Justificativa da reabertura *';
+ const reason=document.createElement('textarea');reason.required=true;reason.maxLength=1500;reason.rows=3;reason.disabled=true;label.append(reason);form.append(label);
+ let candidate=null,request=0,busy=false;
+ const save=button(form,'Reabrir para tratativa',async()=>{
+  if(busy||!candidate)return;
+  if(!reason.checkValidity()||!reason.value.trim()){reason.reportValidity();state.textContent='Informe a justificativa da reabertura.';return;}
+  const selected=candidate,explanation=reason.value.trim();busy=true;save.disabled=true;search.disabled=true;protocol.disabled=true;reason.disabled=true;const sessionEpoch=epoch;
+  try{
+   const auth=await identity();if(!auth||!['admin','manager'].includes(auth.p.role))throw Error('Reabertura exclusiva de Administrador ou Gestor.');
+   const response=await auth.c.rpc('sri_p03_reopen_task',{p_task:selected.id,p_expected:selected.updated_at,p_reason:explanation});
+   if(response.error)throw Error(response.error.message||'Não foi possível reabrir o protocolo.');
+   if(sessionEpoch!==epoch||!section.isConnected)return;
+   candidate=null;form.reset();reason.disabled=true;context.replaceChildren();
+   state.textContent='Protocolo reaberto para nova tratativa. A justificativa foi registrada na auditoria.';
+   window.sriPackNotify?.('Protocolo reaberto para tratativa.','success');
+   void window.sriCloudTreatmentRefresh?.();
+  }catch(error){if(sessionEpoch===epoch&&section.isConnected)state.textContent=window.sriFriendly?.(error.message,'error')||error.message;}
+  finally{busy=false;search.disabled=false;protocol.disabled=false;reason.disabled=!candidate?.can_reopen;save.disabled=!candidate?.can_reopen;}
+ });
+ save.disabled=true;
+ const search=button(controls,'Consultar protocolo',async()=>{
+  if(busy)return;
+  if(!protocol.value.trim()){state.textContent='Informe o protocolo.';return;}
+  if(candidate&&protocol.value.trim()!==candidate.protocol_number&&reason.value.trim()&&!window.confirm('Descartar a justificativa não salva e consultar outro protocolo?')){protocol.value=candidate.protocol_number;return;}
+  const sequence=++request,sessionEpoch=epoch;search.disabled=true;save.disabled=true;state.textContent='Consultando protocolo...';
+  try{
+   const auth=await identity();if(!auth||!['admin','manager'].includes(auth.p.role))throw Error('Reabertura exclusiva de Administrador ou Gestor.');
+   const response=await auth.c.rpc('sri_p03_reopen_candidate',{p_protocol:protocol.value.trim()});
+   if(response.error)throw Error(response.error.message||'Consulta indisponível.');
+   if(sequence!==request||sessionEpoch!==epoch||!section.isConnected)return;
+   if(candidate?.id!==response.data?.id)reason.value='';
+   candidate=response.data;context.replaceChildren();reason.disabled=!candidate?.can_reopen;save.disabled=!candidate?.can_reopen;
+   if(!candidate){state.textContent='Nenhum protocolo encontrado.';return;}
+   const description=document.createElement('p');description.textContent='Protocolo '+candidate.protocol_number+' · '+candidate.operator_name+' · '+candidate.operational_day+' · '+(candidate.treatment_status||'Sem status');context.append(description);
+   state.textContent=candidate.can_reopen?'Confirme a justificativa para reabrir.':'O protocolo não está concluído na ferramenta.';
+  }catch(error){if(sequence===request&&sessionEpoch===epoch){candidate=null;context.replaceChildren();reason.disabled=true;state.textContent=window.sriFriendly?.(error.message,'error')||error.message;}}
+  finally{if(sequence===request)search.disabled=false;}
+ });
+ protocol.addEventListener('input',()=>{++request;search.disabled=false;save.disabled=true;state.textContent='Consulte o protocolo antes de confirmar a reabertura.';});
+ protocol.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();search.click();}});
+ form.addEventListener('submit',event=>{event.preventDefault();save.click();});
+ root.append(section);
+}
+
 function makeDashboardNavigation(){
  const routes=[['overview','Visão Geral'],['agents','Desempenho'],['priorities','Riscos Operacionais'],['intelligence','Evolução Histórica']];
  for(const [sectionId]of routes){
@@ -350,8 +404,8 @@ function makeGraphExports(){
  }
 }
 
-function clear(){document.querySelectorAll('.sri-p03-chart-nav,.sri-p03-chart-export').forEach(node=>node.remove());document.getElementById('overview')?.classList.remove('sri-p03-historical');$('sri-p03-reconcile')?.remove();$('sri-p03-go-history')?.remove();epoch++;client=null;profile=null;userId=null;seen.clear();$('sri-monitor-panel')?.remove();$('sri-movement-panel')?.remove();$('sri-p03-productivity')?.remove();}
-let checking=false;async function refresh(){if(checking)return;checking=true;const e=epoch;try{const a=await identity();if(e!==epoch)return;if(!a){if(profile)clear();return;}if(userId!==a.p.id||profile?.role!==a.p.role){clear();client=a.c;profile=a.p;userId=a.p.id;log('SUCCESS','AUTH_OK','Autenticação');}if(profile.role==='operator')makePendingPanel();else $('sri-p03-reconcile')?.remove();if(profile.role==='admin')make($('v20-settings'),'sri-monitor-panel',true);else $('sri-monitor-panel')?.remove();if(['admin','manager','supervisor','assistant'].includes(profile.role)){makeManagementHistory();makeDashboardNavigation();makeGraphExports();make($('reports'),'sri-movement-panel',false);makeProductivity($('reports'));}else {$('sri-movement-panel')?.remove();$('sri-p03-productivity')?.remove();}}catch(_){}finally{checking=false;}}
+function clear(){$('sri-p03-reopen')?.remove();document.querySelectorAll('.sri-p03-chart-nav,.sri-p03-chart-export').forEach(node=>node.remove());document.getElementById('overview')?.classList.remove('sri-p03-historical');$('sri-p03-reconcile')?.remove();$('sri-p03-go-history')?.remove();epoch++;client=null;profile=null;userId=null;seen.clear();$('sri-monitor-panel')?.remove();$('sri-movement-panel')?.remove();$('sri-p03-productivity')?.remove();}
+let checking=false;async function refresh(){if(checking)return;checking=true;const e=epoch;try{const a=await identity();if(e!==epoch)return;if(!a){if(profile)clear();return;}if(userId!==a.p.id||profile?.role!==a.p.role){clear();client=a.c;profile=a.p;userId=a.p.id;log('SUCCESS','AUTH_OK','Autenticação');}if(['admin','manager'].includes(profile.role))makeReopenPanel();else $('sri-p03-reopen')?.remove();if(profile.role==='operator')makePendingPanel();else $('sri-p03-reconcile')?.remove();if(profile.role==='admin')make($('v20-settings'),'sri-monitor-panel',true);else $('sri-monitor-panel')?.remove();if(['admin','manager','supervisor','assistant'].includes(profile.role)){makeManagementHistory();makeDashboardNavigation();makeGraphExports();make($('reports'),'sri-movement-panel',false);makeProductivity($('reports'));}else {$('sri-movement-panel')?.remove();$('sri-p03-productivity')?.remove();}}catch(_){}finally{checking=false;}}
 async function checkCritical(){
  const currentEpoch=epoch;
  try{

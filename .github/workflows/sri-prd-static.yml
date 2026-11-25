@@ -37,6 +37,7 @@ jobs:
           node tests/test_p03_rpc_monitor.mjs
           node tests/test_p03_wallet_volume.mjs
           node tests/test_p03_metadata.mjs
+          node tests/test_p03_session_cache.mjs
       - name: Instalar PostgreSQL isolado para as migrações históricas
         run: npm install --prefix /tmp/sri-postgres --no-audit --no-fund --ignore-scripts @electric-sql/pglite@0.6.0
       - name: Validar migrações históricas e permissões em PostgreSQL sintético

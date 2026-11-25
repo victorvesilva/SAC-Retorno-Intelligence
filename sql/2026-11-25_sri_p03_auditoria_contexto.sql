@@ -69,7 +69,7 @@ BEGIN
  'base',e.details->>'event_base','area',e.details->>'event_area',
  'responsavel',coalesce(e.details->>'actor_name_at_event',actor.full_name,'Banco de dados / autoria não informada'),
  'perfil',coalesce(e.details->>'actor_role_at_event','Não registrado'),
- 'origin',coalesce(e.details->>'event_origin','Não registrado'),
+ 'origin',coalesce(e.details->>'event_origin','Não registrado'),'justificativa',coalesce(e.details->>'reason',e.details->>'justification'),
  'anterior',coalesce(e.details->>'previous_treatment_status',e.details->>'previous_value'),
  'novo',coalesce(e.details->>'treatment_status',e.details->>'new_value'),'object_type',e.object_type)
  FROM public.audit_events e
