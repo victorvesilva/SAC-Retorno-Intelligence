@@ -1,0 +1,83 @@
+{
+  "backlog": "docs/pacote-03-consulta@7fc125e44be85cfe1eb6d36ace084e851e3c0c16:docs/backlog-pacote-03.md",
+  "migrations": [
+    {
+      "path": "sql/2026-11-24_sri_pacote03_historico_carteira.sql",
+      "sha256": "2920f7f3d679c047f0de3864194c441732b552ae63a774b97b8b0aa697ddaf1a"
+    },
+    {
+      "path": "sql/2026-11-24_sri_pacote03_produtividade.sql",
+      "sha256": "2973b2f5f11ac4aa8309428d5c92994f979bc2dd97e508b0d927fe80f5372076"
+    },
+    {
+      "path": "sql/2026-11-24_sri_pacote03_protecao_incidentes.sql",
+      "sha256": "3ef50632585d713c306cb494ea48d2f656600afb0dcb1ccb13bb776718c2eaed"
+    },
+    {
+      "path": "sql/2026-11-24_sri_criticos_persistencia_status.sql",
+      "sha256": "9a795939df9bb910251a9ac91d68922bc706d86e47d13894cff17417a3a7964a"
+    },
+    {
+      "path": "sql/2026-11-24_sri_p03_historico_datas.sql",
+      "sha256": "65ddd25c0559452932347abe3ae00f1540311f7f85593b4c97ecde5118b42a5c"
+    },
+    {
+      "path": "sql/2026-11-24_sri_p03_perfil_assistente.sql",
+      "sha256": "72dfdb55b155572c88d5b982d851072650ee63a457002160f344e20a787c5a11"
+    },
+    {
+      "path": "sql/2026-11-25_sri_p03_historico_imutavel.sql",
+      "sha256": "5c60e79d523b99cf2564ad54d71440a6dac85ed33ccf7509801d820539a894be"
+    },
+    {
+      "path": "sql/2026-11-25_sri_p03_escopo_publicacao.sql",
+      "sha256": "ac7714f36a3c7961ad91270a92536ad9070a862a96eb9816d906c83f03a979db"
+    },
+    {
+      "path": "sql/2026-11-25_sri_p03_metricas_rpc.sql",
+      "sha256": "fab15eff9d96790e228a3624ee8c4fffe6ab553a443bc398a5906d74253b1845"
+    },
+    {
+      "path": "sql/2026-11-25_sri_p03_produtividade_carga.sql",
+      "sha256": "034f7db27770e81dd80f2152f14fba68f5c185800337e687591056ac2bc25e56"
+    },
+    {
+      "path": "sql/2026-11-25_sri_p03_monitor_ocorrencias.sql",
+      "sha256": "681e5e20776d97eb7cecb84a12e2648dbb7323da4cbc248470db6f66d22a0b5f"
+    },
+    {
+      "path": "sql/2026-11-25_sri_p03_continuidade_carteira.sql",
+      "sha256": "a6501ce633150b131f2dbc33f82ec06b5384feef5389d54adf4d3bef94d58877"
+    },
+    {
+      "path": "sql/2026-11-25_sri_p03_auditoria_contexto.sql",
+      "sha256": "eedcacadbdd2c184007062d79a8089b7a526c3121c14959a4c91bd6d80bea88e"
+    },
+    {
+      "path": "sql/2026-11-25_sri_p03_escopo_apuracao_geral.sql",
+      "sha256": "7f2a90b347d6f4ccbc3d75e89984e337cdb9566805ce7cac5236f80488d623db"
+    },
+    {
+      "path": "sql/2026-11-25_sri_p03_guard_distribuicao_fechada.sql",
+      "sha256": "d89c57393f0e8be14ed152903552b71e7fe5fcf50b219008f5a8872cc5901ca6"
+    },
+    {
+      "path": "sql/2026-11-25_sri_p03_reabertura_protocolo.sql",
+      "sha256": "4e30fa2d9cb1d09d01cc2d475cea4ee8905ae2c2e1b246085c6517d50bce27c4"
+    },
+    {
+      "path": "sql/2026-11-25_sri_p03_relatorios_integrados.sql",
+      "sha256": "d7e388a8d55814f9c187c6ee65db91d530a24365da790ed70523514f0b6b75cb"
+    },
+    {
+      "path": "sql/2026-11-25_sri_p03_meta_conclusao.sql",
+      "sha256": "750c4ccd7bad3956c2d1f82d40037789a5f76fc245f7d27ad0bb79dd241839f7"
+    },
+    {
+      "path": "sql/2026-11-25_sri_p03_vinculo_auditoria_monitor.sql",
+      "sha256": "ea81dc786c7c6dce2bc11711469269482fd504ebf9f97529be81e463d49cfe4d"
+    }
+  ],
+  "bundle": "sql/2026-11-25_sri_p03_release_integral.sql",
+  "bundle_sha256": "76168b458b2466d6164ac762d2d08ee3ad57c8c5b5509e62ebf6c8f1a9065645"
+}

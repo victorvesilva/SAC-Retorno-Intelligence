@@ -1,4 +1,5 @@
 BEGIN;
+ALTER TABLE private.sri_p03_monitor_occurrences ADD COLUMN IF NOT EXISTS error_code text, ADD COLUMN IF NOT EXISTS http_status integer;
 CREATE TABLE IF NOT EXISTS private.sri_p03_monitor_audit_links(
  occurrence_id bigint PRIMARY KEY REFERENCES private.sri_p03_monitor_occurrences(id) ON DELETE RESTRICT,
  event_id bigint NOT NULL REFERENCES private.sri_monitor_events(id) ON DELETE RESTRICT,
@@ -32,9 +33,39 @@ RETURNS SETOF jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' 
 BEGIN
  IF NOT EXISTS(SELECT 1 FROM public.profiles WHERE id=auth.uid() AND role='admin') THEN RAISE EXCEPTION 'Acesso exclusivo ao administrador'; END IF;
  RETURN QUERY SELECT jsonb_build_object('id',o.id::text,'event_id',o.event_id::text,'occurred_at',o.occurred_at,
-  'audit_id',a.id::text,'audit_at',a.occurred_at,'protocol',a.details->>'event_protocol','action',a.action)
+  'error_code',o.error_code,'http_status',o.http_status,'audit_id',a.id::text,'audit_at',a.occurred_at,'protocol',a.details->>'event_protocol','action',a.action)
  FROM private.sri_p03_monitor_occurrences o LEFT JOIN private.sri_p03_monitor_audit_links l ON l.occurrence_id=o.id
  LEFT JOIN public.audit_events a ON a.id=l.audit_id WHERE o.event_id=p_event AND (p_before IS NULL OR o.id<p_before)
  ORDER BY o.id DESC LIMIT 200;
+END $$;
+
+CREATE OR REPLACE FUNCTION private.sri_p03_monitor_error(p_rpc boolean,p_error_code text,p_http_status integer)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE previous_id bigint; safe_code text;
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM public.profiles WHERE id=auth.uid()) THEN RAISE EXCEPTION 'Sessão obrigatória'; END IF;
+ safe_code:=CASE WHEN p_error_code ~ '^[A-Z0-9]{5,10}$' THEN p_error_code END;
+ PERFORM pg_advisory_xact_lock(hashtextextended('sri-monitor:'||auth.uid()::text,0));
+ SELECT max(id) INTO previous_id FROM private.sri_p03_monitor_occurrences WHERE actor_id=auth.uid();
+ PERFORM private.sri_monitor_write('ERROR',CASE WHEN p_rpc THEN 'RPC_ERROR' ELSE 'REST_ERROR' END,'Supabase','pacote03-20261124');
+ UPDATE private.sri_p03_monitor_occurrences SET error_code=safe_code,
+ http_status=CASE WHEN p_http_status BETWEEN 400 AND 599 THEN p_http_status END
+ WHERE actor_id=auth.uid() AND id>coalesce(previous_id,0);
+END $$;
+CREATE OR REPLACE FUNCTION public.sri_p03_monitor_error(p_rpc boolean,p_error_code text,p_http_status integer)
+RETURNS void LANGUAGE sql SECURITY INVOKER SET search_path='' AS $$ SELECT private.sri_p03_monitor_error(p_rpc,p_error_code,p_http_status) $$;
+REVOKE ALL ON FUNCTION private.sri_p03_monitor_error(boolean,text,integer),public.sri_p03_monitor_error(boolean,text,integer) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION private.sri_p03_monitor_error(boolean,text,integer),public.sri_p03_monitor_error(boolean,text,integer) TO authenticated;
+CREATE OR REPLACE FUNCTION private.sri_monitor_read(p_from timestamptz,p_to timestamptz,p_level text,p_before bigint DEFAULT NULL)
+RETURNS SETOF jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM public.profiles WHERE id=auth.uid() AND role='admin') THEN RAISE EXCEPTION 'Acesso exclusivo ao administrador'; END IF;
+ IF p_from IS NULL OR p_to IS NULL OR p_to<=p_from OR p_to-p_from>interval '367 days' THEN RAISE EXCEPTION 'Período inválido'; END IF;
+ RETURN QUERY SELECT jsonb_build_object('id',e.id::text,'occurred_at',e.occurred_at,'last_at',e.last_at,
+ 'severity',e.severity,'code',e.code,'module',e.module,'version',e.version,'occurrences',e.occurrences,'responsavel',p.full_name,
+ 'technical_codes',(SELECT string_agg(DISTINCT o.error_code,', ' ORDER BY o.error_code) FROM private.sri_p03_monitor_occurrences o WHERE o.event_id=e.id))
+ FROM private.sri_monitor_events e LEFT JOIN public.profiles p ON p.id=e.actor_id
+ WHERE e.occurred_at>=p_from AND e.occurred_at<p_to AND (p_level IS NULL OR e.severity=p_level)
+ AND (p_before IS NULL OR e.id<p_before) ORDER BY e.id DESC LIMIT 200;
 END $$;
 COMMIT;

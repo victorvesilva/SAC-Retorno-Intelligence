@@ -19,6 +19,7 @@ rows.push(t('P1','ACEITOU','2026-11-26'));result=model.goalResults(rows,goals,tr
 assert.equal(result[0].percentage,100);assert.equal(result[1].conclusions,1,'nova conclusão no dia seguinte não altera resultado anterior');
 assert.equal(model.work([]).percentage,null);assert.equal(model.filter(rows,{team:'Outra'}).length,0);
 assert.equal(model.goalResults(rows,[],false)[0].goal,null,'ausência de meta permanece explícita');
+assert.equal(model.work([t('Legacy','completed_in_tool'),t('Legacy','note','2026-11-25','11')]).conclusions,1,'nota legada não desfaz conclusão nem reescreve o status histórico');
 const sameProtocolOther={...t('P3','OUTROS'),operator_id:'2',operator:'Operador 2'};
 assert.equal(model.summary([...rows,sameProtocolOther]).treated,3,'visão global não soma protocolos compartilhados por operadores');
 assert.equal(model.daily(rows).length,2);

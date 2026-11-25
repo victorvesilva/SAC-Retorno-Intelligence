@@ -8,9 +8,9 @@ const order=(a,b)=>String(a.at||'').localeCompare(String(b.at||''))||(Number(a.a
 function work(rows){
  const events=unique(rows).filter(row=>row.kind==='treatment'||(row.kind==='movement'&&row.action==='TASK_REOPENED')).sort(order);
  const treated=new Set(),last=new Map();
- for(const row of events){if(!row.protocol)continue;if(row.kind==='treatment')treated.add(key(row));last.set(key(row),row);}
+ for(const row of events){if(!row.protocol)continue;if(row.kind==='treatment')treated.add(key(row));if(row.status!=='note'||row.kind!=='treatment')last.set(key(row),row);}
  let conclusions=0;
- for(const protocol of treated){const row=last.get(protocol);if(row?.kind==='treatment'&&completed.has(row.status))conclusions++;}
+ for(const protocol of treated){const row=last.get(protocol);if(row?.kind==='treatment'&&(completed.has(row.status)||row.status==='completed_in_tool'))conclusions++;}
  return {treated:treated.size,conclusions,percentage:treated.size?100*conclusions/treated.size:null};
 }
 function summary(raw){const rows=unique(raw),result=work(rows);return {...result,
@@ -133,7 +133,9 @@ function makeReports(root){
    }else window.sriP03ExportReport(labels[kind.value],columns,exportRows,context,format);
   }catch(error){status.textContent=error.message;}
  });
- button(paging,'Modo apresentação',()=>{panel.classList.toggle('sri-p03-presenting');});
+ const exitPresentation=button(panel,'Sair da apresentação',()=>{panel.classList.remove('sri-p03-presenting');exitPresentation.hidden=true;});exitPresentation.hidden=true;exitPresentation.classList.add('sri-p03-presentation-exit');
+ button(paging,'Modo apresentação',()=>{panel.classList.toggle('sri-p03-presenting');exitPresentation.hidden=!panel.classList.contains('sri-p03-presenting');});
+ panel.addEventListener('keydown',event=>{if(event.key==='Escape'){panel.classList.remove('sri-p03-presenting');exitPresentation.hidden=true;}});
  const favorite=button(controls,'Marcar favorito',()=>{try{const values=JSON.parse(localStorage.getItem(favoriteScope)||'[]');const next=values.includes(kind.value)?values.filter(v=>v!==kind.value):[...values,kind.value];localStorage.setItem(favoriteScope,JSON.stringify(next));readFavorite();}catch(_){status.textContent='Não foi possível salvar a preferência.';}});
  function readFavorite(){favoriteScope='sri.p03.managementReports:'+actor;let list=[];try{list=JSON.parse(localStorage.getItem(favoriteScope)||'[]');}catch(_){}
  favorite.textContent=list.includes(kind.value)?'Remover favorito':'Marcar favorito';for(const option of kind.options)option.textContent=(list.includes(option.value)?'★ ':'')+labels[option.value];}
@@ -182,7 +184,7 @@ window.sriP03GoalPerformance=root=>{if(!root)return;root.replaceChildren();node(
 function clear(){epoch++;window.sriP03OpenAudit=null;actor='';profileRole='';section?.remove();section=null;document.querySelectorAll('.sri-p03-goals-shared').forEach(el=>el.remove());goalsSection=null;}
 let refreshing=false;
 async function refresh(){if(refreshing)return;refreshing=true;const request=epoch;
- try{const a=await auth();if(request!==epoch)return;if(actor!==a.p.id||profileRole!==a.p.role){clear();actor=a.p.id;profileRole=a.p.role;}makeReports($('reports'));}
+ try{const a=await auth();if(request!==epoch)return;if(actor!==a.p.id||profileRole!==a.p.role){clear();actor=a.p.id;profileRole=a.p.role;}makeReports($('reports'));if(document.body.dataset.sriSettingsPage==='goals'&&document.querySelector('.tab-content.active')?.id==='v20-settings')makeGoals($('v20-settings-body'));}
  catch(_){if(actor)clear();}finally{refreshing=false;}}
 function init(){void refresh();window.sriGetSupabaseClient?.().then(c=>c.auth.onAuthStateChange(event=>{if(['SIGNED_IN','SIGNED_OUT','USER_UPDATED'].includes(event)){clear();setTimeout(refresh,0);}})).catch(()=>{});
  setInterval(refresh,15000);}

@@ -32,6 +32,7 @@ jobs:
           node tests/test_p1_pdf_reports.mjs
           node tests/test_p2_retention.mjs
           node tests/test_homologacao_integrada.mjs
+          python tools/build_p03_release.py --check
           node tests/test_p03_critical_release.mjs
           node tests/test_p03_filters.mjs
           node tests/test_p03_rpc_monitor.mjs
@@ -39,6 +40,7 @@ jobs:
           node tests/test_p03_metadata.mjs
           node tests/test_p03_session_cache.mjs
           node tests/test_p03_reporting.mjs
+          node tests/test_p03_monitor_capture.mjs
       - name: Instalar PostgreSQL isolado para as migrações históricas
         run: npm install --prefix /tmp/sri-postgres --no-audit --no-fund --ignore-scripts @electric-sql/pglite@0.6.0
       - name: Validar migrações históricas e permissões em PostgreSQL sintético

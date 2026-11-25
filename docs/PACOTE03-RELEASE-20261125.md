@@ -1,73 +1,62 @@
-# Pacote 03 — preparação de release 25/11/2026
-Estado: NÃO LIBERADO PARA PRODUÇÃO. Branch feat/pacote-03-integridade-monitoramento-20261124.
+# Pacote 03 — release consolidada de 25/11/2026
 
-## Alterações registradas
-- Histórico do operador agrupado por protocolo, linha do tempo, log, pesquisa e paginação.
-- Consulta de tratativas do dia anteriores à distribuição ativa, somente leitura; distingue finalização na ferramenta de resolução confirmada no SIGO.
-- Filtros avançados, atalhos, vencimento, ordenação, paginação, densidade.
-- Central de relatórios: busca, favoritos, PDF 16:9, prévia agregada, CSV, comparação de extrações.
-- Mapa Área × SLA com consulta de protocolos e CSV.
-- Monitoramento e histórico gerencial: contadores no recorte carregado, exportação JSON/CSV, deduplicação.
-- Produtividade por dia/equipe/operador com consulta RLS, gráfico e CSV.
-- Correção de declaração JavaScript duplicada na publicação das carteiras.
-- Gestão Operacional: consulta histórica read-only no Supabase por dia/turno, identificação da fonte e atalho para relatório de dia anterior. O histórico da nuvem contém somente indicadores consolidados; não reconstrói carteira detalhada.
+O desenvolvimento foi consolidado na branch `feat/pacote-03-integridade-monitoramento-20261124`, no PR #42. A matriz `PACOTE03-MATRIZ-125-20261125.csv` confronta individualmente as 120 MEL-071–190 e as cinco prioridades #37–41 com a implementação e suas evidências. A verificação combina testes funcionais em navegador, integração em PostgreSQL, regressão e inspeção. Os níveis de evidência estão indicados por item; a matriz não representa 125 jornadas independentes executadas em produção.
 
-## Dependências e sequência
-1. Conferir branch atual e divergências de main, sem sobrescrever alterações concorrentes.
-2. Verificar SQL previamente aplicado: 2026-11-24_sri_carteira_v2.sql e 2026-11-24_sri_pacote03.sql.
-3. Validar e, apenas na janela de publicação, aplicar migrações pendentes na ordem:
-   - sql/2026-11-24_sri_pacote03_historico_carteira.sql
-   - sql/2026-11-24_sri_pacote03_produtividade.sql
-   - sql/2026-11-24_sri_pacote03_protecao_incidentes.sql (revisar gatilhos e transições antes de aplicar)
-4. Verificar funções, grants, RLS, recortes por perfil e retornos reais. Não atribuir a resolução SIGO ao status completed_in_tool.
-5. Testar login/logout, carteira, tratamento e avanço, atualização e paginação, conciliação, importação/distribuição, relatórios e exportações.
-6. Somente após conclusão do escopo autorizado, confirmação dos testes e ausência de impedimentos: consolidar main, solicitar um único deploy, verificar READY e commit correto. Não repetir deployment bem-sucedido; não contornar quotas nem alterar cobrança.
-7. Caso incompleto ou bloqueado, manter versão anterior e informar precisamente.
+## Regras esclarecidas pelo solicitante
 
-## Verificação realizada
-- Histórico operacional: dados da apuração geral de 23/11/2026 confirmados em `daily_result_snapshots` (1 extração, turno Tarde, 2.678 protocolos monitorados; 2.467 SAC Retorno; 231 WhatsSAC). Mapeamento de metadados e consulta de histórico testados com amostra, sem testar interface autenticada.
-- Correção do histórico registrada nos commits `08614ed`, `46ffc0c`; continua não publicada.
-Análise de sintaxe: 8 scripts clássicos inline do index.html e assets/sri-pacote03.js sem erro de parsing no commit b20d229. Não equivale a testes em navegador, integração autenticada ou validação das migrações.
+- Reabertura de protocolo concluído: somente Administrador/Gestor, com justificativa obrigatória, por encerramento indevido do operador. A carteira concluída é somente leitura. Chamadas antigas de tratativa e alterações diretas não podem reabrir o protocolo.
+- Meta vigente neste pacote: percentual de protocolos concluídos na ferramenta sobre os protocolos distintos trabalhados naquele dia. Usa a última tratativa do protocolo no dia e desconta reabertura posterior no mesmo recorte. Dias sem trabalho não recebem percentual fictício. Metas de movimentação e retrabalho foram expressamente adiadas para implementação futura com a gestão.
+- Concluído na ferramenta não equivale a resolução confirmada no SIGO. A matriz oficial de 13 status mantém separados status de origem, tratativa e `work_status`.
+- A publicação deve ser consolidada no menor número de deployments. Nenhuma branch ou preview novo foi criado para a homologação.
 
-## Lacunas não liberadas
-- Regras completas de conclusão confirmada, reabertura e bloqueio de redistribuição.
-- Consolidação histórica e cobertura de eventos, incidentes e alertas do console.
-- Relatórios especializados e metas, exportações XLSX/PDF específicas, gráficos e indicadores restantes.
-- Testes integrados, auditoria de segurança e desempenho.
-- As 120 MEL não estão integralmente concluídas. Não tratar esta branch como release pronta.
+## Resultado implementado
 
-## 24/11 — candidato para homologação funcional em produção
-O solicitante autorizou homologação de interface e jornada em produção. Isso não dispensa testes técnicos prévios de sintaxe, acesso, migrações, RLS e integridade de dados; não autoriza publicação parcial com falhas conhecidas.
+Base/Área acompanham a fonte persistida, a distribuição, a carteira, o modal e o contexto histórico. Dados ausentes/conflitantes são sinalizados e não inventados. A importação seguinte mantém metadados comprovados e pendências existentes.
 
-Novas implementações candidatas:
-- BUG-GO-001 (#37): Gestão Operacional com seleção de data e snapshot persistido, sem fallback para dados de hoje, e CSV da consulta. Limite: detalhes apenas de protocolos atribuídos no snapshot; não reconstruir extrações completas.
-- MEL-EXTRA-002 (#38): histórico do operador filtrado no servidor pela data real da tratativa, com paginação e fuso America/Sao_Paulo.
-- MEL-EXTRA-003 (#39): suporte a papel assistant, gestão de papéis e migração de permissões/RLS por equipe, pendente de testes comparativos.
-- MEL-EXTRA-004 (#40): notificações em cima por até 4s e navegação Voltar interna.
-- MEL-EXTRA-005 (#41): tabela dos 13 status e proteção de protocolo tratado; históricos legados precisam de conciliação manual.
+Carteiras têm filtros combinados, atalhos, favoritos por conta/equipe, colunas, paginação, densidade, cabeçalho fixo, ordenação e avanço pela ordem filtrada. A consulta por cursor foi validada com 4.201 tarefas ativas e um concluído adicional. Concluídos permanecem somente leitura no dia e ficam no histórico no dia seguinte. Reimportação, turno e transporte de carteira preservam autoria e estados, sem criar tratativas fictícias.
 
-Sequência SQL após conferir dependências:
-1. sql/2026-11-24_sri_pacote03_historico_carteira.sql
-2. sql/2026-11-24_sri_pacote03_produtividade.sql
-3. sql/2026-11-24_sri_pacote03_protecao_incidentes.sql
-4. sql/2026-11-24_sri_criticos_persistencia_status.sql
-5. sql/2026-11-24_sri_p03_historico_datas.sql
-6. sql/2026-11-24_sri_p03_perfil_assistente.sql
+Históricos usam eventos e versões imutáveis desde a instalação. Meu Histórico agrupa protocolos e oferece linha do tempo, log e calendário próprio. Gestão Operacional consulta a data/turno escolhidos e descarta respostas atrasadas. Histórico gerencial registra anterior/novo, autoria/perfil e origem, com acesso por equipe. Contextos que não foram capturados antes da instalação continuam explicitamente ausentes.
 
-Portões pré-produção: backup verificável; revisar grants, RLS, SECURITY DEFINER e proteção contra reatribuição de carteiras; executar CI e testes sintéticos; preparar rollback; confirmar versão do commit antes de um único deploy e smoke test em produção.
-Os previews automáticos estão desativados para evitar consumo da cota.
+Console exclusivo do Administrador tem captura automática de erros JavaScript/promessas, falhas RPC/PostgREST, códigos técnicos sanitizados, níveis, período/responsável/módulo, métricas reais de duração RPC, agrupamento com ocorrências individuais, incidentes com transições/CAS, alerta interno FATAL e exportações. Ocorrências geradas por auditoria possuem vínculo real para a movimentação correspondente. Mensagens, argumentos, respostas, URLs e segredos não são enviados à telemetria. Não há expurgo automático de logs.
 
-Limitação: não se comprovou ainda a conclusão das 120 MEL-071 a MEL-190; permanecer com bloqueio de liberação integral do Pacote 03 até auditoria do escopo.
+Relatórios por período integram atribuições, tratativas, importações, conciliações, fechamentos e auditoria. Incluem Resumo Executivo, desempenho por equipe, produtividade por operador, metas/resultados diários, evolução, SLA/criticidade, jornada, importações e auditoria. Tabelas, gráficos, comparação de períodos e exportações compartilham os filtros e o mesmo modelo de contagem. Metas publicadas são compartilhadas, versionadas e protegidas por equipe e concorrência. Rascunhos locais anteriores continuam preservados.
 
-## Continuação com o backlog de consulta em 25/11/2026
+Os gráficos existentes foram mantidos e organizados em quatro grupos. Há detalhamento, exportação individual em PDF com contexto, série diária, composição por status, evolução das extrações e indicadores de conciliação/reabertura. O tema claro obrigatório permanece ativo; estilos de compatibilidade não reativam modo escuro.
 
-Fonte lida em `docs/pacote-03-consulta@7fc125e44be85cfe1eb6d36ace084e851e3c0c16`, arquivo `docs/backlog-pacote-03.md`. As 125 entradas, os critérios derivados e as ressalvas estão relacionados em `PACOTE03-MATRIZ-125-20261125.csv`. A definição das 120 MEL foi localizada. Os critérios reconstruídos seguem sujeitos às ressalvas do documento de origem.
+O cache operacional passou a ser separado por conta. Cópias legadas sem proprietário permanecem intactas e são recuperáveis por Administrador/Gestor. Respostas antigas são descartadas após troca de identidade; a nova sessão não reutiliza memória da conta anterior.
 
-Acrescentar à sequência de seis migrações, para validação e futura janela autorizada, na ordem abaixo.
+## Evidências técnicas
 
-7. `sql/2026-11-25_sri_p03_historico_imutavel.sql` captura versões de tarefas e contexto de tratativas. A captura começa na instalação. Dados anteriores continuam preservados e a ausência de estado histórico é sinalizada.
-8. `sql/2026-11-25_sri_p03_escopo_publicacao.sql` restringe transporte e desativação de tarefas na publicação geral ao escopo do autor. Assistente e Supervisor compartilham a mesma regra.
+- Esquema de teste reconstruído das definições do projeto conectado: 31 tabelas, 82 funções, constraints, triggers, RLS e grants. Dados inteiramente sintéticos. As 82 definições de funções conferiram com produção, sem divergências. A 83ª função existente de manutenção específica foi excluída da fixture e não é alterada pelo pacote.
+- Integração testa os seis perfis: Operador, Viewer, Supervisor, Assistente, Gestor e Administrador. Inclui acesso próprio/equipe/outra equipe, console administrativo, publicação, autoria, tratamento idempotente, conclusão, continuidade, reabertura, imutabilidade, metas e concorrência.
+- Relatórios recuperaram 450 eventos por paginação sem perda/duplicidade. Modelo gerencial validado com 12.000 eventos, incluindo repetição de atuação, protocolo compartilhado, reabertura, vigência/precedência de metas, nota legada e ausência de denominador.
+- O pacote SQL completo foi executado e reaplicado no PostgreSQL de teste sem modificar quantidade nem conteúdo de registros existentes. Uma adulteração proposital foi detectada pelo hash e a transação revertida.
+- Chromium executa filtros, favoritos, colunas, cabeçalho durante rolagem, históricos, calendário, console, ocorrências, reabertura, gráficos, relatórios, metas, exportação do recorte, navegação, formulário não salvo e troca de sessão.
+- Regressão inclui sintaxe de todos os scripts, autenticação/cadastro, distribuição, horários/fechamento, CSV, sincronização, contingência, layouts e PDFs A4.
+- CI anterior já verde em `45617613758` para `cada475`. A publicação deve usar somente o SHA final com a execução final verde. Evidências finais serão entregues junto da identificação do deployment.
 
-Foram acrescentados testes de PostgreSQL isolado e fluxos reais no Chromium à integração contínua. Cobrem imutabilidade do estado histórico, metadados por evento, autoria, fuso, acesso por equipe, ciclo dos incidentes, critérios múltiplos, favoritos por conta/equipe e personalização de colunas. As oito migrações também foram executadas em uma cópia local das definições de tabelas, funções, constraints e triggers consultadas no projeto conectado, com dados sintéticos. Essa cópia não incluiu o conjunto completo de policies e grants. Os testes de RLS disponíveis usam o esquema sintético descrito no teste.
+## Instalação atômica e integridade
 
-As consultas ao projeto conectado foram somente de leitura. O desenvolvimento continua na branch do PR #42. A matriz registra os itens que ainda exigem implementação ou validação individual. O pacote integral permanece sem prontidão para produção.
+Aplicar **somente** `sql/2026-11-25_sri_p03_release_integral.sql`, gerado por `python tools/build_p03_release.py`. O manifesto `PACOTE03-MANIFESTO-20261125.json` registra ordem e SHA-256 dos 19 arquivos fonte. Não aplicar também os arquivos individuais após o pacote.
+
+O bundle usa uma única transação, timeout de lock e verificação de integridade dentro do PostgreSQL. Registra quantidade e hash do conjunto de colunas original de cada tabela pública/privada, mantém os dados estáveis durante a instalação e compara novamente antes do commit. Qualquer diferença aborta toda a transação. Colunas novas são aditivas e não são confundidas com alteração dos valores anteriores.
+
+As migrações não realizam correções retroativas de protocolos/tratativas. Novos contextos, versões, ocorrências e vínculos começam na instalação. Não há exclusão, recriação de carteiras nem backfill inventado de estados antigos.
+
+O solicitante autorizou explicitamente uma cópia privada de perfis, protocolos, carteiras, tratativas, auditoria e apurações em `/workspace/.secure/sri-p03-backup`, fora do Git. Foram copiados 31 conjuntos de tabelas operacionais e seis payloads compactados. Os seis payloads conferiram em tamanho, MD5 de origem, SHA-256 local e descompactação JSON. A cópia contém 121 tarefas, 42 tratativas, 79 eventos de auditoria e seis distribuições. Diretórios têm permissão 0700 e arquivos 0600. Isso é uma cópia operacional, sem credenciais de autenticação, e não uma imagem física/PITR do banco.
+
+## Segurança e ressalvas operacionais
+
+RLS e grants das novas tabelas privadas são restritivos. RPCs validam perfil/escopo no servidor. Supervisor e Assistente têm as mesmas permissões, sem funções exclusivas de Gestor/Administrador. Apuração geral compactada sem recorte de equipe só pode ser lida por seu importador ou por Gestor/Administrador; carteiras/históricos gerenciais permanecem acessíveis pelo recorte de equipe. Essa restrição evita transportar payload de outra equipe para o navegador.
+
+Os avisos preexistentes do Supabase incluem funções `SECURITY DEFINER` acessíveis a `authenticated`, tabelas privadas seladas sem policies e proteção contra senhas vazadas desabilitada. Funções públicas necessárias não são revogadas indiscriminadamente; as novas RPCs usam guardas explícitas de papel e escopo e foram exercitadas sob `SET ROLE authenticated`. O aviso de senhas vazadas é configuração preexistente de Auth e permanece identificado no inventário, sem alteração de plano/cobrança.
+
+A fonte das 120 MEL declara reconstrução funcional/paráfrase e ressalvas de detalhes não recuperados. Essas ressalvas foram mantidas na matriz. Não se atribui existência a histórico não capturado, meta não cadastrada, resolução SIGO não confirmada ou limiar de desempenho não definido.
+
+A jornada com credenciais reais pelo navegador de produção não foi executada na homologação sintética. Após a publicação, registrar smoke público, commit/READY, configuração pública e verificações reais de RLS/contagens. Não confundir os testes sintéticos com um login real de produção.
+
+## Publicação e rollback
+
+Validar o SHA final e CI, conferir backup e funções instaladas, aplicar o bundle uma vez e verificar o banco antes de liberar a interface. Consolidar o PR #42 e acompanhar a publicação de produção do mesmo commit, reutilizando uma publicação automática se existir. Não criar previews. Verificar `READY`, domínio, assets e configuração pública sem expor chaves.
+
+Deployment de produção anterior identificado para retorno de interface: `dpl_JE4EEkRRZfYzk3qftxmjdtW3A2Uh`, commit `89cc93c0c824a9fbfce9107a1d16342573a61f79`. As alterações de banco são aditivas; um retorno de interface não exige apagar históricos ou tabelas novas. Não executar restauração destrutiva de dados como procedimento automático.
