@@ -44,8 +44,9 @@ const mainEnd=html.indexOf('</main>',mainStart);
 assert.ok(mainStart>0&&mainEnd>mainStart,'Estrutura real do aplicativo não localizada');
 const mainHtml=html.slice(mainStart,mainEnd+'</main>'.length);
 const headStyles=[...html.slice(0,mainStart).matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)].map(m=>m[1]).join('\n');
-const externalStyles=[...stageFiles,'sri-p03-reporting.css'].map(f=>fs.readFileSync(path.join(base,'assets',f),'utf8')).join('\n');
+const externalStyles=[...stageFiles,'sri-p03-reporting.css','sri-layout-clarity.css'].map(f=>fs.readFileSync(path.join(base,'assets',f),'utf8')).join('\n');
 const reportingSource=fs.readFileSync(path.join(base,'assets/sri-p03-reporting.js'),'utf8');
+const claritySource=fs.readFileSync(path.join(base,'assets/sri-layout-clarity.js'),'utf8');
 const statusStart=html.indexOf('const DIST_STATUS_DEFS=');
 const statusEnd=html.indexOf('const DIST_STATUS_CHOICES=',statusStart);
 assert.ok(statusStart>0&&statusEnd>statusStart);
@@ -151,7 +152,7 @@ window.sriGetSupabaseClient=async()=>({
  ]:[]})
 });
 `;
-const js='<script>'+statusDefinitions+fakeClient+'</'+'script><script>'+reportingSource+'</'+'script><script>('+fixtureProbe.toString()+')().catch(error=>{document.body.dataset.visualError=error.message;});</'+'script>';
+const js='<script>'+statusDefinitions+fakeClient+'</'+'script><script>'+reportingSource+'</'+'script><script>'+claritySource+'</'+'script><script>('+fixtureProbe.toString()+')().catch(error=>{document.body.dataset.visualError=error.message;});</'+'script>';
 fs.writeFileSync(fixture,'<!doctype html><html lang="pt-BR">'+head+
  '<body><div class="app v5-app">'+menu+mainHtml+'</div>'+js+'</body></html>','utf8');
 
