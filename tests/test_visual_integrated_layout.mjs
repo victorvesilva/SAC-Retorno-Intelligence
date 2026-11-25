@@ -44,13 +44,22 @@ const mainEnd=html.indexOf('</main>',mainStart);
 assert.ok(mainStart>0&&mainEnd>mainStart,'Estrutura real do aplicativo não localizada');
 const mainHtml=html.slice(mainStart,mainEnd+'</main>'.length);
 const headStyles=[...html.slice(0,mainStart).matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)].map(m=>m[1]).join('\n');
-const externalStyles=stageFiles.map(f=>fs.readFileSync(path.join(base,'assets',f),'utf8')).join('\n');
+const externalStyles=[...stageFiles,'sri-p03-reporting.css'].map(f=>fs.readFileSync(path.join(base,'assets',f),'utf8')).join('\n');
+const reportingSource=fs.readFileSync(path.join(base,'assets/sri-p03-reporting.js'),'utf8');
+const statusStart=html.indexOf('const DIST_STATUS_DEFS=');
+const statusEnd=html.indexOf('const DIST_STATUS_CHOICES=',statusStart);
+assert.ok(statusStart>0&&statusEnd>statusStart);
+const statusDefinitions=html.slice(statusStart,statusEnd);
 const chrome=process.env.CHROME_BIN ||
  ['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find(f=>fs.existsSync(f));
 assert.ok(chrome,'Chrome/Chromium deve estar instalado para homologação visual');
 const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'sri-visual-integrada-'));
 const fixture=path.join(tmp,'fixture.html');
-function fixtureProbe(){
+async function fixtureProbe(){
+ // Authentication is outside this synthetic module fixture. It must never cover the screen.
+ document.getElementById('v20-login')?.remove();
+ document.body.classList.add('v20-active');document.body.dataset.v20Role='admin';
+ for(let attempt=0;attempt<30&&!document.getElementById('sri-p03-integrated-reports');attempt++)await new Promise(resolve=>setTimeout(resolve,10));
  const tab=new URLSearchParams(location.search).get('tab')||'overview';
  const longName='Operadora de atendimento e qualidade regional de demandas complexas com identificação extensa';
  function put(id,markup){const el=document.getElementById(id);if(el)el.innerHTML=markup;}
@@ -97,6 +106,12 @@ function fixtureProbe(){
  const controls=document.getElementById('global-controls');
  if(controls)controls.hidden=!(tab==='overview'||tab==='intelligence');
  const section=document.getElementById(tab);
+ if(tab==='reports'){
+  const panel=document.getElementById('sri-p03-integrated-reports');
+  if(!panel)throw Error('Relatórios integrados não montados');
+  const query=[...panel.querySelectorAll('button')].find(el=>el.textContent==='Consultar');await query.onclick();
+  if(location.search.includes('focus=integrated')){document.documentElement.style.scrollBehavior='auto';panel.scrollIntoView();}
+ }
  const rect=section?.getBoundingClientRect();
  const root=document.documentElement;
  const output={
@@ -104,7 +119,10 @@ function fixtureProbe(){
   rootWidth:root.clientWidth,rootScroll:root.scrollWidth,
   mainWidth:document.querySelector('.main')?.getBoundingClientRect().width,
   screenWidth:rect?.width,
-  screenVisible:!!section && getComputedStyle(section).display!=='none',
+  screenVisible:!!section && getComputedStyle(section).display!=='none'&&rect.height>0,
+  loginPresent:!!document.getElementById('v20-login'),
+  topLayerLogin:!!document.elementFromPoint(Math.floor(innerWidth*.75),Math.floor(innerHeight*.5))?.closest('#v20-login'),
+  integratedReports:tab!=='reports'||!!document.querySelector('#sri-p03-integrated-reports tbody tr'),
   cards:section?.querySelectorAll('.card,.v3-card,.dist-panel,.v20-panel').length||0
  };
  const result=document.createElement('pre');
@@ -117,7 +135,18 @@ const menu='<aside class="sidebar v5-sidebar"><div class="v5-rail"><div class="v
  '<button class="v5-rail-link active">◎</button></div></div>'+
  '<div class="v5-nav-panel"><nav class="side-nav" id="nav"><button class="nav-link active">'+
  '<span>Gestão Operacional</span></button><button class="nav-link"><span>Distribuição</span></button></nav></div></aside>';
-const js='<script>('+fixtureProbe.toString()+')();</'+'script>';
+const fakeClient=`
+window.sriGetSupabaseClient=async()=>({
+ auth:{getUser:async()=>({data:{user:{id:'synthetic-admin'}}}),onAuthStateChange(){}},
+ from:()=>({select(){return this;},eq(){return this;},single:async()=>({data:{id:'synthetic-admin',role:'admin'}})}),
+ rpc:async(name)=>({data:name==='sri_p03_reporting_page'?[
+ {kind:'assignment',id:'a',cursor:'A:a',protocol:'900000000000000202611230001',day:'2026-11-25',team:'Equipe Regional Norte Nordeste',team_id:'team',operator:'Operador sintético',operator_id:'op',area:'Área de atendimento especializado e demandas complexas',base:'Operadora regional'},
+ {kind:'treatment',id:'1',cursor:'H:1',protocol:'900000000000000202611230001',day:'2026-11-25',at:'2026-11-25T12:00Z',team:'Equipe Regional Norte Nordeste',team_id:'team',operator:'Operador sintético',operator_id:'op',status:'OUTROS'},
+ {kind:'treatment',id:'2',cursor:'H:2',protocol:'900000000000000202611230002',day:'2026-11-25',at:'2026-11-25T12:01Z',team:'Equipe Regional Norte Nordeste',team_id:'team',operator:'Operador sintético',operator_id:'op',status:'PENDENTE'}
+ ]:[]})
+});
+`;
+const js='<script>'+statusDefinitions+fakeClient+'</'+'script><script>'+reportingSource+'</'+'script><script>('+fixtureProbe.toString()+')().catch(error=>{document.body.dataset.visualError=error.message;});</'+'script>';
 fs.writeFileSync(fixture,'<!doctype html><html lang="pt-BR">'+head+
  '<body><div class="app v5-app">'+menu+mainHtml+'</div>'+js+'</body></html>','utf8');
 
@@ -138,6 +167,9 @@ for(const [width,height,tabs] of devices){
   const match=dom.match(/<pre id="sri-integrated-probe"[^>]*>([\s\S]*?)<\/pre>/);
   assert.ok(match,'Teste visual não executou: '+tab+' em '+width+'x'+height);
   const result=JSON.parse(match[1].replace(/&quot;/g,'"').replace(/&amp;/g,'&'));
+  assert.equal(result.loginPresent,false,'Login deve estar ausente da fixture de módulos');
+  assert.equal(result.topLayerLogin,false,'Login não pode cobrir o módulo');
+  assert.equal(result.integratedReports,true,'Relatórios novos devem apresentar dados reais do modelo sintético');
   assert.equal(result.screenVisible,true,'Módulo não visível: '+tab);
   assert.ok(result.screenWidth>100,'Módulo sem largura: '+tab);
   assert.ok(result.mainWidth<=result.width+3,'Conteúdo principal ultrapassa viewport '+tab+' '+width+'x'+height);
@@ -153,14 +185,15 @@ if(process.env.SRI_CAPTURE_INTEGRATED_SCREENSHOT==='1') {
  fs.mkdirSync(destination,{recursive:true});
  for(const [width,height,tab] of [[1440,900,'overview'],[1440,900,'distribution'],
    [1440,900,'reports'],[1440,900,'details'],[390,844,'overview'],
-   [390,844,'distribution'],[390,844,'reports'],[390,844,'import']]){
+   [390,844,'distribution'],[390,844,'reports'],[390,844,'import'],
+   [1440,900,'reports-integrated'],[390,844,'reports-integrated']]){
   const image=path.join(destination,tab+'-'+width+'.png');
   execFileSync(chrome,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
    '--disable-background-networking','--allow-file-access-from-files',
    '--virtual-time-budget=650','--force-device-scale-factor=1',
    '--window-size='+width+','+height,
    '--user-data-dir='+path.join(tmp,'s-'+width+'-'+tab),
-   '--screenshot='+image,'file://'+fixture+'?tab='+tab],
+   '--screenshot='+image,'file://'+fixture+'?tab='+(tab==='reports-integrated'?'reports&focus=integrated':tab)],
    {timeout:50000,stdio:['ignore','pipe','pipe']});
   assert.ok(fs.statSync(image).size>3500,'Captura visual vazia '+tab);
   console.log('SCREENSHOT',image);
