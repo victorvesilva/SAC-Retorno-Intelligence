@@ -41,7 +41,10 @@ function makePendingPanel(){
    status.textContent=rows.length?rows.length+' protocolo(s) para conferência.':'Nenhuma pendência histórica.';
    if(rows.length){
     const table=document.createElement('table');table.className='v20-table';
-    const cols=[['protocol_number','Protocolo'],['last_day','Último dia'],['work_status','Estado histórico'],['treatment_status','Última tratativa'],['sigo_reference','Referência SIGO'],['due_date','Prazo'],['base_name','Base']];
+    const operator=field(controls,'Operador'),teamFilter=field(controls,'Equipe'),treatment=field(controls,'Status da tratativa');
+ const filtered=()=>rows.filter(row=>[[operator,'operator_name'],[teamFilter,'team_name'],[treatment,'treatment_status']].every(([input,key])=>String(row[key]||'').toLocaleLowerCase('pt-BR').includes(input.value.trim().toLocaleLowerCase('pt-BR'))));
+ for(const input of [operator,teamFilter,treatment])input.addEventListener('input',render);
+ const cols=[['team_name','Equipe'],['protocol_number','Protocolo'],['last_day','Último dia'],['work_status','Estado histórico'],['treatment_status','Última tratativa'],['sigo_reference','Referência SIGO'],['due_date','Prazo'],['base_name','Base']];
     const hr=table.createTHead().insertRow();for(const [,label]of cols){const th=document.createElement('th');th.textContent=label;hr.append(th);}
     const body=table.createTBody();for(const row of rows){const tr=body.insertRow();for(const [key]of cols)cell(tr,row[key]??'—');}
     wrap.append(table);
@@ -62,7 +65,7 @@ function makeManagementHistory(){
  const root=document.createElement('section');root.id='sri-p03-go-history';root.className='v20-panel';
  root.style.cssText='margin:12px 0;padding:16px;border:1px solid #d7e4f2;border-radius:12px;background:#fff';
  const headline=document.createElement('h3');headline.textContent='Consulta da Gestão Operacional por data';root.append(headline);
- const note=document.createElement('p');note.textContent='Escolha a data operacional para consultar registros históricos. Dias anteriores não usam dados da carteira de hoje. O detalhamento disponível é somente dos protocolos distribuídos e persistidos no snapshot.';root.append(note);
+ const note=document.createElement('p');note.textContent='Escolha a data operacional para consultar registros históricos. Dias anteriores não usam dados da carteira de hoje. O detalhamento utiliza os estados históricos capturados até o fim da data selecionada.';root.append(note);
  const controls=document.createElement('div');controls.className='v20-row';controls.style.flexWrap='wrap';root.append(controls);
  const day=field(controls,'Data operacional','date');day.value=today();day.max=today();
  const snapshotSelect=document.createElement('select');snapshotSelect.setAttribute('aria-label','Extração e turno');
@@ -78,7 +81,10 @@ function makeManagementHistory(){
  const selectedDay=()=>day.value;
  let snapshots=[],rows=[],cursor=null,snapshot=null,seq=0;
  const esc=v=>{let s=String(v??'');if(/^[\s]*[=+@-]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';};
- const cols=[['protocol_number','Protocolo'],['operator_name','Operador'],['criticality','Criticidade'],['treatment_status','Tratativa gravada'],['source_status','Status origem'],['due_date','Prazo']];
+ const operator=field(controls,'Operador'),teamFilter=field(controls,'Equipe'),treatment=field(controls,'Status da tratativa');
+ const filtered=()=>rows.filter(row=>[[operator,'operator_name'],[teamFilter,'team_name'],[treatment,'treatment_status']].every(([input,key])=>String(row[key]||'').toLocaleLowerCase('pt-BR').includes(input.value.trim().toLocaleLowerCase('pt-BR'))));
+ for(const input of [operator,teamFilter,treatment])input.addEventListener('input',render);
+ const cols=[['team_name','Equipe'],['protocol_number','Protocolo'],['operator_name','Operador'],['criticality','Criticidade'],['treatment_status','Tratativa gravada'],['source_status','Status origem'],['due_date','Prazo']];
  function reset(){
    ++seq;overview.classList.remove('sri-p03-historical');status.textContent='Exibindo carteira atual; a consulta histórica é opcional.';
    snapshots=[];rows=[];cursor=null;snapshot=null;snapshotSelect.hidden=true;summary.replaceChildren();tableWrap.replaceChildren();
@@ -90,25 +96,25 @@ function makeManagementHistory(){
    const stats=[['Data operacional',info.operational_day||'—'],['Turno',info.shift_label||'—'],
      ['Protocolos na extração',info.protocol_count??'Restrito ao perfil'],
      ['Protocolos monitorados',m.protocolos_monitorados??'Não disponível'],
-     ['Protocolos atribuídos exibidos',rows.length]];
+     ['Protocolos atribuídos exibidos',filtered().length]];
    for(const [label,value]of stats){const card=document.createElement('div');card.className='v20-stat';
      const l=document.createElement('span');l.textContent=label;
      const b=document.createElement('b');b.textContent=String(value);card.append(l,b);summary.append(card);}
  }
  function render(){
    tableWrap.replaceChildren();if(!snapshot)return;
-   showSummary(snapshot);csv.disabled=!rows.length;
+   showSummary(snapshot);csv.disabled=!filtered().length;
    const table=document.createElement('table');table.className='v20-table';
    const head=table.createTHead().insertRow();
    for(const [,label]of cols){const th=document.createElement('th');th.textContent=label;head.append(th);}
    const body=table.createTBody();
-   for(const r of rows){const tr=body.insertRow();for(const [key]of cols)cell(tr,r[key]);}
+   for(const r of filtered()){const tr=body.insertRow();for(const [key]of cols)cell(tr,r[key]);}
    tableWrap.append(table);
  }
  function exportCsv(){
    if(!rows.length||!snapshot)return;
    const csvText=[cols.map(([_,l])=>esc(l)).join(';'),
-     ...rows.map(r=>cols.map(([k])=>esc(r[k])).join(';'))].join('\r\n');
+     ...filtered().map(r=>cols.map(([k])=>esc(r[k])).join(';'))].join('\r\n');
    const url=URL.createObjectURL(new Blob(['\ufeff',csvText],{type:'text/csv;charset=utf-8'}));
    const a=document.createElement('a');a.href=url;a.download='gestao_historico_'+snapshot.operational_day+'_'+(snapshot.shift_label||'sem_turno')+'.csv';a.click();
    setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -154,7 +160,7 @@ function makeManagementHistory(){
    rows=[...new Map((append?rows.concat(batch):batch).map(r=>[String(r.protocol_number),r])).values()];
    cursor=batch.at(-1)?.protocol_number??null;
    more.hidden=batch.length<200;
-   status.textContent=rows.length+' protocolos atribuídos no snapshot carregados. Dados somente leitura; os status podem refletir atualizações posteriores no banco, não comprovam a situação no SIGO.';
+   status.textContent=rows.length?rows.length+' protocolos com estado capturado até o fim da data selecionada. Filtros e exportações utilizam os registros carregados.':'Não há histórico armazenado para esta data. A extração possui apenas indicadores consolidados ou antecede a captura de estados.';
    render();
   }catch(err){if(request===seq){status.textContent=err.message;}}
   finally{if(request===seq)more.disabled=false;}

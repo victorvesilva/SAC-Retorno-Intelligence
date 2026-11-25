@@ -7689,7 +7689,7 @@ body.sri33-modal-open{overflow:hidden}
     const expanded=new Set([...root.querySelectorAll('details[open]')].map(el=>el.dataset.historyKey));
     const rows=p03History.filter(t=>{const d=new Date(t.created_at).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});return (!query||String(t.protocol_number||'').includes(query))&&(!from||d>=from)&&(!to||d<=to)}).sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
     const groups=new Map();for(const t of rows){const key=t.protocol_number?'p:'+t.protocol_number:'t:'+String(t.task_id||t.id);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(t);}
-    const event=t=>'<article class="sri-p03-event"><small>'+h(new Date(t.created_at).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}))+'</small><strong>'+h(label(t.action))+'</strong><div>'+h(t.notes||'Justificativa não informada')+'</div></article>';
+    const event=t=>'<article class="sri-p03-event"><small>'+h(new Date(t.created_at).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}))+'</small><strong>'+h(label(t.action))+'</strong><div>Base '+h(t.base_name||'Não registrada no evento')+' · Área '+h(t.area_name||'Não registrada no evento')+'</div><div>'+h(t.notes||'Justificativa não informada')+'</div></article>';
     const siga3=new Set(DIST_STATUS_DEFS.filter(([, , code])=>code===3).map(([status])=>status));
     const sigapend=new Set(DIST_STATUS_CHOICES.filter(status=>!siga3.has(status)));
     const concluded=rows.filter(t=>siga3.has(t.action)).length,waiting=rows.filter(t=>sigapend.has(t.action)).length;
@@ -8112,7 +8112,7 @@ document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.tar
 <script defer src="/assets/sri-mobile-navigation.js?v=20261124-01"></script>
 <script defer src="/assets/sri-integrated-improvements.js?v=20261124-02"></script>
 <script src="/assets/sri-cloud-treatments.js?v=20261124-03"></script>
-<script defer src="/assets/sri-pacote03.js?v=20261125-01"></script>
+<script defer src="/assets/sri-pacote03.js?v=20261125-02"></script>
 <script defer src="/assets/sri-p03-navigation.js?v=20261125-01"></script>
 </body>
 </html>
