@@ -57,6 +57,13 @@ const out=new Map(matchGroups.flatMap(m=>[...m[1].matchAll(/'([^']+)'/g)].map(x=
 out.set('FILIAL',10);
 for(const [status,code]of expected)assert.equal(out.get(status),code,status);
 assert.equal(out.size,13);
+const treatmentDefinitions=html.slice(html.indexOf('const DIST_STATUS_DEFS='),html.indexOf('const DIST_STATUS_SET='));
+const reference=vm.runInNewContext(treatmentDefinitions+'; ({definitions:DIST_STATUS_DEFS,explain:sriTreatmentReference})');
+assert.deepEqual(Array.from(reference.definitions,([name,,code])=>[name,code]),expected);
+for(const [status,code] of expected)assert.ok(reference.explain(status).includes('Referência SIGO '+code+' — '),status);
+assert.equal(reference.explain('SEM STATUS'),'');
+assert.match(html,/id\.endsWith\('from'\)\|\|id\.endsWith\('to'\)\)void refreshHistory\(\)/);
+
 assert.match(sql,/private\.sri_p03_preserve_open_tasks/);
 assert.match(sql,/private\.sri_p03_guard_transfer/);
 assert.match(sql,/private\.sri_p03_status_sigo\(old\.treatment_status\)/);

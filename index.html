@@ -3054,21 +3054,28 @@ function distSheetDistribution(rows,operatorList,channel,dateLabel,distributionD
 }
 function distSimpleSheet(matrix,widths){return distSheetXml(matrix.map((r,i)=>({row:i+1,cells:r.map((v,col)=>({col,value:v,style:i===0?2:3}))})),{maxCol:Math.max(2,...matrix.map(x=>x.length)),cols:widths||[]})}
 const DIST_STATUS_DEFS=[
- ['E-MAIL','Quando não for possível finalizar pelo ASC, WhatsSAC ou ligação.'],
- ['LIGAÇÃO','Finalização por contato telefônico.'],
- ['ASCSAC','Finalização pela ferramenta ASC.'],
- ['RECUSOU','Cliente recusou demanda do WhatsSAC.'],
- ['ACEITOU','Cliente aceitou demanda do WhatsSAC.'],
- ['ASSOCIADO','Demanda associada ao WhatsSAC; acompanhamento com prazo de 2h05.'],
- ['OUTROS','Demanda tratada por outro colaborador.'],
- ['FILIAL','Demanda retornou à área de negócio.'],
- ['DÚVIDA','Necessário acionar assistente ou gestor.'],
- ['OUVIDORIA','Reclamação originada na Ouvidoria.'],
- ['PENDENTE','Tentativa de contato ou tratativa pendente no ASC.'],
- ['MÍDIAS NE','Reclamação recebida via web.'],
- ['CARTA AR','Sem contato por WhatsApp, e-mail ou ligação.']
+ ['E-MAIL','Quando não for possível finalizar pelo ASC, WhatsSAC ou ligação.',3],
+ ['LIGAÇÃO','Finalização após o contato telefônico com o cliente.',3],
+ ['ASCSAC','Finalização através da ferramenta ASC.',3],
+ ['RECUSOU','Quando o cliente recusa demanda associada ao WhatsSAC.',2],
+ ['ACEITOU','Quando o cliente aceita demanda associada ao WhatsSAC.',3],
+ ['ASSOCIADO','Quando a demanda está associada ao WhatsSAC, com prazo de 02h05.',2],
+ ['OUTROS','Quando a demanda é tratada por outro colaborador.',3],
+ ['FILIAL','Quando a demanda retorna para área de negócio.',10],
+ ['DÚVIDA','Acionar o assistente ou gestor de imediato.',0],
+ ['OUVIDORIA','Reclamações geradas via ouvidoria.',2],
+ ['PENDENTE','Tentativa de contato, isca no ASC.',0],
+ ['MÍDIAS NE','Reclamações geradas via web.',3],
+ ['CARTA AR','Quando o cliente não tem WhatsApp ou e-mail válido cadastrado e não atende às tentativas de contato.',3]
 ];
-const DIST_STATUS_CHOICES=DIST_STATUS_DEFS.map(x=>x[0]);
+const DIST_STATUS_CHOICES=DIST_STATUS_DEFS.map(([status])=>status);
+const SRI_SIGO_LABELS={0:'NOVA',2:'EM PROGRESSO',3:'CONCLUÍDO',10:'FILIAL'};
+function sriTreatmentReference(status){
+ const rule=DIST_STATUS_DEFS.find(([label])=>label===status);
+ if(!rule)return '';
+ const [,description,code]=rule;
+ return description+' Referência SIGO '+code+' — '+SRI_SIGO_LABELS[code]+'.';
+}
 const DIST_STATUS_SET=new Set(DIST_STATUS_CHOICES);
 function distStatus(id){const cloud=window.sriCloudTreatment?.(id);if(window.sriGetSavedDistributionContext?.()?.snapshotId)return cloud?.treatment_status==='SEM STATUS'?'':cloud?.treatment_status||'';return distStatuses[id]?.status||''}
 function distStatusNormalize(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim().replace(/[^A-Z0-9 -]/g,'')}
@@ -3102,7 +3109,7 @@ async function distImportStatuses(file){if(!file)return;const feedback=document.
  }catch(e){feedback.textContent='Falha: '+e.message;alert('Falha ao importar os status: '+e.message)}finally{document.getElementById('dist-import-status-file').value=''}}
 
 function distExcel(operatorIds){if(!ui.live){alert('Importe SAC + ATIVO para exportar.');return}const ids=new Set(Array.isArray(operatorIds)?operatorIds:[]),rows=distState.rows.filter(r=>!!distOwner(r.id)&&ids.has(distAssignments[r.id]?.opId));if(!rows.length){alert('Nenhum protocolo atribuído para este recorte.');return}const opIds=[...new Set(rows.map(r=>distAssignments[r.id]?.opId))],operators=[...distRoster,...distArchivedRoster].filter(o=>opIds.includes(o.id)).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));const d=document.getElementById('dist-export-date').value||iso(ui.reference);const label=new Intl.DateTimeFormat('pt-BR',{month:'long'}).format(new Date(`${d}T12:00:00`)).toUpperCase();const excelDay=epoch(d)+25569;const ret=distSheetDistribution(rows,operators,null,label,excelDay);
- const defs=distSimpleSheet([['STATUS','DEFINIÇÃO E QUANDO USAR'],...DIST_STATUS_DEFS],[22,93]);const summary=[['NOME','SITUAÇÃO','DATA','TOTAL DISTRIBUÍDO','SAC RETORNO','WHATSSAC','COM STATUS','SEM STATUS','META','OBSERVAÇÕES']];for(const o of operators){const list=rows.filter(r=>distAssignments[r.id]?.opId===o.id),r=list.filter(x=>x.where==='SAC RETORNO').length,w=list.filter(x=>x.where==='WHATSSAC').length;summary.push([o.name,distSituation(o).toUpperCase(),d,list.length,r,w,list.filter(x=>!!distStatus(x.id)).length,list.filter(x=>!distStatus(x.id)).length,'','Com status não significa resolvido'])}const sumXml=distSimpleSheet(summary,[45,16,16,21,18,18,17,17,13,65]);const general=distSimpleSheet([['OPERADOR','SUPERVISOR','SITUAÇÃO','SAC RETORNO','WHATSSAC','TOTAL DISTRIBUÍDO','COM STATUS','SEM STATUS','CRÍTICO / ALTO','DIAS NO AGENTE ≥ 4'],...operators.map(o=>{const list=rows.filter(r=>distAssignments[r.id]?.opId===o.id);return [o.name,o.supervisor||'Sem supervisor',distSituation(o),list.filter(r=>r.where==='SAC RETORNO').length,list.filter(r=>r.where==='WHATSSAC').length,list.length,list.filter(r=>!!distStatus(r.id)).length,list.filter(r=>!distStatus(r.id)).length,list.filter(r=>['Crítico','Alto'].includes(distCriticity(r).name)).length,list.filter(r=>r.diasAgente!=null&&Number(r.diasAgente)>=4).length]})],[43,34,19,19,17,22,18,18,19,23]);
+ const defs=distSimpleSheet([['STATUS','DEFINIÇÃO E QUANDO USAR','REFERÊNCIA SIGO'],...DIST_STATUS_DEFS.map(([status,description,code])=>[status,description,code+' — '+SRI_SIGO_LABELS[code]])],[22,93,24]);const summary=[['NOME','SITUAÇÃO','DATA','TOTAL DISTRIBUÍDO','SAC RETORNO','WHATSSAC','COM STATUS','SEM STATUS','META','OBSERVAÇÕES']];for(const o of operators){const list=rows.filter(r=>distAssignments[r.id]?.opId===o.id),r=list.filter(x=>x.where==='SAC RETORNO').length,w=list.filter(x=>x.where==='WHATSSAC').length;summary.push([o.name,distSituation(o).toUpperCase(),d,list.length,r,w,list.filter(x=>!!distStatus(x.id)).length,list.filter(x=>!distStatus(x.id)).length,'','Com status não significa resolvido'])}const sumXml=distSimpleSheet(summary,[45,16,16,21,18,18,17,17,13,65]);const general=distSimpleSheet([['OPERADOR','SUPERVISOR','SITUAÇÃO','SAC RETORNO','WHATSSAC','TOTAL DISTRIBUÍDO','COM STATUS','SEM STATUS','CRÍTICO / ALTO','DIAS NO AGENTE ≥ 4'],...operators.map(o=>{const list=rows.filter(r=>distAssignments[r.id]?.opId===o.id);return [o.name,o.supervisor||'Sem supervisor',distSituation(o),list.filter(r=>r.where==='SAC RETORNO').length,list.filter(r=>r.where==='WHATSSAC').length,list.length,list.filter(r=>!!distStatus(r.id)).length,list.filter(r=>!distStatus(r.id)).length,list.filter(r=>['Crítico','Alto'].includes(distCriticity(r).name)).length,list.filter(r=>r.diasAgente!=null&&Number(r.diasAgente)>=4).length]})],[43,34,19,19,17,22,18,18,19,23]);
  const sheetNames=['DISTRIBUIÇÃO','DÚVIDA','Resultado do dia','RESULTADOS GERAIS'],sheetContent=[ret.xml,defs,sumXml,general],types=sheetNames.map((name,i)=>`<sheet name="${distXml(name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('');const workbook=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView/></bookViews><sheets>${types}</sheets><calcPr fullCalcOnLoad="1"/></workbook>`;const relationships=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheetNames.map((_,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${sheetNames.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;const content=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheetNames.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`;const rel=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;const files={'[Content_Types].xml':content,'_rels/.rels':rel,'xl/workbook.xml':workbook,'xl/_rels/workbook.xml.rels':relationships,'xl/styles.xml':distStylesXml()};for(let i=0;i<sheetNames.length;i++)files[`xl/worksheets/sheet${i+1}.xml`]=sheetContent[i];const blob=distZipStore(files),filename=`SAC_RETORNO_INTELLIGENCE_DISTRIBUICAO_${d.replace(/-/g,'')}_${operators.length}_operadores.xlsx`;distDownload(blob,filename);v2Toast(`Excel gerado com ${rows.length} protocolos em ${operators.length} operadores.`)}
 
 function distExportBase(operatorIds){
@@ -6856,7 +6863,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const close=document.createElement('button');close.type='button';close.className='sri-auto-toast-close';close.setAttribute('aria-label','Fechar notificação');close.textContent='×';close.onclick=()=>item.remove();
     item.append(mark,msg,close);root.appendChild(item);
     while(root.children.length>3)root.firstElementChild?.remove();
-    if(kind!=='error')setTimeout(()=>item.remove(),kind==='warning'?7000:4800);
+    setTimeout(()=>item.remove(),4000);
   }
   window.sriToast=notify;
   const status = (message, type='normal') => {
@@ -7362,7 +7369,7 @@ body.sri33-modal-open{overflow:hidden}
   const $ = id => document.getElementById(id);
   const h = v => String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const label = a => ({pending:'Pendente',in_progress:'Em tratamento',awaiting:'Aguardando retorno',completed_in_tool:'Tratativa concluída na ferramenta',note:'Anotação'}[a] || a || '—');
-  const TREATMENT_STATUSES=['E-MAIL','LIGAÇÃO','ASCSAC','RECUSOU','ACEITOU','ASSOCIADO','OUTROS','FILIAL','DÚVIDA','OUVIDORIA','PENDENTE','MÍDIAS NE','CARTA AR'];
+  const TREATMENT_STATUSES=DIST_STATUS_CHOICES;
   const normalize = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toUpperCase();
   let logged = null, taskRows=[], currentTask=null, inProgress=false, closeTreatment, openTreatment, savePending=null, operatorEpoch=0, operatorLoadSeq=0;
   const stateMsg = (id,msg,kind='') => {msg=window.sriFriendly?.(msg,kind)||msg;const el=$(id);if(el){el.textContent=msg;el.dataset.state=kind;}if(kind==='error'||(kind==='success'&&/salv|registr|atualiz|vinculad|conclu|publicad|fechad/i.test(msg)))window.sriToast?.(msg,kind);};
@@ -7512,12 +7519,11 @@ body.sri33-modal-open{overflow:hidden}
        <div id="sri33-treatment" hidden role="presentation">
          <div class="sri33-dialog" role="dialog" aria-modal="true" aria-labelledby="sri33-treatment-title" aria-describedby="sri33-treatment-owner" tabindex="-1">
            <div class="sri33-head"><div><small>SAC RETORNO INTELLIGENCE · MINHA CARTEIRA</small><h3 id="sri33-treatment-title">Registrar tratativa</h3><p id="sri33-treatment-owner" class="v20-muted"></p></div><button type="button" class="v20-button secondary" id="sri33-treatment-close" aria-label="Fechar janela de tratativa">✕</button></div>
-           <div id="sri33-context" class="sri-operator-context"></div><label class="v20-field" for="sri33-treatment-kind">Status da tratativa * <select id="sri33-treatment-kind" required>
+           <div id="sri33-context" class="sri-operator-context"></div><label class="v20-field" for="sri33-treatment-kind">Status da tratativa * <select id="sri33-treatment-kind" aria-describedby="sri33-treatment-reference" required>
              <option value="">Selecione um status...</option>
-             <option>E-MAIL</option><option>LIGAÇÃO</option><option>ASCSAC</option><option>RECUSOU</option>
-             <option>ACEITOU</option><option>ASSOCIADO</option><option>OUTROS</option><option>FILIAL</option>
-             <option>DÚVIDA</option><option>OUVIDORIA</option><option>PENDENTE</option><option>MÍDIAS NE</option><option>CARTA AR</option>
+             ${TREATMENT_STATUSES.map(status=>'<option>'+h(status)+'</option>').join('')}
            </select></label>
+           <p id="sri33-treatment-reference" class="v20-muted" aria-live="polite"></p>
            <label class="v20-field" for="sri33-treatment-notes">Justificativa / Observação (opcional)
              <textarea id="sri33-treatment-notes" rows="3" maxlength="1500" placeholder="Descreva a tratativa, se desejar."></textarea><small id="sri33-note-count">0/1500 caracteres</small>
            </label>
@@ -7531,13 +7537,13 @@ body.sri33-modal-open{overflow:hidden}
     for(const id of ['sri-pack-search','sri-pack-filter','sri-pack-status-filter','sri-pack-base','sri-pack-area'])$(id)?.addEventListener(id==='sri-pack-search'?'input':'change',renderPackTasks);
     $('sri-pack-clear').addEventListener('click',()=>{$('sri-pack-search').value='';$('sri-pack-filter').value='all';$('sri-pack-status-filter').value='all';$('sri-pack-base').value='';$('sri-pack-area').value='';renderPackTasks()});
     for(const el of document.querySelectorAll('[data-p03-field],#sri-p03-sort,#sri-p03-size,#sri-p03-state,#sri-p03-due-from,#sri-p03-due-to,#sri-p03-density'))el.addEventListener('change',()=>{p03Page=0;renderPackTasks()});
-    $('sri-p03-history-more').onclick=()=>safeMine(async()=>{const {client,user}=await session();await loadHistory(client,user.id,operatorEpoch,true)});
+    $('sri-p03-history-more').onclick=()=>refreshHistory(true);
     $('sri-p03-shortcuts').onclick=e=>{const btn=e.target.closest('[data-quick]');if(!btn)return;const next=btn.dataset.quick;$('sri-pack-clear').click();p03Quick=next;renderPackTasks();};
     $('sri-p03-prev').onclick=()=>{p03Page=Math.max(0,p03Page-1);renderPackTasks()};
     $('sri-p03-next').onclick=()=>{p03Page++;renderPackTasks()};
     $('sri-pack-clear').addEventListener('click',()=>{for(const el of document.querySelectorAll('[data-p03-field],#sri-p03-due-from,#sri-p03-due-to'))el.value='';$('sri-p03-state').value='all';p03Quick='';p03Page=0;renderPackTasks()});
     for(const id of ['sri-p03-history-mode','sri-p03-history-search','sri-p03-history-from','sri-p03-history-to'])$(id).addEventListener(id.endsWith('search')?'input':'change',()=>{
-      if(id.endsWith('from')||id.endsWith('to'))void safeMine(async()=>{const {client,user}=await session();await loadHistory(client,user.id,operatorEpoch,false)});
+      if(id.endsWith('from')||id.endsWith('to'))void refreshHistory();
       else renderP03History();
     });
     $('sri-pack-summary').addEventListener('click',e=>{const b=e.target.closest('[data-level]');if(!b)return;const f=$('sri-pack-filter');f.value=f.value===b.dataset.level?'all':b.dataset.level;renderPackTasks()});
@@ -7555,12 +7561,12 @@ body.sri33-modal-open{overflow:hidden}
       if(!row||row.p03Readonly||(!force&&inProgress))return;currentTask=row;modalOpener=button;savePending=null;
       $('sri33-treatment-title').textContent='Registrar tratativa · '+row.protocol_number;
       $('sri33-treatment-owner').textContent='Operador: '+(logged?.profile?.full_name||'Conta autenticada');$('sri33-context').innerHTML='<div><small>Base</small><b>'+h(row.base_name||'Não informada')+'</b></div><div><small>Área</small><b>'+h(row.area_name||'Não informada')+'</b></div><div><small>Criticidade</small><b class="sri-pack-level" data-level="'+h(packLevel(row))+'">'+h(packLevel(row))+'</b></div><div><small>Prazo</small><b>'+h(row.due_situation||row.sla_band||'—')+'</b></div><div><small>Última tratativa</small><b>'+h(row.treatment_status||'Sem tratativa')+'</b></div><div><small>Motivo da prioridade</small><b>'+h(row.priority_reason||'Não informado')+'</b></div>';
-      $('sri33-treatment-kind').value='';$('sri33-treatment-notes').value='';$('sri33-note-count').textContent='0/1500 caracteres';
+      $('sri33-treatment-kind').value='';$('sri33-treatment-reference').textContent='';$('sri33-treatment-notes').value='';$('sri33-note-count').textContent='0/1500 caracteres';
       $('sri33-treatment-status').textContent='';$('sri33-treatment-status').dataset.state='';
       $('sri33-treatment-save').disabled=true;$('sri33-treatment-next').disabled=true;
       $('sri33-treatment').hidden=false;document.body.classList.add('sri33-modal-open');$('sri33-treatment-kind').focus();
     }
-    const enableSave=()=>{for(const id of ['sri33-treatment-save','sri33-treatment-next'])$(id).disabled=inProgress||!TREATMENT_STATUSES.includes($('sri33-treatment-kind').value)}; $('sri33-treatment-kind').addEventListener('change',()=>{savePending=null;enableSave()});$('sri33-treatment-notes').addEventListener('input',()=>{savePending=null;$('sri33-note-count').textContent=$('sri33-treatment-notes').value.length+'/1500 caracteres'});
+    const enableSave=()=>{for(const id of ['sri33-treatment-save','sri33-treatment-next'])$(id).disabled=inProgress||!TREATMENT_STATUSES.includes($('sri33-treatment-kind').value)}; $('sri33-treatment-kind').addEventListener('change',e=>{savePending=null;$('sri33-treatment-reference').textContent=sriTreatmentReference(e.target.value);enableSave()});$('sri33-treatment-notes').addEventListener('input',()=>{savePending=null;$('sri33-note-count').textContent=$('sri33-treatment-notes').value.length+'/1500 caracteres'});
     $('sri33-treatment-close').addEventListener('click',()=>closeTreatment());
     $('sri33-treatment-cancel').addEventListener('click',()=>closeTreatment());
     $('sri33-treatment').addEventListener('click',e=>{if(e.target===$('sri33-treatment'))closeTreatment()});
@@ -7628,6 +7634,23 @@ body.sri33-modal-open{overflow:hidden}
     $('sri-p03-count').textContent=all.length+' de '+taskRows.length+' protocolos · página '+(p03Page+1)+'/'+pages;$('sri-p03-prev').disabled=p03Page===0;$('sri-p03-next').disabled=p03Page>=pages-1;
     $('sri33-task-table').innerHTML=rows.length?`<table class="v20-table" style="min-width:670px;width:100%"><thead><tr><th>Protocolo</th><th>Base</th><th>Área</th><th>Criticidade</th><th>Prazo / sinalização</th><th>Motivo da prioridade</th><th>Status da tratativa</th><th>Ação</th></tr></thead><tbody>${rows.map(r=>`<tr class="${r.p03Readonly?'sri-p03-processed':''}"><td>${h(r.protocol_number)}</td><td>${h(r.base_name||"—")}</td><td>${h(r.area_name||"—")}</td><td><span class="sri-pack-level" data-level="${h(packLevel(r))}">${h(packLevel(r))}</span></td><td>${h(r.due_situation||r.sla_band||'—')}${packDate(r)?' · '+h(packDate(r)):''}</td><td>${h(r.priority_reason||r.due_situation||r.sla_band||'Não informado')}</td><td>${h(r.treatment_status||'SEM STATUS')}</td><td>${r.p03Readonly?'<span class="sri-pack-level">Finalizado na ferramenta · consultar Meu Histórico</span>':`<button class="v20-button secondary" type="button" data-sri33-task="${h(r.id)}">Tratar</button>`}</td></tr>`).join('')}</tbody></table>`:'<p>Nenhuma demanda para esta seleção.</p>';wrap.scrollTop=scrollTop;wrap.scrollLeft=scrollLeft;
   }
+  let historySessionRequest=0;
+  async function refreshHistory(more=false){
+    const request=++historySessionRequest,epoch=operatorEpoch;
+    const isCurrent=()=>request===historySessionRequest&&epoch===operatorEpoch;
+    if(!more){
+      historySequence++;
+      $('sri33-history').replaceChildren();
+      $('sri-p03-history-more').hidden=true;
+      $('sri-p03-history-count').textContent='Consultando tratativas do período...';
+    }
+    try{
+      const {client,user}=await session();
+      if(isCurrent())await loadHistory(client,user.id,epoch,more);
+    }catch(err){
+      if(isCurrent())$('sri-p03-history-count').textContent='Sessão indisponível para consultar o histórico.';
+    }
+  }
   let historySequence=0;
   async function loadHistory(client,userId,epoch=operatorEpoch,more=false){const seq=++historySequence;
     const from=$('sri-p03-history-from')?.value||null,to=$('sri-p03-history-to')?.value||null;
@@ -7666,8 +7689,8 @@ body.sri33-modal-open{overflow:hidden}
     const rows=p03History.filter(t=>{const d=new Date(t.created_at).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});return (!query||String(t.protocol_number||'').includes(query))&&(!from||d>=from)&&(!to||d<=to)}).sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
     const groups=new Map();for(const t of rows){const key=t.protocol_number?'p:'+t.protocol_number:'t:'+String(t.task_id||t.id);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(t);}
     const event=t=>'<article class="sri-p03-event"><small>'+h(new Date(t.created_at).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}))+'</small><strong>'+h(label(t.action))+'</strong><div>'+h(t.notes||'Justificativa não informada')+'</div></article>';
-    const siga3=new Set(['E-MAIL','LIGAÇÃO','ASCSAC','ACEITOU','OUTROS','MÍDIAS NE','CARTA AR']);
-    const sigapend=new Set(['DÚVIDA','PENDENTE','FILIAL','ASSOCIADO','RECUSOU','OUVIDORIA']);
+    const siga3=new Set(DIST_STATUS_DEFS.filter(([, , code])=>code===3).map(([status])=>status));
+    const sigapend=new Set(DIST_STATUS_CHOICES.filter(status=>!siga3.has(status)));
     const concluded=rows.filter(t=>siga3.has(t.action)).length,waiting=rows.filter(t=>sigapend.has(t.action)).length;
     $('sri-p03-history-count').textContent=groups.size+' protocolos distintos · '+rows.length+' movimentações carregadas · '+concluded+' conclusões registradas · '+waiting+' pendências/encaminhamentos (não equivale a conclusão no SIGO).';
     root.innerHTML=!rows.length?'<p>Nenhuma tratativa encontrada para o período.</p>':mode==='log'?rows.map(t=>'<div class="sri-p03-history-card"><b>Protocolo '+h(t.protocol_number||'não identificado')+'</b>'+event(t)+'</div>').join(''):[...groups].map(([key,items])=>'<details class="sri-p03-history-card" data-history-key="'+h(key)+'"'+(expanded.has(key)?' open':'')+'><summary><b>Protocolo '+h(items[0].protocol_number||'não identificado')+'</b><span>'+items.length+' movimentação(ões) · '+h(new Date(items[0].created_at).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}))+'</span></summary><div>'+[...items].reverse().map(event).join('')+'</div></details>').join('');
