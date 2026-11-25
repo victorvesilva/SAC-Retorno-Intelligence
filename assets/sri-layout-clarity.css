@@ -1,4 +1,17 @@
 .sri-clarity-legacy-header{display:none!important}
+#sri-distribution-history{margin:24px 0;padding:20px;scroll-margin-top:80px}
+#sri-distribution-history .sri-pack-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:end}
+#sri-distribution-history .v20-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+#sri-distribution-history input:not([type=checkbox]),#sri-distribution-history select,#sri-distribution-history textarea{width:100%;min-width:0;box-sizing:border-box}
+#sri-distribution-history select{white-space:normal}
+#sri-distribution-history p{line-height:1.6}
+#sri-distribution-history table{min-width:850px;width:100%}
+#sri-distribution-history th{position:sticky;top:0;background:#eef4ff;z-index:1}
+#sri-distribution-history input[type=checkbox]{width:20px;height:20px;accent-color:#164da2}
+.sri-dist-history-actions{border-top:1px solid #d4dfed;margin-top:16px;padding-top:16px}
+.sri-dist-history-actions button{margin:4px 8px 4px 0}
+.sri-dist-history-remove:not(:disabled){background:#a82626!important;color:white!important}
+@media(max-width:600px){#sri-distribution-history{padding:12px}#sri-distribution-history .sri-pack-controls{grid-template-columns:minmax(0,1fr)}.sri-dist-history-actions button{width:100%;margin:6px 0}}
 body[data-sri-operator-view=history] #sri33-mine>.v20-between,body[data-sri-operator-view=pending] #sri33-mine>.v20-between,body[data-sri-operator-view=history] #sri33-mine-status,body[data-sri-operator-view=pending] #sri33-mine-status{display:none!important}
 body[data-sri-operator-view=history] #sri-operator-reviews,body[data-sri-operator-view=pending] #sri-operator-reviews{display:none!important}
 #sri-pack-carteira h4{margin:16px 0 10px;color:#173858;font-size:14px}
