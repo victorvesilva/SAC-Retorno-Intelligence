@@ -3,6 +3,7 @@
 if(window.__sriDistributionHistory)return;window.__sriDistributionHistory=true;
 let owner='',panel=null,generation=0,checking=false,subscription=false;
 const node=(tag,text,parent)=>{const e=document.createElement(tag);if(text)e.textContent=text;parent?.append(e);return e;};
+const profileLabel=value=>({admin:'Administrador',manager:'Gestor',supervisor:'Supervisor',assistant:'Assistente',operator:'Operador',viewer:'Consulta'})[value]||value;
 function clear(){generation++;owner='';panel?.remove();panel=null;}
 async function identity(){const client=await window.sriGetSupabaseClient?.();if(!client)return null;const {data}=await client.auth.getUser();if(!data?.user)return null;const result=await client.from('profiles').select('id,role').eq('id',data.user.id).single();if(result.error||!['admin','manager'].includes(result.data?.role))return null;return {client,id:data.user.id};}
 function mount(root){
@@ -19,7 +20,7 @@ function mount(root){
  const find=button(controls,'Buscar extrações',()=>void loadSnapshots());
  const consult=button(controls,'Consultar atribuições',()=>void loadRows());consult.disabled=true;
  const filterRow=node('div',null,panel);filterRow.className='sri-pack-controls';
- const label=node('label','Buscar protocolo ou responsável',filterRow);label.className='v20-field';const search=node('input',null,label);search.type='search';search.id='sri-dist-history-search';
+ const label=node('label','Buscar protocolo, responsável ou perfil',filterRow);label.className='v20-field';const search=node('input',null,label);search.type='search';search.id='sri-dist-history-search';
  const status=node('p','Informe a data e busque as extrações.',panel);status.setAttribute('role','status');status.setAttribute('aria-live','polite');
  const tableWrap=node('div',null,panel);tableWrap.className='sri-dist-history-table';tableWrap.style.overflow='auto';tableWrap.style.maxHeight='60vh';
  const pagination=node('div',null,panel);pagination.className='sri-pack-controls';
@@ -37,7 +38,7 @@ function mount(root){
  function invalidate(){request++;rows=[];context=null;selected.clear();page=0;render();}
  function selectionState(){selection.textContent=selected.size+' atribuição(ões) selecionada(s).';remove.disabled=busy||!context||!selected.size||reason.value.trim().length<10;reset.disabled=busy||!selected.size;}
  function render(){
-  tableWrap.replaceChildren();const query=search.value.trim().toLocaleLowerCase('pt-BR'),list=rows.filter(r=>!query||(r.protocol+' '+r.operator+' '+r.profile).toLocaleLowerCase('pt-BR').includes(query));
+  tableWrap.replaceChildren();const query=search.value.trim().toLocaleLowerCase('pt-BR'),list=rows.filter(r=>!query||(r.protocol+' '+r.operator+' '+profileLabel(r.profile)).toLocaleLowerCase('pt-BR').includes(query));
   const pages=Math.max(1,Math.ceil(list.length/50));page=Math.max(0,Math.min(page,pages-1));prev.disabled=busy||page===0;next.disabled=busy||page===pages-1;
   count.textContent=list.length+' atribuições · página '+(page+1)+'/'+pages;
   if(list.length){const table=node('table',null,tableWrap);table.className='v20-table';const header=table.createTHead().insertRow();
@@ -45,7 +46,7 @@ function mount(root){
    for(const r of list.slice(page*50,page*50+50)){const body=table.tBodies[0]||table.createTBody();const line=body.insertRow();const td=line.insertCell();
     const check=node('input',null,td);check.type='checkbox';check.checked=selected.has(r.protocol);check.disabled=busy||!r.can_remove;check.setAttribute('aria-label','Selecionar protocolo '+r.protocol);
     check.onchange=()=>{if(check.checked){if(selected.size>=500){check.checked=false;message('Limite de 500 protocolos por remoção.');return;}selected.add(r.protocol);}else selected.delete(r.protocol);selectionState();};
-    for(const value of [r.protocol,r.operator,r.profile,r.active?'Ativa':'Inativa / não publicada',r.can_remove?'Sem tratativa: pode remover':r.has_treatment||r.work_status==='completed_in_tool'?'Com tratativa/conclusão: preservado':'Sem atribuição removível'])node('td',String(value||'—'),line);
+    for(const value of [r.protocol,r.operator,profileLabel(r.profile),r.active?'Ativa':'Inativa / não publicada',r.can_remove?'Sem tratativa: pode remover':r.has_treatment||r.work_status==='completed_in_tool'?'Com tratativa/conclusão: preservado':'Sem atribuição removível'])node('td',String(value||'—'),line);
    }
   }else node('p',context?'Nenhuma atribuição para esta seleção.':'Consulte uma extração para exibir as atribuições.',tableWrap);
   selectionState();
