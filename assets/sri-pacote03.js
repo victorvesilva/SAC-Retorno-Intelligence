@@ -59,7 +59,9 @@ function render(){metrics.replaceChildren();table.replaceChildren();const hr=tab
     if(result.error)throw Error('Ocorrências indisponíveis.');
     if(sessionEpoch!==epoch||!details.isConnected)return;
     const batch=result.data||[];
-    for(const item of batch){const line=document.createElement('p');line.textContent=item.id+' · '+new Date(item.occurred_at).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'});times.append(line);}
+    for(const item of batch){const line=document.createElement('p');line.textContent=item.id+' · '+new Date(item.occurred_at).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'});times.append(line);
+     if(item.audit_id)button(line,'Ver movimentação vinculada',()=>{window.sriP03OpenAudit?.(item);});
+    }
     if(!loaded&&!batch.length)times.textContent='Este grupo antecede o registro individual de ocorrências.';
     loaded=true;before=batch.at(-1)?.id??null;page.hidden=batch.length<200;page.textContent='Carregar mais ocorrências';
    }catch(error){if(details.isConnected)times.textContent=error.message;}

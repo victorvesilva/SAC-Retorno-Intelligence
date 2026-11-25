@@ -18,7 +18,7 @@ DECLARE actor uuid:=auth.uid(); event_key bigint;
 BEGIN
  IF NOT EXISTS(SELECT 1 FROM public.profiles WHERE id=actor) THEN RAISE EXCEPTION 'Sessão obrigatória'; END IF;
  IF p_severity IS NULL OR p_severity NOT IN ('INFO','SUCCESS','WARN','ERROR','FATAL')
- OR p_code IS NULL OR p_code NOT IN ('JS_ERROR','PROMISE_ERROR','PUBLISH_ERROR','PUBLISH_OK','MISSING_METADATA','RPC_ERROR','SLOW_RPC','AUTH_OK','AUTH_ERROR')
+ OR p_code IS NULL OR p_code NOT IN ('JS_ERROR','PROMISE_ERROR','PUBLISH_ERROR','PUBLISH_OK','MISSING_METADATA','RPC_ERROR','REST_ERROR','OPERATION_AUDIT','SLOW_RPC','AUTH_OK','AUTH_ERROR')
  OR p_module IS NULL OR p_module NOT IN ('Interface','Distribuição','Carteira','Supabase','Autenticação')
  OR p_version IS DISTINCT FROM 'pacote03-20261124' THEN RAISE EXCEPTION 'Evento inválido'; END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended('sri-monitor:'||actor::text,0));

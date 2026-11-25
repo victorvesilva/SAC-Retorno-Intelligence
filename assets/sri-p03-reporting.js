@@ -4,7 +4,7 @@
 const completed=new Set(DIST_STATUS_DEFS.filter(([, ,code])=>code===3).map(([name])=>name));
 const unique=rows=>[...new Map(rows.map(row=>[row.kind+':'+row.id,row])).values()];
 const key=row=>String(row.protocol||'');
-const order=(a,b)=>String(a.at||'').localeCompare(String(b.at||''))||String(a.cursor||a.id).localeCompare(String(b.cursor||b.id),undefined,{numeric:true});
+const order=(a,b)=>String(a.at||'').localeCompare(String(b.at||''))||(Number(a.action==='TASK_REOPENED')-Number(b.action==='TASK_REOPENED'))||String(a.cursor||a.id).localeCompare(String(b.cursor||b.id),undefined,{numeric:true});
 function work(rows){
  const events=unique(rows).filter(row=>row.kind==='treatment'||(row.kind==='movement'&&row.action==='TASK_REOPENED')).sort(order);
  const treated=new Set(),last=new Map();
@@ -73,9 +73,9 @@ function makeReports(root){
  node('p','Protocolos trabalhados: protocolos distintos com tratativa registrada no período. Concluídos: última tratativa concluída na ferramenta, descontando reabertura posterior no recorte. Meta diária: concluídos ÷ protocolos distintos trabalhados no mesmo dia × 100. Eventos contam cada atuação. Atribuídos contam protocolos distintos das carteiras publicadas. Importações, revisões e reaberturas contam seus próprios registros. Números por equipe/operador podem se sobrepor e não devem ser somados como protocolos globais. Dados sem contexto histórico aparecem como não registrados.',explanation);
  const graph=node('div',null,panel);graph.className='sri-p03-report-chart';graph.setAttribute('aria-label','Evolução e composição do recorte');
  const output=node('div',null,panel);output.className='sri-p03-report-table';const paging=node('div',null,panel);paging.className='sri-pack-controls';
- let rows=[],other=[],goals=[],request=0,page=0,exportRows=[],columns=[],loaded=false,selectedDay='',selectedStatus='',favoriteScope='';
+ let rows=[],other=[],goals=[],request=0,page=0,exportRows=[],columns=[],loaded=false,selectedDay='',selectedStatus='',favoriteScope='',linkedAudit=null;
  const criteria=()=>({team:team.value.trim(),operator:operator.value.trim(),base:base.value.trim(),area:area.value.trim(),protocol:protocol.value.trim()});
- const scoped=raw=>filter(raw,criteria()).filter(r=>(!selectedDay||r.day===selectedDay)&&(!selectedStatus||r.status===selectedStatus));
+ const scoped=raw=>filter(raw,criteria()).filter(r=>(!selectedDay||r.day===selectedDay)&&(!selectedStatus||r.status===selectedStatus)&&(!linkedAudit||r.kind==='movement'&&String(r.id)===String(linkedAudit)));
  function card(label,value){const el=node('div',null,stats);el.className='v20-stat';node('span',label,el);node('b',String(value),el);}
  function render(){
   const list=scoped(rows),totals=summary(list);stats.replaceChildren();comparison.replaceChildren();graph.replaceChildren();output.replaceChildren();
@@ -105,7 +105,7 @@ function makeReports(root){
   node('h4','Composição das tratativas (eventos)',graph);const composition=new Map();for(const row of list.filter(r=>r.kind==='treatment'))composition.set(row.status,(composition.get(row.status)||0)+1);
   for(const [name,total] of composition)button(graph,name+': '+total,()=>{selectedStatus=name;page=0;render();});
   const imports=list.filter(r=>r.kind==='import').sort(order);if(imports.length){node('h4','Evolução da carteira nas extrações',graph);for(const row of imports){const b=button(graph,new Date(row.at).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})+' · '+row.protocol_count+' protocolos na origem',()=>{kind.value='imports';page=0;render();});b.title='Detalhar a importação registrada';}}
-  if(selectedDay||selectedStatus)button(graph,'Limpar detalhamento',()=>{selectedDay=selectedStatus='';page=0;render();});
+  if(selectedDay||selectedStatus||linkedAudit)button(graph,'Limpar detalhamento',()=>{selectedDay=selectedStatus='';linkedAudit=null;page=0;render();});
  }
  async function fetchPeriod(c,a,b,seq,session){if(!a||!b||a>b||(Date.parse(b)-Date.parse(a))/86400000>92)throw Error('Selecione um período de até 93 dias.');
   let cursor=null,all=[];for(;;){const {data,error}=await c.rpc('sri_p03_reporting_page',{p_from:a,p_to:b,p_after:cursor});
@@ -120,12 +120,13 @@ function makeReports(root){
   }catch(error){if(seq===request&&session===epoch){rows=[];other=[];render();status.textContent=error.message;}}}
  button(controls,'Consultar',load);const prev=button(paging,'Anterior',()=>{page--;render();}),next=button(paging,'Próxima',()=>{page++;render();});prev.disabled=next.disabled=true;
  const goalScope=choose(controls,'Metas por',[['team','Equipe'],['operator','Operador']]);goalScope.onchange=()=>{page=0;render();};
- const invalidate=()=>{++request;rows=[];other=[];loaded=false;selectedDay=selectedStatus='';page=0;render();};
+ window.sriP03OpenAudit=async item=>{if(!item?.audit_id||!item.audit_at)return;from.value=to.value=new Date(item.audit_at).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});kind.value='audit';team.value=operator.value=base.value=area.value=protocol.value='';compareFrom.value=compareTo.value='';selectedDay=selectedStatus='';linkedAudit=item.audit_id;window.switchTab?.('reports');await load();panel.scrollIntoView({behavior:'smooth'});};
+ const invalidate=()=>{linkedAudit=null;++request;rows=[];other=[];loaded=false;selectedDay=selectedStatus='';page=0;render();};
  for(const input of [from,to,compareFrom,compareTo])input.onchange=invalidate;
- for(const input of [team,operator,base,area,protocol])input.oninput=()=>{selectedDay=selectedStatus='';page=0;render();};kind.onchange=()=>{selectedDay=selectedStatus='';page=0;render();readFavorite();};
+ for(const input of [team,operator,base,area,protocol])input.oninput=()=>{linkedAudit=null;selectedDay=selectedStatus='';page=0;render();};kind.onchange=()=>{linkedAudit=null;selectedDay=selectedStatus='';page=0;render();readFavorite();};
  for(const format of ['csv','xlsx','pdf'])button(paging,'Exportar '+(format==='xlsx'?'Excel':format.toUpperCase()),async()=>{
   const session=epoch;try{const a=await auth();if(session!==epoch||a.p.id!==actor||!panel.isConnected)return;if(!loaded||!exportRows.length)throw Error('Consulte um recorte com registros antes de exportar.');
-   const context=from.value+' a '+to.value+' · filtros '+JSON.stringify(criteria())+(selectedDay?' · dia '+selectedDay:'')+(selectedStatus?' · status '+selectedStatus:'');
+   const context=from.value+' a '+to.value+' · filtros '+JSON.stringify(criteria())+(selectedDay?' · dia '+selectedDay:'')+(selectedStatus?' · status '+selectedStatus:'')+(linkedAudit?' · auditoria '+linkedAudit:'');
    if(format==='csv'){const esc=value=>'"'+String(value??'').replace(/^[\s]*[=+@-]/,x=>"'"+x).replace(/"/g,'""')+'"';
     const csv=[columns.map(([,label])=>esc(label)).join(';'),...exportRows.map(row=>columns.map(([field])=>esc(row[field])).join(';'))].join('\r\n');
     const url=URL.createObjectURL(new Blob(['\ufeff',csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download='SAC_'+kind.value+'_'+from.value+'_'+to.value+'.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -178,7 +179,7 @@ function makeGoals(root){
 window.sriP03GoalSettings=root=>makeGoals(root);
 window.sriP03GoalPerformance=root=>{if(!root)return;root.replaceChildren();node('h3','Metas e Resultados',root);node('p','Consulte os protocolos trabalhados, concluídos e o percentual de conclusão por dia, equipe ou operador na Central de Relatórios.',root);
  button(root,'Consultar resultado diário',()=>{window.switchTab?.('reports');const select=$('sri-p03-report-kind');if(select){select.value='goals';select.dispatchEvent(new Event('change'));}$('sri-p03-integrated-reports')?.scrollIntoView({behavior:'smooth'});});};
-function clear(){epoch++;actor='';profileRole='';section?.remove();section=null;document.querySelectorAll('.sri-p03-goals-shared').forEach(el=>el.remove());goalsSection=null;}
+function clear(){epoch++;window.sriP03OpenAudit=null;actor='';profileRole='';section?.remove();section=null;document.querySelectorAll('.sri-p03-goals-shared').forEach(el=>el.remove());goalsSection=null;}
 let refreshing=false;
 async function refresh(){if(refreshing)return;refreshing=true;const request=epoch;
  try{const a=await auth();if(request!==epoch)return;if(actor!==a.p.id||profileRole!==a.p.role){clear();actor=a.p.id;profileRole=a.p.role;}makeReports($('reports'));}

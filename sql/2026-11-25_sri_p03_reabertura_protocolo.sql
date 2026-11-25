@@ -1,4 +1,9 @@
 BEGIN;
+CREATE TABLE IF NOT EXISTS private.sri_p03_reopen_permits(
+ task_id uuid PRIMARY KEY,actor_id uuid NOT NULL,transaction_id bigint NOT NULL
+);
+ALTER TABLE private.sri_p03_reopen_permits ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON private.sri_p03_reopen_permits FROM PUBLIC,anon,authenticated;
 CREATE OR REPLACE FUNCTION private.sri_p03_reopen_candidate(p_protocol text)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $$
 BEGIN
@@ -58,6 +63,8 @@ BEGIN
    original.work_status,original.treatment_status,false,revision,original.priority_reason,original.due_date,original.base_name,original.area_name)
   RETURNING id INTO target_task;
  END IF;
+ INSERT INTO private.sri_p03_reopen_permits(task_id,actor_id,transaction_id) VALUES(target_task,auth.uid(),txid_current())
+ ON CONFLICT(task_id) DO UPDATE SET actor_id=EXCLUDED.actor_id,transaction_id=EXCLUDED.transaction_id;
  UPDATE public.daily_operator_tasks SET active=true,work_status='pending',treatment_status=NULL,completed_operational_day=NULL,updated_at=clock_timestamp()
  WHERE id=target_task RETURNING * INTO changed;
  INSERT INTO public.audit_events(user_id,action,object_type,object_id,details)
@@ -79,4 +86,30 @@ GRANT EXECUTE ON FUNCTION private.sri_p03_reopen_candidate(text),public.sri_p03_
 DROP TRIGGER IF EXISTS z_sri_p03_roll_forward ON public.daily_operator_tasks;
 CREATE TRIGGER z_sri_p03_roll_forward AFTER INSERT OR UPDATE OF active ON public.daily_operator_tasks
  FOR EACH ROW EXECUTE FUNCTION private.sri_p03_roll_forward();
+
+CREATE OR REPLACE FUNCTION private.sri_p03_guard_completed_change()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+BEGIN
+ IF (OLD.work_status='completed_in_tool' OR private.sri_p03_status_sigo(OLD.treatment_status)=3)
+ AND (NEW.work_status IS DISTINCT FROM OLD.work_status OR NEW.treatment_status IS DISTINCT FROM OLD.treatment_status) THEN
+  DELETE FROM private.sri_p03_reopen_permits WHERE task_id=OLD.id AND actor_id=auth.uid() AND transaction_id=txid_current();
+  IF NOT FOUND THEN RAISE EXCEPTION 'Protocolo concluído. Somente Administrador/Gestor pode reabrir com justificativa'; END IF;
+ END IF;
+ RETURN NEW;
+END $$;
+CREATE OR REPLACE FUNCTION private.sri_p03_guard_completed_treatment()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE task public.daily_operator_tasks%rowtype;
+BEGIN
+ SELECT * INTO task FROM public.daily_operator_tasks WHERE id=NEW.task_id FOR UPDATE;
+ IF task.work_status='completed_in_tool' OR private.sri_p03_status_sigo(task.treatment_status)=3 THEN
+  RAISE EXCEPTION 'Protocolo concluído. Solicite reabertura justificada ao Administrador/Gestor';
+ END IF;
+ RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION private.sri_p03_guard_completed_change(),private.sri_p03_guard_completed_treatment() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS sri_p03_guard_completed_change ON public.daily_operator_tasks;
+CREATE TRIGGER sri_p03_guard_completed_change BEFORE UPDATE OF work_status,treatment_status ON public.daily_operator_tasks FOR EACH ROW EXECUTE FUNCTION private.sri_p03_guard_completed_change();
+DROP TRIGGER IF EXISTS sri_p03_guard_completed_treatment ON public.daily_operator_treatments;
+CREATE TRIGGER sri_p03_guard_completed_treatment BEFORE INSERT ON public.daily_operator_treatments FOR EACH ROW EXECUTE FUNCTION private.sri_p03_guard_completed_treatment();
 COMMIT;

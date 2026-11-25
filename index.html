@@ -7607,7 +7607,7 @@ body.sri33-modal-open{overflow:hidden}
       if(modalOpener?.isConnected)modalOpener.focus();modalOpener=null;
     }
     openTreatment=function(row,button,force=false){
-      if(!row||row.p03Readonly||(!force&&inProgress))return;currentTask=row;modalOpener=button;savePending=null;
+      if(!row||row.p03Readonly||row.work_status==='completed_in_tool'||(!force&&inProgress))return;currentTask=row;modalOpener=button;savePending=null;
       $('sri33-treatment-title').textContent='Registrar tratativa · '+row.protocol_number;
       $('sri33-treatment-owner').textContent='Operador: '+(logged?.profile?.full_name||'Conta autenticada');$('sri33-context').innerHTML='<div><small>Base</small><b>'+h(row.base_name||'Não informada')+'</b></div><div><small>Área</small><b>'+h(row.area_name||'Não informada')+'</b></div><div><small>Criticidade</small><b class="sri-pack-level" data-level="'+h(packLevel(row))+'">'+h(packLevel(row))+'</b></div><div><small>Prazo</small><b>'+h(row.due_situation||row.sla_band||'—')+'</b></div><div><small>Última tratativa</small><b>'+h(row.treatment_status||'Sem tratativa')+'</b></div><div><small>Motivo da prioridade</small><b>'+h(row.priority_reason||'Não informado')+'</b></div>';
       $('sri33-treatment-kind').value='';$('sri33-treatment-reference').textContent='';$('sri33-treatment-notes').value='';$('sri33-note-count').textContent='0/1500 caracteres';
@@ -7662,7 +7662,7 @@ body.sri33-modal-open{overflow:hidden}
       const batch=data||[];for(const r of batch)if(!knownProtocols.has(r.protocol_number)){knownProtocols.add(r.protocol_number);rows.push({...r,p03Readonly:true});}
       if(batch.length<200)break;const nextCursor=batch.at(-1)?.protocol_number;if(!nextCursor||nextCursor===archivedCursor){archivedUnavailable=true;break;}archivedCursor=nextCursor;
     }
-    if(epoch!==operatorEpoch||seq!==operatorLoadSeq)return;taskRows=rows;
+    if(epoch!==operatorEpoch||seq!==operatorLoadSeq)return;taskRows=rows.map(row=>({...row,p03Readonly:row.p03Readonly||row.work_status==='completed_in_tool'||DIST_STATUS_DEFS.some(([name,,code])=>code===3&&name===row.treatment_status)}));
     taskRows.sort((a,b)=>Number(!!a.p03Readonly)-Number(!!b.p03Readonly)||packRank(a)-packRank(b)||packDueDate(a,b)||packDue(a)-packDue(b)||String(a.protocol_number).localeCompare(String(b.protocol_number)));
     renderPackTasks();
     const scope=JSON.stringify([user.id,[...new Set(rows.map(row=>row.team_id).filter(Boolean))].sort()]);
@@ -7680,6 +7680,14 @@ body.sri33-modal-open{overflow:hidden}
   const packDate=r=>r.due_date&&/^\d{4}-\d{2}-\d{2}$/.test(r.due_date)?r.due_date.split('-').reverse().join('/'):'';
   let p03Page=0,p03History=[],p03HistoryCursor=null,p03Quick='';
   function p03QuickMatch(r){const text=String(r.due_situation||'');switch(p03Quick){case 'critical':return packLevel(r)==='Crítico'&&!r.p03Readonly;case 'today':return /VENC(E|ENDO) HOJE/i.test(text)&&!r.p03Readonly;case 'backlog':return /BACKLOG|VENCIDO/i.test(text)&&!r.p03Readonly;case 'untreated':return !r.p03Readonly&&(!r.treatment_status||r.treatment_status==='SEM STATUS');case 'processed':return r.work_status==='completed_in_tool'||r.p03Readonly;case 'whats':return /WHATS/i.test(r.channel||'');default:return true;}}
+  function p03NextTask(rows,currentId,previousOrder=[]){
+    const eligible=row=>row.id!==currentId&&!row.p03Readonly&&row.work_status!=='completed_in_tool';
+    const at=rows.findIndex(row=>row.id===currentId);
+    if(at>=0)return [...rows.slice(at+1),...rows.slice(0,at)].find(eligible)||null;
+    const old=previousOrder.indexOf(currentId),byId=new Map(rows.filter(eligible).map(row=>[row.id,row]));
+    if(old>=0){for(const id of [...previousOrder.slice(old+1),...previousOrder.slice(0,old)])if(byId.has(id))return byId.get(id);}
+    return rows.find(eligible)||null;
+  }
   function packFilteredRows(){const search=$('sri-pack-search').value.trim(),level=$('sri-pack-filter').value,status=$('sri-pack-status-filter').value,base=$('sri-pack-base').value,area=$('sri-pack-area').value;
     const extra=[...document.querySelectorAll('[data-p03-field]')].map(el=>({key:el.dataset.p03Field,values:[...el.selectedOptions].map(o=>o.value).filter(Boolean)})).filter(f=>f.values.length);
     const view=$('sri-p03-state')?.value||'all',from=$('sri-p03-due-from')?.value||'',to=$('sri-p03-due-to')?.value||'';const rows=taskRows.filter(r=>p03QuickMatch(r)&&(!from||Boolean(r.due_date&&r.due_date>=from))&&(!to||Boolean(r.due_date&&r.due_date<=to))&&(view==='all'||(view==='active'&&!r.p03Readonly&&r.work_status!=='completed_in_tool')||(view==='processed'&&(r.p03Readonly||r.work_status==='completed_in_tool')))&&(!search||String(r.protocol_number).includes(search))&&(level==='all'||packLevel(r)===level)&&(status==='all'||(status==='filled')===Boolean(r.treatment_status&&r.treatment_status!=='SEM STATUS'))&&(!base||(r.base_name||'Não informada')===base)&&(!area||(r.area_name||'Não informada')===area)&&extra.every(filter=>filter.values.includes(String(r[filter.key]||'Não informado'))));
@@ -7848,16 +7856,16 @@ body.sri33-modal-open{overflow:hidden}
     if(notes.length>1500)throw Error('A justificativa deve ter no máximo 1.500 caracteres.');
     const epoch=operatorEpoch;const {client,profile,user}=await session();
     if(epoch!==operatorEpoch||profile.role!=='operator')throw Error('Registro disponível somente para operadores.');
-    const task=currentTask;
+    const task=currentTask,previousOrder=packFilteredRows().map(row=>row.id);
     if(task.p03Readonly||!taskRows.some(r=>r.id===task.id))throw Error('Esta demanda não consta mais na sua carteira.');
     const expected=task.updated_at;const signature=JSON.stringify([task.id,status,notes,expected]);if(!savePending||savePending.signature!==signature)savePending={signature,id:crypto.randomUUID()};
     const {data,error}=await client.rpc('sri_record_treatment_v2',{p_task:task.id,p_action:status,p_notes:notes,p_expected:expected,p_request:savePending.id});
     if(error){if(/atualizada em outra sessão|demanda indisponível/i.test(error.message||'')){const same=task.id;await loadTasks();if(epoch!==operatorEpoch)return;currentTask=taskRows.find(r=>r.id===same)||null;savePending=null;if(currentTask){const latest=currentTask;$('sri33-context').querySelectorAll('b')[4].textContent=latest.treatment_status||'Sem tratativa';throw Error('A tratativa mudou em outra sessão. Confira a última tratativa e confirme novamente se desejar salvar sua alteração.')}closeTreatment(true);throw Error('O protocolo não está mais na sua carteira.')}throw Error(window.sriFriendly?.('Não foi possível confirmar o salvamento: '+error.message,'error')||'Não foi possível confirmar o salvamento. Tente novamente.');}
     if(epoch!==operatorEpoch)return;operatorLoadSeq++;savePending=null;
-    const row=taskRows.find(r=>r.id===task.id);if(row){row.treatment_status=data?.treatment_status||status;row.work_status=data?.work_status||row.work_status;row.updated_at=data?.updated_at||row.updated_at;}
-    const next=advance?packFilteredRows().find(r=>!r.p03Readonly&&r.id!==task.id&&(!r.treatment_status||r.treatment_status==='SEM STATUS')):null;
+    const row=taskRows.find(r=>r.id===task.id);if(row){row.treatment_status=data?.treatment_status||status;row.work_status=data?.work_status||row.work_status;row.updated_at=data?.updated_at||row.updated_at;row.p03Readonly=row.work_status==='completed_in_tool';}
+    const next=advance?p03NextTask(packFilteredRows(),task.id,previousOrder):null;
     closeTreatment(true);renderPackTasks();stateMsg('sri33-mine-status','Tratativa registrada com sucesso!','success');
-    if(next)openTreatment(next,null,true);else if(advance)window.sriToast?.('Não há outro protocolo sem tratativa nos filtros atuais.','info');
+    if(next)openTreatment(next,null,true);else if(advance)window.sriToast?.('Não há outro protocolo a tratar nos filtros atuais.','info');
     void loadHistory(client,user.id,epoch).catch(()=>window.sriToast?.('Tratativa salva; histórico será atualizado na próxima consulta.','warning'));
     if(!advance)operatorFingerprint='';void window.sriOperatorReviewRefresh?.(client,user.id);
   }
@@ -7970,7 +7978,7 @@ function table(){const data=selectUsers().sort((a,b)=>String(a.full_name).locale
  const team=defaultTeamOf(u.id),status=u.operational_status||'Ativo';
  return `<tr><td><strong>${esc(u.full_name||'Sem nome')}</strong><div class="v20-muted">${esc(u.contact_email||'ID '+u.id.slice(0,8))}</div></td><td>${esc(roles[u.role]||u.role)}</td><td>${esc(team?.name||'Aguardando definição')}</td><td>${esc(status)}</td><td><button type="button" class="v20-button secondary sri-user-edit" data-id="${esc(u.id)}">Gerenciar</button></td></tr>`;}).join('')||'<tr><td colspan="5">Nenhum cadastro corresponde aos filtros.</td></tr>'}</tbody></table></div>`;
 }
-function form(u){const team=defaultTeamOf(u.id),status=u.operational_status||'Ativo';const supervisors=state.rows.filter(x=>['supervisor','assistant','manager','admin'].includes(x.role)&&(x.role!=='supervisor'||(team&&state.memberships.some(m=>m.user_id===x.id&&m.team_id===team.id))));
+function form(u){const team=defaultTeamOf(u.id),status=u.operational_status||'Ativo';const supervisors=state.rows.filter(x=>['supervisor','assistant','manager','admin'].includes(x.role)&&(!['supervisor','assistant'].includes(x.role)||(team&&state.memberships.some(m=>m.user_id===x.id&&m.team_id===team.id))));
  return `<section id="sri-unified-editor" data-sri-p03-form class="v20-panel" style="margin-top:14px;border:1px solid #b9cae6;padding:16px;border-radius:12px" aria-label="Editar usuário">
  <div class="v20-between"><h3 style="margin:0">Gerenciar ${esc(u.full_name)}</h3><button type="button" class="v20-button secondary" id="sri-unified-cancel">Fechar</button></div>
  <p class="v20-muted">Cadastro único. A gestão pode atualizar o nome, a equipe e o perfil conforme sua permissão.</p>
@@ -7984,7 +7992,7 @@ function form(u){const team=defaultTeamOf(u.id),status=u.operational_status||'At
  </section>`;}
 function setTable(){const node=$('sri-unified-table');if(node){node.innerHTML=table();node.querySelectorAll('.sri-user-edit').forEach(b=>b.addEventListener('click',()=>openEditor(b.dataset.id)));}}
 function openEditor(id){const u=state.rows.find(x=>x.id===id);if(!u)return;state.editing=id;const root=$('sri-unified-detail');if(!root)return;root.innerHTML=form(u);$('sri-unified-cancel').addEventListener('click',()=>{root.innerHTML='';state.editing=null});
- $('sri-user-team')?.addEventListener('change',()=>{const sup=$('sri-user-supervisor');if(!sup)return;const selected=$('sri-user-team').value;sup.innerHTML='<option value="">Não definido</option>'+state.rows.filter(x=>['supervisor','assistant','manager','admin'].includes(x.role)&&(x.role!=='supervisor'||state.memberships.some(m=>m.user_id===x.id&&m.team_id===selected))).map(x=>`<option value="${esc(x.id)}">${esc(x.full_name)}</option>`).join('');});
+ $('sri-user-team')?.addEventListener('change',()=>{const sup=$('sri-user-supervisor');if(!sup)return;const selected=$('sri-user-team').value;sup.innerHTML='<option value="">Não definido</option>'+state.rows.filter(x=>['supervisor','assistant','manager','admin'].includes(x.role)&&(!['supervisor','assistant'].includes(x.role)||state.memberships.some(m=>m.user_id===x.id&&m.team_id===selected))).map(x=>`<option value="${esc(x.id)}">${esc(x.full_name)}</option>`).join('');});
  $('sri-user-save')?.addEventListener('click',()=>saveTeam(id));$('sri-user-change-role')?.addEventListener('click',()=>changeRole(id));
  window.sriPackEditName?.($('sri-unified-editor'),state,u,async()=>{await refresh();setTable();openEditor(id)});
 }
@@ -8030,7 +8038,7 @@ window.sriUnifiedAfterAuth=async()=>{try{
  const c=await window.sriGetSupabaseClient?.();if(!c)return;const {data}=await c.auth.getUser();if(!data?.user)return;
  const {data:p}=await c.from('profiles').select('role').eq('id',data.user.id).single();
  if(['manager','admin'].includes(p?.role)){await refresh();return;}
- if(p?.role==='supervisor')await window.sriRefreshDistributionCandidates?.();
+ if(['supervisor','assistant'].includes(p?.role))await window.sriRefreshDistributionCandidates?.();
 }catch(e){console.warn('[Gestão unificada] Não foi possível atualizar a lista de operadores:',e.message)}};
 window.sriUnifiedAfterSnapshot=()=>window.sriUnifiedAfterAuth?.();window.sriClosureAfterAuth?.();
 function installPublishButton(){

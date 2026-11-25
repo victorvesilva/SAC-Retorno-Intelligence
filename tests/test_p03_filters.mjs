@@ -29,7 +29,7 @@ const harness=vm.runInNewContext(`
  ${filterCode}
  ${preferenceCode}
  ({
-  filtered:packFilteredRows,
+  filtered:packFilteredRows,next:p03NextTask,
   rows:value=>{taskRows=value;},
   scope:value=>{p03PreferenceScope=value;},
   capture:p03FilterState,apply:applyP03FilterState,
@@ -62,4 +62,8 @@ harness.apply(saved);
 assert.equal(controls.get('sri-pack-base').value,'A');
 assert.deepEqual(multi.selectedOptions.map(option=>option.value),['PENDENTE','FILIAL']);
 assert.deepEqual(ids(),['2'],'favorito restaura o mesmo recorte');
+const order=[{id:'a',treatment_status:'PENDENTE'},{id:'b',treatment_status:'FILIAL'},{id:'c',treatment_status:'PENDENTE'},{id:'d',p03Readonly:true}];
+assert.equal(harness.next(order,'b').id,'c','avança pela ordem vigente inclusive em filtro com tratativas pendentes já registradas');
+assert.equal(harness.next(order.filter(row=>row.id!=='b'),'b',order.map(row=>row.id)).id,'c','posição anterior preservada quando conclusão retira linha do filtro');
+assert.equal(harness.next(order,'c').id,'a','última linha volta ao primeiro protocolo elegível');
 console.log('PASS: filtros múltiplos combinados, restauração de favoritos e isolamento por operador/equipe.');

@@ -27,7 +27,7 @@ const client={
  }
 };
 const context={
- client,window:{sriOperationalContext:()=>({day:'2026-11-25'})},
+ client,DIST_STATUS_DEFS:[['ACEITOU','',3],['OUTROS','',3]],window:{sriOperationalContext:()=>({day:'2026-11-25'})},
  document:{querySelectorAll:()=>[]},$(){return {textContent:''};},
  session:async()=>({client,profile:{role:'operator'},user:{id:'operator'}}),
  packRank:()=>0,packDueDate:()=>0,packDue:()=>0,renderPackTasks(){},restoreP03Preferences(){},stateMsg(){},loadHistory:async()=>{},
