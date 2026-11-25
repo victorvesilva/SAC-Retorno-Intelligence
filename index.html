@@ -7728,6 +7728,10 @@ body.sri33-modal-open{overflow:hidden}
       }else if(el.type==='checkbox')el.checked=value!==false;
       else if(typeof value==='string')el.value=value;
     }
+    // Saved shortcuts from the previous layout become visible, removable filters.
+    if(p03Quick==='critical'){$('sri-pack-filter').value='Crítico';$('sri-p03-state').value='active';p03Quick='';}
+    else if(p03Quick==='untreated'){$('sri-pack-status-filter').value='pending';$('sri-p03-state').value='active';p03Quick='';}
+    else if(p03Quick==='processed'){$('sri-p03-state').value='processed';p03Quick='';}
     p03Page=0;renderPackTasks();
   }
   function resetP03Controls(){

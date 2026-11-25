@@ -56,7 +56,7 @@ function reportCatalog(){
 function install(){
  wallet();reportCatalog();
  for(const id of ['sri-monitor-panel','sri-movement-panel','sri-p03-productivity','sri-p03-integrated-reports'])resultActions($(id));
- const catalog=$('v20-catalog-body');if(catalog)resultActions(catalog.querySelector('.v20-panel'));
+ resultActions($('v20-catalog-body'));
  for(const b of document.querySelectorAll('.v54-clear-trigger'))if(b.textContent.trim()!=='Limpar filtros de todas as áreas'){b.textContent='Limpar filtros de todas as áreas';b.title='Remove os filtros globais de todas as áreas do sistema';}
  const notice=$('notice-upload'),duplicate=document.querySelector('[data-v114-tab="import"]');
  if(notice&&duplicate)duplicate.hidden=notice.getClientRects().length>0;
