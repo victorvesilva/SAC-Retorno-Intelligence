@@ -64,28 +64,49 @@ setTimeout(()=>{
    if(region.textContent.includes('P23'))throw Error('Data vazia manteve estado anterior');
    if(!region.textContent.includes('Não há histórico armazenado para esta data'))throw Error('Mensagem histórica ausente');
    document.body.dataset.history='PASS';
+   const monitor=document.getElementById('sri-monitor-panel');
+   if(!monitor)throw Error('Console ausente');
+   [...monitor.querySelectorAll('button')].find(el=>el.textContent==='Consultar').click();
+   setTimeout(()=>{
+    if(!monitor.textContent.includes('P95 40 ms'))throw Error('Medições reais não exibidas');
+    if(!window.notifications.some(item=>item.kind==='error'))throw Error('Falha crítica sem notificação');
+    const details=monitor.querySelector('tbody details');details.open=true;
+    setTimeout(()=>{
+     if(!details.textContent.includes('07:01'))throw Error('Ocorrências individuais ausentes');
+     const actor=[...monitor.querySelectorAll('label')].find(el=>el.firstChild.textContent==='Responsável').querySelector('input');
+     actor.value='outro';actor.dispatchEvent(new Event('input'));
+     if(monitor.querySelectorAll('tbody tr').length)throw Error('Filtro por responsável ignorado');
+     document.body.dataset.monitor='PASS';
+    },40);
+   },40);
+
   },30);
  },30);
 },50);
 `;
 const mock=`
+window.notifications=[];window.sriPackNotify=(message,kind)=>window.notifications.push({message,kind});
 window.sriGetSupabaseClient=async()=>({
  auth:{getUser:async()=>({data:{user:{id:'admin'}}}),onAuthStateChange:()=>{}},
  from:()=>({select:()=>({eq:()=>({single:async()=>({data:{id:'admin',role:'admin'}})})})}),
  rpc:async(name,args)=>{
   if(name==='sri_p03_history_snapshots')return {data:args.p_day==='2026-11-23'?[{id:'s23',operational_day:args.p_day,created_at:'2026-11-23T18:00Z'}]:[]};
   if(name==='sri_p03_history_tasks')return {data:[{protocol_number:'P23',operator_name:'Operador',team_name:'Equipe A'}]};
+  if(name==='sri_monitor_read')return {data:[{id:'100',severity:'FATAL',module:'Supabase',code:'RPC_ERROR',responsavel:'Operador sintético',version:'pacote03-20261124',occurred_at:'2026-11-25T10:00Z',occurrences:2}]};
+  if(name==='sri_p03_rpc_metrics')return {data:{calls:2,errors:1,average_ms:30,p95_ms:40,maximum_ms:40}};
+  if(name==='sri_p03_monitor_occurrences')return {data:[{id:'1',event_id:'100',occurred_at:'2026-11-25T10:00Z'},{id:'2',event_id:'100',occurred_at:'2026-11-25T10:01Z'}]};
   return {data:[]};
  }
 });
 `;
 const folder=mkdtempSync(join(tmpdir(),'sri-p03-browser-'));
 const fixture=join(folder,'fixture.html');
-writeFileSync(fixture,'<!doctype html><meta charset="utf-8"><div id="overview"></div><div id="operator"></div><script>'+mock+harness+'</script><script>'+source+'</script><script>'+probe+'</script>');
+writeFileSync(fixture,'<!doctype html><meta charset="utf-8"><div id="overview"></div><div id="operator"></div><div id="v20-settings"></div><script>'+mock+harness+'</script><script>'+source+'</script><script>'+probe+'</script>');
 const chromium=process.env.CHROME_BIN||['/usr/bin/chromium','/usr/bin/google-chrome'].find(existsSync);
 assert.ok(chromium);
 const dom=execFileSync(chromium,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--disable-background-networking','--virtual-time-budget=1500','--user-data-dir='+join(folder,'profile'),'--dump-dom','file://'+fixture],{encoding:'utf8',timeout:60000,maxBuffer:8*1024*1024});
 assert.match(dom,/<body[^>]*data-filters="PASS"/);
 assert.match(dom,/<body[^>]*data-history="PASS"/);
+assert.match(dom,/<body[^>]*data-monitor="PASS"/);
 assert.doesNotMatch(dom,/<body[^>]*data-error=/);
 console.log('PASS: Chromium executou filtros múltiplos, colunas, favoritos por conta e consulta histórica por data sem reaproveitar recorte vazio.');

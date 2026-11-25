@@ -22,7 +22,7 @@ for(const policy of rls.policies){
  await db.exec(ddl);
 }
 await db.exec('SET check_function_bodies=on');
-const files=['2026-11-24_sri_pacote03_historico_carteira.sql','2026-11-24_sri_pacote03_produtividade.sql','2026-11-24_sri_pacote03_protecao_incidentes.sql','2026-11-24_sri_criticos_persistencia_status.sql','2026-11-24_sri_p03_historico_datas.sql','2026-11-24_sri_p03_perfil_assistente.sql','2026-11-25_sri_p03_historico_imutavel.sql','2026-11-25_sri_p03_escopo_publicacao.sql','2026-11-25_sri_p03_metricas_rpc.sql','2026-11-25_sri_p03_produtividade_carga.sql'];
+const files=['2026-11-24_sri_pacote03_historico_carteira.sql','2026-11-24_sri_pacote03_produtividade.sql','2026-11-24_sri_pacote03_protecao_incidentes.sql','2026-11-24_sri_criticos_persistencia_status.sql','2026-11-24_sri_p03_historico_datas.sql','2026-11-24_sri_p03_perfil_assistente.sql','2026-11-25_sri_p03_historico_imutavel.sql','2026-11-25_sri_p03_escopo_publicacao.sql','2026-11-25_sri_p03_metricas_rpc.sql','2026-11-25_sri_p03_produtividade_carga.sql','2026-11-25_sri_p03_monitor_ocorrencias.sql'];
 for(const file of files){await db.exec(readFileSync(new URL('../sql/'+file,import.meta.url),'utf8'));console.log('PASS migration '+file);}
 
 // Use today's civil date for flows whose production authorization requires the current day.
@@ -107,4 +107,22 @@ const history=(await db.query("SELECT sri_p03_my_treatments_page('2026-11-25','2
 assert.equal(history.filter(row=>row.action==='ACEITOU').length,1);
 console.log('PASS: operador trata, repete idempotentemente e mantém conclusão no histórico e na carteira do dia após reimportar.');
 await db.exec('RESET ROLE');
+
+await db.exec('SET request.jwt.claim.sub='+id(2)+'; SET ROLE authenticated');
+await db.query("SELECT sri_monitor_write('FATAL','RPC_ERROR','Supabase','pacote03-20261124')");
+await db.query("SELECT sri_monitor_write('FATAL','RPC_ERROR','Supabase','pacote03-20261124')");
+await assert.rejects(db.query('SELECT sri_p03_monitor_occurrences(1,null)'),/administrador/);
+await assert.rejects(db.query('SELECT * FROM private.sri_p03_monitor_occurrences'),/permission denied/);
+await db.exec('RESET ROLE; SET request.jwt.claim.sub='+id(10)+'; SET ROLE authenticated');
+const groups=(await db.query("SELECT sri_monitor_read(now()-interval '1 day',now()+interval '1 day','FATAL') result")).rows.map(row=>row.result);
+assert.equal(groups.length,1);assert.equal(groups[0].occurrences,2);
+const occurrences=(await db.query('SELECT sri_p03_monitor_occurrences($1,null) result',[groups[0].id])).rows;
+assert.equal(occurrences.length,2,'agrupamento mantém cada ocorrência auditável');
+await db.exec('RESET ROLE');
+await db.exec("INSERT INTO private.sri_monitor_events(actor_id,severity,code,module,version,occurred_at) VALUES ("+id(2)+",'INFO','AUTH_OK','Autenticação','pacote03-20261124',now()-interval '120 days')");
+await db.exec('SET ROLE authenticated');
+const retained=(await db.query("SELECT sri_monitor_read(now()-interval '130 days',now()+interval '1 day',null) result")).rows;
+assert.equal(retained.length,2,'logs antigos preservados permanecem consultáveis');
+await db.exec('RESET ROLE');
+console.log('PASS: falha crítica agrupada mantém ocorrências individuais, acesso administrativo e consulta de logs antigos preservados.');
 await db.close();

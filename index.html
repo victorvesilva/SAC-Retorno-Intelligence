@@ -7496,8 +7496,8 @@ body.sri33-modal-open{overflow:hidden}
     const {data,error}=await client.rpc('publish_general_operator_tasks',{p_snapshot:snapshotId,p_revision:revision,p_details:details});
     if(error){window.sriMonitorEvent?.('ERROR','PUBLISH_ERROR','Distribuição');throw Error('Publicação das carteiras: '+error.message+'. Confira se o SQL da Etapa 3.3 foi executado.');} window.sriMonitorEvent?.('SUCCESS','PUBLISH_OK','Distribuição');
     if(Number(data?.unlinked)>0)throw Error(`${Number(data.unlinked)} atribuição(ões) sem carteira publicada. Verifique os vínculos de operadores legados antes de prosseguir.`);
-    const info=`${Number(data?.published)||0} protocolo(s) publicados; ${Number(data?.unlinked)||0} aguardando vínculo de operador.`;
-    stateMsg('sri33-link-status',info+(data?.unlinked_names?.length?' Operadores pendentes: '+data.unlinked_names.join(', '):''),data?.unlinked?'warning':'success');
+    const info=`${Number(data?.published)||0} protocolo(s) publicados; ${Number(data?.unlinked)||0} aguardando vínculo de operador.`+(missing?' '+missing+' protocolo(s) com Base ou Área ausente ou conflitante. Confira os campos na carteira e na extração de origem.':'');
+    stateMsg('sri33-link-status',info+(data?.unlinked_names?.length?' Operadores pendentes: '+data.unlinked_names.join(', '):''),data?.unlinked||missing?'warning':'success');
     return data;
   }
   window.sriSyncOperatorTasks=publishTasks;window.sri33LegacyRefresh=refreshLinks;
@@ -7579,26 +7579,36 @@ body.sri33-modal-open{overflow:hidden}
   async function loadTasks(){
     const epoch=operatorEpoch,seq=++operatorLoadSeq;const {client,profile,user}=await session();
     if(profile.role!=='operator')return;
-    const rows=[];let from=0;
-    for(let round=0;round<20;round++){
+    const rows=[];let taskCursor=null;
+    for(;;){
+      if(epoch!==operatorEpoch||seq!==operatorLoadSeq)return;
       const fields='id,team_id,protocol_number,criticality,due_situation,sla_band,channel,source_status,work_status,treatment_status,operational_day,shift_label,updated_at';
-      const fetchPage=cols=>client.from('daily_operator_tasks').select(cols)
-        .eq('operator_user_id',user.id).eq('active',true)
-        .eq('operational_day',window.sriOperationalContext?.().day||'1900-01-01')
-        .order('operational_day',{ascending:false}).order('updated_at',{ascending:false})
-        .range(from,from+199);
+      const fetchPage=cols=>{
+        let query=client.from('daily_operator_tasks').select(cols)
+          .eq('operator_user_id',user.id).eq('active',true)
+          .eq('operational_day',window.sriOperationalContext?.().day||'1900-01-01')
+          .order('id',{ascending:true}).limit(200);
+        if(taskCursor)query=query.gt('id',taskCursor);
+        return query;
+      };
       let {data,error}=await fetchPage(fields+',priority_reason,due_date,base_name,area_name');
       if(error&&['42703','PGRST204'].includes(error.code)&&/base_name|area_name/i.test(error.message||''))({data,error}=await fetchPage(fields+',priority_reason,due_date'));
       if(error&&['42703','PGRST204'].includes(error.code)&&/priority_reason|due_date/i.test(error.message||''))({data,error}=await fetchPage(fields));
       if(error)throw Error('Carteira: '+error.message);
-      rows.push(...(data||[]));if((data||[]).length<200)break;from+=200;
+      const batch=data||[];rows.push(...batch);
+      if(batch.length<200)break;
+      const nextCursor=batch.at(-1)?.id;
+      if(!nextCursor||nextCursor===taskCursor)throw Error('Não foi possível avançar na consulta da carteira. Tente atualizar.');
+      taskCursor=nextCursor;
     }
     let archivedUnavailable=false,archivedCursor=null;
-    for(let page=0;page<20;page++){
+    const knownProtocols=new Set(rows.map(row=>row.protocol_number));
+    for(;;){
+      if(epoch!==operatorEpoch||seq!==operatorLoadSeq)return;
       const {data,error}=await client.rpc('sri_my_daily_processed',{p_before:archivedCursor,p_limit:200});
       if(error){archivedUnavailable=true;break;}
-      const batch=data||[];for(const r of batch)if(!rows.some(a=>a.protocol_number===r.protocol_number))rows.push({...r,p03Readonly:true});
-      if(batch.length<200)break;archivedCursor=batch.at(-1)?.protocol_number;if(!archivedCursor)break;
+      const batch=data||[];for(const r of batch)if(!knownProtocols.has(r.protocol_number)){knownProtocols.add(r.protocol_number);rows.push({...r,p03Readonly:true});}
+      if(batch.length<200)break;const nextCursor=batch.at(-1)?.protocol_number;if(!nextCursor||nextCursor===archivedCursor){archivedUnavailable=true;break;}archivedCursor=nextCursor;
     }
     if(epoch!==operatorEpoch||seq!==operatorLoadSeq)return;taskRows=rows;
     taskRows.sort((a,b)=>Number(!!a.p03Readonly)-Number(!!b.p03Readonly)||packRank(a)-packRank(b)||packDueDate(a,b)||packDue(a)-packDue(b)||String(a.protocol_number).localeCompare(String(b.protocol_number)));
