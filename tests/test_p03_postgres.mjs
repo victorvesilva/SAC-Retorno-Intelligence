@@ -141,6 +141,46 @@ assert.equal(incident.stage,'analysis');
 await db.exec('RESET ROLE');
 assert.equal(Number((await db.query('SELECT count(*) FROM private.sri_p03_incident_history')).rows[0].count),5);
 console.log('PASS: ciclo de incidente com controle de concorrência, reabertura auditada e acesso exclusivo do Administrador.');
+
+await db.exec(`
+ALTER TABLE teams ADD COLUMN active boolean DEFAULT true;
+ALTER TABLE daily_operator_tasks ADD UNIQUE(snapshot_id,protocol_number);
+ALTER TABLE daily_operator_tasks ALTER COLUMN id SET DEFAULT gen_random_uuid();
+ALTER TABLE daily_operator_tasks ADD COLUMN shift_label text, ADD COLUMN active boolean DEFAULT true,
+ ADD COLUMN distribution_revision bigint DEFAULT 0, ADD COLUMN updated_at timestamptz DEFAULT now(),
+ ADD COLUMN due_situation text, ADD COLUMN sla_band text, ADD COLUMN channel text, ADD COLUMN priority_reason text;
+CREATE TABLE operator_links(team_id uuid,user_id uuid,operator_name text,linked_by uuid, UNIQUE(team_id,user_id));
+CREATE TABLE daily_result_distributions(snapshot_id uuid,state jsonb,revision bigint);
+CREATE TABLE sri_general_day_closures(operational_day date);
+CREATE TABLE sri_result_day_closures(operational_day date,status text);
+CREATE TABLE audit_events(user_id uuid,action text,object_type text,object_id text,details jsonb);
+CREATE FUNCTION private.is_manager() RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER AS $$
+ SELECT EXISTS(SELECT 1 FROM public.profiles WHERE id=auth.uid() AND role IN ('admin','manager'))
+$$;
+CREATE FUNCTION private.sri_task_blocks_transfer(date,uuid,text) RETURNS boolean LANGUAGE sql AS $$ SELECT false $$;
+CREATE FUNCTION private.sri_priority_reason(text) RETURNS text LANGUAGE sql AS $$ SELECT $1 $$;
+CREATE FUNCTION private.sri_priority_date(text) RETURNS date LANGUAGE sql AS $$ SELECT $1::date $$;
+`);
+await db.exec(sql('2026-11-25_sri_p03_escopo_publicacao.sql'));
+await db.exec(`RESET ROLE;
+UPDATE daily_operator_tasks SET active=false;
+INSERT INTO daily_result_snapshots(id,operational_day,shift_label,created_at) VALUES
+('00000000-0000-0000-0000-000000000090','2026-11-25','Manhã','2026-11-25T10:00Z'),
+('00000000-0000-0000-0000-000000000091','2026-11-25','Manhã','2026-11-25T11:00Z');
+INSERT INTO daily_result_distributions VALUES ('00000000-0000-0000-0000-000000000091','{"assignments":{}}',1);
+INSERT INTO daily_operator_tasks(snapshot_id,team_id,operational_day,shift_label,protocol_number,operator_user_id,work_status,treatment_status)
+VALUES ('00000000-0000-0000-0000-000000000090',${ref('team')},'2026-11-25','Manhã','A',${ref('operator')},'pending','PENDENTE'),
+('00000000-0000-0000-0000-000000000090',${ref('foreign')},'2026-11-25','Manhã','B',${ref('other')},'pending','PENDENTE');
+`);
+await identify('assistant');
+await db.query("SELECT publish_general_operator_tasks('00000000-0000-0000-0000-000000000091',1,'{}')");
+await db.exec('RESET ROLE');
+const publication=(await db.query("SELECT protocol_number,active,snapshot_id FROM daily_operator_tasks WHERE protocol_number IN ('A','B')")).rows;
+assert.equal(publication.filter(row=>row.protocol_number==='B').length,1,'carteira de outra equipe não copiada');
+assert.equal(publication.find(row=>row.protocol_number==='B').active,true,'carteira de outra equipe permanece ativa');
+assert.equal(publication.filter(row=>row.protocol_number==='A').length,2,'pendência própria transportada');
+assert.equal(publication.find(row=>row.protocol_number==='A'&&row.snapshot_id.endsWith('090')).active,false);
+console.log('PASS: Assistente publica apenas seu escopo e preserva a carteira ativa de outra equipe.');
 await db.close();
 console.log('PASS: migração aditiva e repetível, estados de 23/11 preservados após conclusão em 24/11, autoria/equipe congeladas, Base/Área do evento imutáveis, proteção de tabelas e ausência histórica explícita.');
 
