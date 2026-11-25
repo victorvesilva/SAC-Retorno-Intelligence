@@ -110,7 +110,7 @@ async function fixtureProbe(){
   const panel=document.getElementById('sri-p03-integrated-reports');
   if(!panel)throw Error('Relatórios integrados não montados');
   const query=[...panel.querySelectorAll('button')].find(el=>el.textContent==='Consultar');await query.onclick();
-  if(location.search.includes('focus=integrated')){document.documentElement.style.scrollBehavior='auto';panel.scrollIntoView({block:'start',behavior:'instant'});await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));await new Promise(resolve=>setTimeout(resolve,50));}
+  if(location.search.includes('focus=integrated')){document.documentElement.style.scrollBehavior='auto';panel.scrollIntoView({block:'start',behavior:'instant'});await new Promise(resolve=>setTimeout(resolve,100));}
  }
  const rect=section?.getBoundingClientRect();
  const root=document.documentElement;
@@ -157,16 +157,37 @@ const devices=[
  [1024,768,['overview','distribution','intelligence','reports','import','details','v20-closure']],
  [390,844,['reports-integrated','overview','distribution','priorities','agents','intelligence','reports','import','details','v20-mine','v20-closure','v20-settings']]
 ];
+if(process.env.SRI_CAPTURE_INTEGRATED_SCREENSHOT==='1') {
+ const destination=path.join(base,'.tmp','visual-integrada');
+ fs.mkdirSync(destination,{recursive:true});
+ for(const [width,height,tab] of [[1440,900,'overview'],[1440,900,'distribution'],
+   [1440,900,'reports'],[1440,900,'details'],[390,844,'overview'],
+   [390,844,'distribution'],[390,844,'reports'],[390,844,'import'],
+   [1440,900,'reports-integrated'],[390,844,'reports-integrated']]){
+  const image=path.join(destination,tab+'-'+width+'.png');
+  execFileSync(chrome,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
+   '--disable-background-networking','--allow-file-access-from-files',
+   '--virtual-time-budget=2000','--run-all-compositor-stages-before-draw','--force-device-scale-factor=1',
+   '--window-size='+width+','+height,
+   '--user-data-dir='+path.join(tmp,'s-'+width+'-'+tab),
+   '--screenshot='+image,'file://'+fixture+'?tab='+(tab==='reports-integrated'?'reports&focus=integrated':tab)],
+   {timeout:50000,stdio:['ignore','pipe','pipe']});
+  assert.ok(fs.statSync(image).size>3500,'Captura visual vazia '+tab);
+  console.log('SCREENSHOT',image);
+ }
+}
+
 for(const [width,height,tabs] of devices){
  for(const tab of tabs){
   const url='file://'+fixture+'?tab='+(tab==='reports-integrated'?'reports&focus=integrated':encodeURIComponent(tab));
   const args=['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
    '--disable-background-networking','--allow-file-access-from-files',
-   '--virtual-time-budget=650','--force-device-scale-factor=1',
+   '--virtual-time-budget=2000','--run-all-compositor-stages-before-draw','--force-device-scale-factor=1',
    '--window-size='+width+','+height,'--user-data-dir='+path.join(tmp,'p-'+width+'-'+height+'-'+tab),
    '--dump-dom',url];
   const dom=execFileSync(chrome,args,{encoding:'utf8',timeout:50000,stdio:['ignore','pipe','pipe']});
   const match=dom.match(/<pre id="sri-integrated-probe"[^>]*>([\s\S]*?)<\/pre>/);
+  if(!match){const dest=path.join(base,'.tmp','visual-integrada');fs.mkdirSync(dest,{recursive:true});fs.writeFileSync(path.join(dest,'diagnostic-'+tab+'-'+width+'.html'),dom);}
   assert.ok(match,'Teste visual não executou: '+tab+' em '+width+'x'+height);
   const result=JSON.parse(match[1].replace(/&quot;/g,'"').replace(/&amp;/g,'&'));
   if(tab==='reports-integrated'){assert.ok(result.integratedBounds?.height>200,JSON.stringify(result));assert.ok(result.integratedBounds.top>=-3&&result.integratedBounds.top<150,JSON.stringify(result));}
@@ -181,25 +202,6 @@ for(const [width,height,tabs] of devices){
    ': scroll='+result.rootScroll+' viewport='+result.rootWidth);
   console.log('PASS visual integrado',tab,width+'x'+height,
     'cards='+result.cards,'overflow='+Math.max(0,result.rootScroll-result.rootWidth));
- }
-}
-if(process.env.SRI_CAPTURE_INTEGRATED_SCREENSHOT==='1') {
- const destination=path.join(base,'.tmp','visual-integrada');
- fs.mkdirSync(destination,{recursive:true});
- for(const [width,height,tab] of [[1440,900,'overview'],[1440,900,'distribution'],
-   [1440,900,'reports'],[1440,900,'details'],[390,844,'overview'],
-   [390,844,'distribution'],[390,844,'reports'],[390,844,'import'],
-   [1440,900,'reports-integrated'],[390,844,'reports-integrated']]){
-  const image=path.join(destination,tab+'-'+width+'.png');
-  execFileSync(chrome,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
-   '--disable-background-networking','--allow-file-access-from-files',
-   '--virtual-time-budget=650','--force-device-scale-factor=1',
-   '--window-size='+width+','+height,
-   '--user-data-dir='+path.join(tmp,'s-'+width+'-'+tab),
-   '--screenshot='+image,'file://'+fixture+'?tab='+(tab==='reports-integrated'?'reports&focus=integrated':tab)],
-   {timeout:50000,stdio:['ignore','pipe','pipe']});
-  assert.ok(fs.statSync(image).size>3500,'Captura visual vazia '+tab);
-  console.log('SCREENSHOT',image);
  }
 }
 console.log('PASS: revisão visual integrada em 3 resoluções, 11 módulos e dados sintéticos.');
