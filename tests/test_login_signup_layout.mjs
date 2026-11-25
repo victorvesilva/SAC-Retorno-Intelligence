@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
+import { startChromium } from './helpers/chromium_cdp.mjs';
 
 const base = fileURLToPath(new URL('../', import.meta.url));
 const html = fs.readFileSync(path.join(base, 'index.html'), 'utf8');
@@ -74,18 +74,13 @@ css + '</style></head><body>' + withLocalAssets +
 toggle + ';window.addEventListener("load",(' + probe.toString() + '));</script></body></html>';
 fs.writeFileSync(fixture, fixtureHtml, 'utf8');
 const sizes = [[1440,900],[1440,690],[1024,768],[800,690],[390,844],[390,640]];
+const browser=await startChromium(chrome,path.join(tmp,'cdp-profile'));
+try{
 for (const [width,height] of sizes) {
- const dom = execFileSync(chrome, [
-  '--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
-  '--disable-background-networking','--virtual-time-budget=2000',
-  '--force-device-scale-factor=1',
-  '--window-size='+width+','+height,
-  '--user-data-dir='+path.join(tmp, 'profile-'+width+'-'+height),
-  '--dump-dom','file://'+fixture
- ], { encoding:'utf8',timeout:45000,stdio:['ignore','pipe','pipe'] });
- const match = dom.match(/<pre id="sri-login-test-result"[^>]*>([\s\S]*?)<\/pre>/);
- assert.ok(match,'Chromium não executou o teste de layout '+width+'x'+height);
- const result = JSON.parse(match[1].replace(/&quot;/g,'"').replace(/&amp;/g,'&'));
+ const page=await browser.page('file://'+fixture,width,height);
+ const result=await page.waitFor("document.getElementById('sri-login-test-result')?JSON.parse(document.getElementById('sri-login-test-result').textContent):null");
+ await page.close();
+ assert.equal(result.login.width,width);assert.equal(result.login.height,height);
  const {login,signup,restored,endOfForm}=result;
  const mobile=signup.width<=820;
  assert.equal(signup.signupClass,true);
@@ -122,15 +117,12 @@ if(process.env.SRI_CAPTURE_LOGIN_SCREENSHOT==='1'){
  for(const [width,height] of [[1440,900],[390,844]]) {
   const output = path.join(base,'.tmp','login-signup-'+width+'.png');
   fs.mkdirSync(path.dirname(output),{recursive:true});
-  execFileSync(chrome,[
-   '--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
-   '--disable-background-networking','--allow-file-access-from-files',
-   '--force-device-scale-factor=1','--window-size='+width+','+height,
-   '--user-data-dir='+path.join(tmp,'shot-'+width),
-   '--screenshot='+output,'file://'+fixture+'?signup=1'
-  ],{timeout:45000,stdio:['ignore','pipe','pipe']});
+  const page=await browser.page('file://'+fixture+'?signup=1',width,height);
+  await page.waitFor("!!document.getElementById('sri-login-test-result')");
+  fs.writeFileSync(output,await page.screenshot());await page.close();
   assert.ok(fs.statSync(output).size>4000,'Screenshot do cadastro deve ser gerada');
   console.log('SCREENSHOT',output);
  }
 }
+}finally{await browser.close();}
 console.log('PASS: alternância Entrar/Criar conta sem esticar a imagem e sem cortar formulário.');

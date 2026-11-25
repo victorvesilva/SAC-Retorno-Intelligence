@@ -43,6 +43,7 @@ const $=id=>inputs[id]||(inputs[id]={value:''});
 const state={user:{id:'mgr'},profile:{role:'manager'},teams:[{id:'t1',name:'Equipe'}],
  snapshotId:null,revision:0,localDataUnsaved:true,fileStaged:false,pendingSnapshot:null};
 const ctx={
+ window:{},ui:{},
  auth:async()=>client,ctx:state,$,syncShift:()=>({day:'2026-11-23',shift:'Manhã'}),carryForwardDistribution:async()=>{},
  publishingContextValid:()=>true,
  resultPayload:()=>({schema:1,reference:20000,importedAt:'2026-11-23T17:30:00Z',source:[{id:'1234567',status:'12'}]}),
