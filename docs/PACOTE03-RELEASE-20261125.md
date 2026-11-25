@@ -37,7 +37,7 @@ O cache operacional passou a ser separado por conta. Cópias legadas sem proprie
 
 ## Instalação atômica e integridade
 
-Aplicar **somente** `sql/2026-11-25_sri_p03_release_integral.sql`, gerado por `python tools/build_p03_release.py`. O manifesto `PACOTE03-MANIFESTO-20261125.json` registra ordem e SHA-256 dos 19 arquivos fonte. Não aplicar também os arquivos individuais após o pacote.
+Aplicar **somente** `sql/2026-11-25_sri_p03_release_integral.sql`, gerado por `python tools/build_p03_release.py`. O manifesto `PACOTE03-MANIFESTO-20261125.json` registra ordem e SHA-256 dos 20 arquivos fonte. Não aplicar também os arquivos individuais após o pacote.
 
 O bundle usa uma única transação, timeout de lock e verificação de integridade dentro do PostgreSQL. Registra quantidade e hash do conjunto de colunas original de cada tabela pública/privada, mantém os dados estáveis durante a instalação e compara novamente antes do commit. Qualquer diferença aborta toda a transação. Colunas novas são aditivas e não são confundidas com alteração dos valores anteriores.
 
@@ -60,3 +60,5 @@ A jornada com credenciais reais pelo navegador de produção não foi executada 
 Validar o SHA final e CI, conferir backup e funções instaladas, aplicar o bundle uma vez e verificar o banco antes de liberar a interface. Consolidar o PR #42 e acompanhar a publicação de produção do mesmo commit, reutilizando uma publicação automática se existir. Não criar previews. Verificar `READY`, domínio, assets e configuração pública sem expor chaves.
 
 Deployment de produção anterior identificado para retorno de interface: `dpl_JE4EEkRRZfYzk3qftxmjdtW3A2Uh`, commit `89cc93c0c824a9fbfce9107a1d16342573a61f79`. As alterações de banco são aditivas; um retorno de interface não exige apagar históricos ou tabelas novas. Não executar restauração destrutiva de dados como procedimento automático.
+
+Complemento de compatibilidade: 14 tarefas reais conservavam tratativa de conclusão com outro estado de trabalho legado. A migração `2026-11-25_sri_p03_conclusoes_legadas.sql` corrige apenas a interpretação nas consultas, sem reescrever esses registros. Instalações que já receberam o bundle original de 19 fontes aplicam somente esse complemento; instalações novas usam o bundle completo de 20 fontes.

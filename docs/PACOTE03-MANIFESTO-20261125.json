@@ -76,8 +76,12 @@
     {
       "path": "sql/2026-11-25_sri_p03_vinculo_auditoria_monitor.sql",
       "sha256": "ea81dc786c7c6dce2bc11711469269482fd504ebf9f97529be81e463d49cfe4d"
+    },
+    {
+      "path": "sql/2026-11-25_sri_p03_conclusoes_legadas.sql",
+      "sha256": "bcc5e148354a140f83c05c487a413daa42f088608052b2879178c62f0d7e923e"
     }
   ],
   "bundle": "sql/2026-11-25_sri_p03_release_integral.sql",
-  "bundle_sha256": "76168b458b2466d6164ac762d2d08ee3ad57c8c5b5509e62ebf6c8f1a9065645"
+  "bundle_sha256": "23dc6bf891820408c129a481700426820d4cea572980c8cd7f261231efc57804"
 }

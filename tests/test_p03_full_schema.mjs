@@ -24,7 +24,7 @@ for(const policy of rls.policies){
 await db.exec('SET check_function_bodies=on');
 const baselineHashes=(await db.query("SELECT n.nspname||'.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')' signature,md5(pg_get_functiondef(p.oid)) definition_hash FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN ('public','private') AND p.prokind='f' ORDER BY 1")).rows;
 writeFileSync('/tmp/sri-reconstructed-function-hashes.json',JSON.stringify(baselineHashes));
-const files=['2026-11-24_sri_pacote03_historico_carteira.sql','2026-11-24_sri_pacote03_produtividade.sql','2026-11-24_sri_pacote03_protecao_incidentes.sql','2026-11-24_sri_criticos_persistencia_status.sql','2026-11-24_sri_p03_historico_datas.sql','2026-11-24_sri_p03_perfil_assistente.sql','2026-11-25_sri_p03_historico_imutavel.sql','2026-11-25_sri_p03_escopo_publicacao.sql','2026-11-25_sri_p03_metricas_rpc.sql','2026-11-25_sri_p03_produtividade_carga.sql','2026-11-25_sri_p03_monitor_ocorrencias.sql','2026-11-25_sri_p03_continuidade_carteira.sql','2026-11-25_sri_p03_auditoria_contexto.sql','2026-11-25_sri_p03_escopo_apuracao_geral.sql','2026-11-25_sri_p03_guard_distribuicao_fechada.sql','2026-11-25_sri_p03_reabertura_protocolo.sql','2026-11-25_sri_p03_relatorios_integrados.sql','2026-11-25_sri_p03_meta_conclusao.sql','2026-11-25_sri_p03_vinculo_auditoria_monitor.sql'];
+const files=['2026-11-24_sri_pacote03_historico_carteira.sql','2026-11-24_sri_pacote03_produtividade.sql','2026-11-24_sri_pacote03_protecao_incidentes.sql','2026-11-24_sri_criticos_persistencia_status.sql','2026-11-24_sri_p03_historico_datas.sql','2026-11-24_sri_p03_perfil_assistente.sql','2026-11-25_sri_p03_historico_imutavel.sql','2026-11-25_sri_p03_escopo_publicacao.sql','2026-11-25_sri_p03_metricas_rpc.sql','2026-11-25_sri_p03_produtividade_carga.sql','2026-11-25_sri_p03_monitor_ocorrencias.sql','2026-11-25_sri_p03_continuidade_carteira.sql','2026-11-25_sri_p03_auditoria_contexto.sql','2026-11-25_sri_p03_escopo_apuracao_geral.sql','2026-11-25_sri_p03_guard_distribuicao_fechada.sql','2026-11-25_sri_p03_reabertura_protocolo.sql','2026-11-25_sri_p03_relatorios_integrados.sql','2026-11-25_sri_p03_meta_conclusao.sql','2026-11-25_sri_p03_vinculo_auditoria_monitor.sql','2026-11-25_sri_p03_conclusoes_legadas.sql'];
 for(const file of files){await db.exec(readFileSync(new URL('../sql/'+file,import.meta.url),'utf8'));console.log('PASS migration '+file);}
 
 // Use today's civil date for flows whose production authorization requires the current day.
@@ -321,6 +321,35 @@ await assert.rejects(db.query('SELECT sri_p03_goals()'),/restrito/);
 await assert.rejects(db.query("SELECT sri_p03_goal_save('general',NULL,$1,90,NULL)",[day]),/fora do escopo/);
 await db.exec('RESET ROLE');
 console.log('PASS: relatórios paginados preservam 450 eventos sem duplicar, com recorte por equipe, metas versionadas e proteção contra gravação direta e concorrente.');
+// Legacy ACEITOU/OUTROS may still have an old mutable work_status. Readers must not count them as pending.
+await db.exec('SET request.jwt.claim.sub='+id(10));
+const beforeLegacy=(await db.query('SELECT coalesce(sum(active_stock),0)::int active,coalesce(sum(finalized_in_tool),0)::int finalized FROM sri_p03_productivity($1,$1)',[day])).rows[0];
+for(const status of ['ACEITOU','OUTROS']){
+ const protocol='Legacy-'+status;
+ const task=(await db.query("INSERT INTO daily_operator_tasks(snapshot_id,team_id,operational_day,shift_label,protocol_number,operator_user_id,work_status) VALUES ("+id(14)+","+id(6)+",$1,'Tarde',$2,"+id(2)+",'pending') RETURNING id",[day,protocol])).rows[0];
+ await db.query("INSERT INTO daily_operator_treatments(task_id,actor_id,action,notes) VALUES ($1,"+id(2)+",$2,'Evento legado sintético')",[task.id,status]);
+ await db.query("UPDATE daily_operator_tasks SET treatment_status=$2 WHERE id=$1",[task.id,status]);
+}
+const afterLegacy=(await db.query('SELECT coalesce(sum(active_stock),0)::int active,coalesce(sum(finalized_in_tool),0)::int finalized FROM sri_p03_productivity($1,$1)',[day])).rows[0];
+assert.equal(afterLegacy.active,beforeLegacy.active);assert.equal(afterLegacy.finalized,beforeLegacy.finalized+2);
+await db.exec('SET ROLE authenticated; SET request.jwt.claim.sub='+id(2));
+const unresolved=(await db.query('SELECT sri_p03_my_unresolved() result')).rows.map(r=>r.result);
+assert.ok(unresolved.every(r=>!r.protocol_number.startsWith('Legacy-')));
+await db.exec('RESET ROLE');
+assert.equal(Number((await db.query("SELECT count(*) FROM daily_operator_tasks WHERE protocol_number LIKE 'Legacy-%' AND work_status='pending'")).rows[0].count),2,'estado original permanece intacto');
+// Next-day completed carry placeholders do not count as fresh receipts.
+await db.exec('SET request.jwt.claim.sub='+id(10));
+const nextDay=(await db.query("SELECT (date '2026-11-25'+1)::text AS next_day")).rows[0].next_day;
+const nextReceived=(await db.query('SELECT coalesce(sum(received),0)::int total FROM sri_p03_productivity($1,$1)',[nextDay])).rows[0].total;
+assert.equal(nextReceived,1,'somente a pendência C é recebida no dia seguinte; A concluído é excluído');
+const nextReport=(await db.query('SELECT sri_p03_reporting_page($1,$1,NULL) result',[nextDay])).rows.map(r=>r.result);
+assert.ok(nextReport.filter(r=>r.kind==='assignment').every(r=>r.protocol==='C'));
+await db.exec("UPDATE daily_operator_tasks SET active=false WHERE protocol_number LIKE 'Legacy-%'; SET request.jwt.claim.sub="+id(2)+"; SET ROLE authenticated");
+const legacyArchived=(await db.query("SELECT sri_my_daily_processed(NULL,200) result")).rows.map(r=>r.result);
+assert.equal(legacyArchived.filter(r=>r.protocol_number.startsWith('Legacy-')).length,2,'conclusões legadas arquivadas continuam na carteira de leitura do mesmo dia');
+await db.exec('RESET ROLE');
+console.log('PASS: ACEITOU/OUTROS legados excluídos da carga e reconhecidos nas conclusões sem alterar registros; transporte concluído não cria recebimento no dia seguinte.');
+
 // Reapplying the whole release cannot rewrite any pre-existing operational row.
 const tables=(await db.query("SELECT schemaname,tablename FROM pg_tables WHERE schemaname IN ('public','private') ORDER BY schemaname,tablename")).rows;
 const fingerprint=async()=>{const result={};for(const t of tables){const name=ident(t.schemaname)+'.'+ident(t.tablename);result[name]=(await db.query("SELECT count(*)::int n,md5(coalesce(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text)::text,'[]')) hash FROM "+name+' t')).rows[0];}return result;};
@@ -332,5 +361,5 @@ const tamperedBundle=releaseBundle.replace('DO $integrity_after$',"UPDATE public
 await assert.rejects(db.exec(tamperedBundle),/Integrity check failed/);
 await db.exec('ROLLBACK');
 assert.deepEqual(await fingerprint(),beforeReapply,'falha no hash reverte integralmente a transação');
-console.log('PASS: o pacote atômico de 19 migrações pode ser reaplicado sem alterar quantidade nem conteúdo de qualquer registro público/privado existente; adulteração proposital é detectada e revertida.');
+console.log('PASS: o pacote atômico de 20 migrações pode ser reaplicado sem alterar quantidade nem conteúdo de qualquer registro público/privado existente; adulteração proposital é detectada e revertida.');
 await db.close();

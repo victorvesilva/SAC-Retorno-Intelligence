@@ -78,6 +78,7 @@ function makeReports(root){
  const scoped=raw=>filter(raw,criteria()).filter(r=>(!selectedDay||r.day===selectedDay)&&(!selectedStatus||r.status===selectedStatus)&&(!linkedAudit||r.kind==='movement'&&String(r.id)===String(linkedAudit)));
  function card(label,value){const el=node('div',null,stats);el.className='v20-stat';node('span',label,el);node('b',String(value),el);}
  function render(){
+  goalScope.closest('label').hidden=kind.value!=='goals';
   const list=scoped(rows),totals=summary(list);stats.replaceChildren();comparison.replaceChildren();graph.replaceChildren();output.replaceChildren();
   card('Protocolos atribuídos',totals.assigned);card('Protocolos trabalhados',totals.treated);card('Concluídos na ferramenta',totals.conclusions);card('Eventos de tratativa',totals.events);card('Conciliações',totals.reconciliations);card('Reaberturas',totals.reopens);
   if(other.length&&!selectedDay&&!selectedStatus){const prior=summary(filter(other,criteria()));table(comparison,[['label','Indicador'],['a','Período principal'],['b','Comparativo'],['delta','Variação absoluta']],
