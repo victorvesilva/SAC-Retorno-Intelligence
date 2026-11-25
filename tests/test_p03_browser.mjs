@@ -3,6 +3,7 @@ import {execFileSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import assert from 'node:assert/strict';
+import vm from 'node:vm';
 
 const root=new URL('../',import.meta.url);
 const html=readFileSync(new URL('index.html',root),'utf8');
@@ -12,6 +13,7 @@ assert.ok(from>0);
 const start=html.indexOf('`',from)+1,end=html.indexOf('</section>`);',start)+10;
 const markup=html.slice(start,end);
 const filters=html.slice(html.indexOf('  function p03QuickMatch'),html.indexOf('  let historySessionRequest=0;'));
+const renderedMarkup=vm.runInNewContext(String.fromCharCode(96)+markup+String.fromCharCode(96),{h:value=>String(value),TREATMENT_STATUSES:['PENDENTE','FILIAL']});
 const harness=`
 const $=id=>document.getElementById(id),h=value=>String(value??''),TREATMENT_STATUSES=['PENDENTE','FILIAL'];
 let p03Page=0,p03Quick='',p03History=[],p03HistoryCursor=null;
@@ -22,7 +24,7 @@ let taskRows=[
  {id:'b',protocol_number:'102',treatment_status:'FILIAL',base_name:'Base A',area_name:'Área B'},
  {id:'c',protocol_number:'103',treatment_status:'ACEITOU',base_name:'Base B',area_name:'Área B'}
 ];
-document.getElementById('operator').innerHTML=`${markup}`;
+document.getElementById('operator').innerHTML=${JSON.stringify(renderedMarkup)};
 ${filters}
 setupP03Preferences();renderPackTasks();
 p03PreferenceScope='synthetic-user/team-a';
