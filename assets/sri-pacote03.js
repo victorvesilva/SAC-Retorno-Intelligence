@@ -31,7 +31,10 @@ function exportP03Report(title,cols,rows,period,format){
  doc.body.append(table);preview.focus();preview.print();
 }
 function make(root,id,monitor){if(!root||$(id))return;const section=document.createElement('section');section.id=id;section.className='v20-panel';section.style.margin='16px 0';const h=document.createElement('h3');h.textContent=monitor?'Console de Monitoramento':'Histórico de Movimentações';section.append(h);const controls=document.createElement('div');controls.className='v20-row';controls.style.flexWrap='wrap';section.append(controls);const from=field(controls,'De','date'),to=field(controls,'Até','date');const today=new Date();const start=new Date(today);start.setDate(start.getDate()-6);const civil=d=>d.toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});from.value=civil(start);to.value=civil(today);const search=field(controls,monitor?'Buscar código, módulo ou responsável':'Protocolo ou responsável');let level;if(monitor){level=document.createElement('select');for(const v of ['Todos','INFO','SUCCESS','WARN','ERROR','FATAL']){const o=document.createElement('option');o.value=v;o.textContent=v;level.append(o)}controls.append(level)}
-const metrics=document.createElement('div');metrics.className='v20-grid';section.append(metrics);const status=document.createElement('p');status.setAttribute('role','status');section.append(status);const wrap=document.createElement('div');wrap.style.overflow='auto';wrap.style.maxHeight='500px';const table=document.createElement('table');table.className='v20-table';wrap.append(table);section.append(wrap);let rows=[],cursor=null,request=0,incidents=new Map();const cols=monitor?[['occurred_at','Data/hora'],['severity','Nível'],['module','Módulo'],['code','Código'],['responsavel','Responsável'],['version','Versão'],['occurrences','Ocorrências'],['last_at','Última ocorrência']]:[['occurred_at','Data/hora'],['protocol','Protocolo'],['base','Base'],['area','Área'],['action','Movimentação'],['anterior','Anterior'],['novo','Novo'],['responsavel','Responsável'],['perfil','Perfil']];
+const metrics=document.createElement('div');metrics.className='v20-grid';section.append(metrics);const latency=document.createElement('p');latency.setAttribute('role','status');if(monitor)section.append(latency);
+const critical=document.createElement('p');critical.setAttribute('role','alert');critical.hidden=true;if(monitor)section.append(critical);
+const alerted=new Set();
+const status=document.createElement('p');status.setAttribute('role','status');section.append(status);const wrap=document.createElement('div');wrap.style.overflow='auto';wrap.style.maxHeight='500px';const table=document.createElement('table');table.className='v20-table';wrap.append(table);section.append(wrap);let rows=[],cursor=null,request=0,incidents=new Map();const cols=monitor?[['occurred_at','Data/hora'],['severity','Nível'],['module','Módulo'],['code','Código'],['responsavel','Responsável'],['version','Versão'],['occurrences','Ocorrências'],['last_at','Última ocorrência']]:[['occurred_at','Data/hora'],['protocol','Protocolo'],['base','Base'],['area','Área'],['action','Movimentação'],['anterior','Anterior'],['novo','Novo'],['responsavel','Responsável'],['perfil','Perfil']];
 function render(){metrics.replaceChildren();table.replaceChildren();const hr=table.createTHead().insertRow();for(const [,label] of cols){const th=document.createElement('th');th.textContent=label;hr.append(th)}if(monitor){const th=document.createElement('th');th.textContent='Incidente';hr.append(th)}const body=table.createTBody(),q=search.value.toLowerCase().trim();const filtered=rows.filter(r=>!q||cols.some(([k])=>String(r[k]??'').toLowerCase().includes(q)));const cards=monitor?['SUCCESS','INFO','WARN','ERROR','FATAL'].map(k=>[k,filtered.filter(r=>r.severity===k).reduce((n,r)=>n+Number(r.occurrences||1),0)]):[['Movimentações',filtered.length],['Protocolos distintos',new Set(filtered.map(r=>r.protocol).filter(Boolean)).size],['Tipos de ação',new Set(filtered.map(r=>r.action).filter(Boolean)).size]];for(const [label,value] of cards){const card=document.createElement('div');card.className='v20-stat';const l=document.createElement('span');l.textContent=label;const b=document.createElement('b');b.textContent=String(value);card.append(l,b);metrics.append(card);}for(const r of filtered){const tr=body.insertRow();for(const [k] of cols)cell(tr,k.endsWith('_at')&&r[k]?new Date(r[k]).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}):r[k]);
  if(monitor){
   const td=document.createElement('td');tr.append(td);
@@ -62,9 +65,30 @@ if(monitor){
  if(result.error)throw Error('Consulta de incidentes indisponível.');
  if(seq!==request||sessionEpoch!==epoch||!section.isConnected)return;
  incidents=new Map((result.data||[]).map(item=>[String(item.event_id),item.stage]));
+ const measured=await auth.c.rpc('sri_p03_rpc_metrics',{p_from:args.p_from,p_to:args.p_to});
+ if(measured.error)throw Error('Medições de desempenho indisponíveis.');
+ if(seq!==request||sessionEpoch!==epoch||!section.isConnected)return;
+ const metric=measured.data||{};
+ latency.textContent=Number(metric.calls)>0?'Medições do navegador · '+metric.calls+' chamadas · '+metric.errors+' falhas · média '+metric.average_ms+' ms · P95 '+metric.p95_ms+' ms · máximo '+metric.maximum_ms+' ms':'Sem medições de desempenho registradas no período.';
+
 }
-rows=[...new Map((more?rows.concat(data||[]):data||[]).map(r=>[String(r.id),r])).values()];cursor=(data||[]).at(-1)?.id??null;next.disabled=(data||[]).length<200;render();}catch(e){if(seq===request)status.textContent=e.message;}}
+rows=[...new Map((more?rows.concat(data||[]):data||[]).map(r=>[String(r.id),r])).values()];cursor=(data||[]).at(-1)?.id??null;next.disabled=(data||[]).length<200;render();
+if(monitor){
+ const fatal=rows.filter(row=>row.severity==='FATAL');
+ critical.hidden=!fatal.length;
+ critical.textContent=fatal.length+' falha(s) crítica(s) no recorte carregado. Consulte o código e atualize a etapa do incidente após a análise.';
+ const fresh=fatal.filter(row=>!alerted.has(String(row.id)));
+ if(fresh.length){fresh.forEach(row=>alerted.add(String(row.id)));window.sriPackNotify?.('Há falhas críticas no Console de Monitoramento.','error');}
+}
+}catch(e){if(seq===request)status.textContent=e.message;}}
 button(controls,'Consultar',()=>load());const next=button(controls,'Carregar mais',()=>load(true));next.disabled=true;search.addEventListener('input',render);
+for(const input of [from,to,...(monitor?[level]:[])]){
+ input.addEventListener('change',()=>{
+  ++request;rows=[];cursor=null;next.disabled=true;critical.hidden=true;latency.textContent='';render();
+  status.textContent='Clique em Consultar para carregar o período selecionado.';
+ });
+}
+
 button(controls,'Exportar CSV',()=>{const esc=v=>{let s=String(v??'');if(/^[\s]*[=+@-]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'};const q=search.value.trim().toLowerCase(),filtered=rows.filter(r=>!q||cols.some(([k])=>String(r[k]??'').toLowerCase().includes(q)));const csv=[cols.map(x=>esc(x[1])).join(';'),...filtered.map(r=>cols.map(([k])=>esc(r[k])).join(';'))].join('\r\n');const url=URL.createObjectURL(new Blob(['\ufeff',csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=id+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
 button(controls,'Exportar JSON do recorte',()=>{const q=search.value.trim().toLowerCase(),data=rows.filter(r=>!q||cols.some(([k])=>String(r[k]??'').toLowerCase().includes(q))).map(r=>Object.fromEntries(cols.map(([k])=>[k,r[k]??null])));const blob=new Blob([JSON.stringify({gerado_em:new Date().toISOString(),fonte:monitor?'monitoramento':'movimentacoes',registros:data},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=id+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
 const reportRows=()=>{const query=search.value.trim().toLowerCase();return rows.filter(row=>!query||cols.some(([key])=>String(row[key]??'').toLowerCase().includes(query)));};

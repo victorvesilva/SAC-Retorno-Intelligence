@@ -181,6 +181,20 @@ assert.equal(publication.find(row=>row.protocol_number==='B').active,true,'carte
 assert.equal(publication.filter(row=>row.protocol_number==='A').length,2,'pendência própria transportada');
 assert.equal(publication.find(row=>row.protocol_number==='A'&&row.snapshot_id.endsWith('090')).active,false);
 console.log('PASS: Assistente publica apenas seu escopo e preserva a carteira ativa de outra equipe.');
+
+await db.exec(sql('2026-11-25_sri_p03_metricas_rpc.sql'));
+await identify('operator');
+await db.exec('SELECT sri_p03_rpc_measure(10,false); SELECT sri_p03_rpc_measure(30,true);');
+await assert.rejects(db.query("SELECT sri_p03_rpc_metrics(now()-interval '1 day',now()+interval '1 day')"),/administrador/);
+await assert.rejects(db.query('SELECT sri_p03_rpc_measure(-1,false)'),/inválida/);
+await identify('admin');
+const measured=(await db.query("SELECT sri_p03_rpc_metrics(now()-interval '1 day',now()+interval '1 day') result")).rows[0].result;
+assert.equal(measured.calls,2);assert.equal(measured.errors,1);
+assert.equal(measured.average_ms,20);assert.equal(measured.p95_ms,30);
+await db.exec('RESET ROLE; SET ROLE anon');
+await assert.rejects(db.query('SELECT sri_p03_rpc_measure(10,false)'),/permission denied/);
+await db.exec('RESET ROLE');
+console.log('PASS: métricas calculadas sobre durações registradas, com leitura exclusiva do Administrador e bloqueio anônimo.');
 await db.close();
 console.log('PASS: migração aditiva e repetível, estados de 23/11 preservados após conclusão em 24/11, autoria/equipe congeladas, Base/Área do evento imutáveis, proteção de tabelas e ausência histórica explícita.');
 

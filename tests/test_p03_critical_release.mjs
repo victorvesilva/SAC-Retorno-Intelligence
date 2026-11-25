@@ -122,3 +122,12 @@ historyRequests[3].resolve({data:[{id:3,protocol_number:'P25'}],error:null});
 await latestSelection;
 assert.equal(historyElements['sri33-history'].textContent,'P25');
 console.log('PASS: trocas rápidas no calendário mantêm apenas a consulta mais recente, inclusive durante autenticação.');
+
+// Os relatórios e o fechamento reutilizam a matriz oficial, incluindo ACEITOU/OUTROS.
+const definitions=html.slice(html.indexOf('const DIST_STATUS_DEFS='),html.indexOf('const DIST_STATUS_SET='));
+const fixedRules=html.slice(html.indexOf('const V112_FIXED_RESULT_RULES='),html.indexOf('function v112FixedRules()'));
+const reportRules=vm.runInNewContext(definitions+fixedRules+';V112_FIXED_RESULT_RULES');
+for(const [status,code]of expected){
+ assert.equal(reportRules[status],code===3?'resolvido':code===10?'encaminhado':'pendente',status);
+}
+console.log('PASS: os 13 status oficiais também classificam relatórios e fechamento sem alterar eventos históricos.');
