@@ -52,3 +52,7 @@ body.sri33-operator-cloud #sri33-mine{background:#f4f7fb;border:0;box-shadow:non
 #sri33-mine :focus-visible,#sri33-treatment :focus-visible{outline:3px solid #2563eb;outline-offset:2px}
 @media(max-width:1050px){#sri33-mine .sri-pack-controls{grid-template-columns:repeat(2,minmax(0,1fr))}#sri33-mine .sri-pack-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:600px){#sri33-mine .sri-pack-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#sri33-treatment .sri33-dialog{padding:15px;max-height:96dvh;overflow:auto}#sri33-treatment .sri33-actions button{flex:1 1 42%}#sri33-mine .sri-pack-controls{padding:8px}}
+
+#sri33-task-table thead th{position:sticky;top:0;z-index:1;background:var(--sri-ui-card,#fff)}
+#sri-p03-columns{display:flex;gap:12px;flex-wrap:wrap}
+#sri-p03-columns label{display:flex;align-items:center;gap:5px}

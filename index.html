@@ -7513,7 +7513,7 @@ body.sri33-modal-open{overflow:hidden}
       <section class="v20-panel" id="sri33-mine" style="margin-top:16px;padding:18px;border-radius:12px">
        <div class="v20-between"><div><h3>Minha Carteira</h3><p class="v20-muted">Demandas atribuídas a você. Priorize as de maior criticidade e registre a tratativa.</p></div><button type="button" id="sri33-mine-refresh" class="v20-button secondary">Atualizar protocolos</button></div>
        <p id="sri33-mine-status" role="status" aria-live="polite"></p>
-       <div id="sri-pack-carteira"><div id="sri-pack-summary" class="sri-pack-kpis"></div><div class="sri-pack-controls"><label class="v20-field">Buscar protocolo<input type="search" id="sri-pack-search" placeholder="Número do protocolo"></label><label class="v20-field">Criticidade<select id="sri-pack-filter"><option value="all">Todas</option><option>Crítico</option><option>Alto</option><option>Médio</option><option>Baixo</option><option>Não avaliado</option></select></label><label class="v20-field">Base<select id="sri-pack-base"><option value="">Todas</option></select></label><label class="v20-field">Área<select id="sri-pack-area"><option value="">Todas</option></select></label><label class="v20-field">Tratativa<select id="sri-pack-status-filter"><option value="all">Todas</option><option value="pending">Sem tratativa</option><option value="filled">Com tratativa</option></select></label><button type="button" class="v20-button secondary" id="sri-pack-clear">Limpar filtros</button></div><div class="sri-pack-controls" id="sri-p03-shortcuts"><button type="button" class="v20-button secondary" data-quick="critical">Críticos</button><button type="button" class="v20-button secondary" data-quick="today">Vencem hoje</button><button type="button" class="v20-button secondary" data-quick="backlog">Backlog</button><button type="button" class="v20-button secondary" data-quick="untreated">Sem tratativa</button><button type="button" class="v20-button secondary" data-quick="processed">Finalizados na ferramenta</button><button type="button" class="v20-button secondary" data-quick="whats">WhatsSAC</button></div><details id="sri-p03-advanced" style="margin:12px 0"><summary>Filtros avançados</summary><div class="sri-pack-controls"><label class="v20-field">SLA<select data-p03-field="sla_band"><option value="">Todos</option></select></label><label class="v20-field">Situação do prazo<select data-p03-field="due_situation"><option value="">Todos</option></select></label><label class="v20-field">Canal<select data-p03-field="channel"><option value="">Todos</option></select></label><label class="v20-field">Turno<select data-p03-field="shift_label"><option value="">Todos</option></select></label><label class="v20-field">Motivo da prioridade<select data-p03-field="priority_reason"><option value="">Todos</option></select></label><label class="v20-field">Status registrado<select data-p03-field="treatment_status"><option value="">Todos</option></select></label><label class="v20-field">Prazo inicial<input type="date" id="sri-p03-due-from"></label><label class="v20-field">Prazo final<input type="date" id="sri-p03-due-to"></label><label class="v20-field">Modo de exibição<select id="sri-p03-density"><option value="compact">Compacto</option><option value="detail">Detalhado</option></select></label><label class="v20-field">Ordenação<select id="sri-p03-sort"><option value="priority">Prioridade operacional</option><option value="protocol">Protocolo</option><option value="area">Área</option><option value="recent">Última atualização</option></select></label></div></details><div class="sri-pack-controls"><label class="v20-field">Carteira do dia<select id="sri-p03-state"><option value="all">Todos</option><option value="active">Demandas ativas</option><option value="processed">Tratativas finalizadas na ferramenta</option></select></label><label class="v20-field">Registros por página<select id="sri-p03-size"><option>25</option><option selected>50</option><option>100</option></select></label><button class="v20-button secondary" id="sri-p03-prev" type="button">Anterior</button><button class="v20-button secondary" id="sri-p03-next" type="button">Próxima</button><span id="sri-p03-count" role="status"></span></div><div id="sri33-task-table" style="overflow:auto;max-height:65vh"></div><div id="sri33-priority" hidden></div></div>
+       <div id="sri-pack-carteira"><div id="sri-pack-summary" class="sri-pack-kpis"></div><div class="sri-pack-controls"><label class="v20-field">Buscar protocolo<input type="search" id="sri-pack-search" placeholder="Número do protocolo"></label><label class="v20-field">Criticidade<select id="sri-pack-filter"><option value="all">Todas</option><option>Crítico</option><option>Alto</option><option>Médio</option><option>Baixo</option><option>Não avaliado</option></select></label><label class="v20-field">Base<select id="sri-pack-base"><option value="">Todas</option></select></label><label class="v20-field">Área<select id="sri-pack-area"><option value="">Todas</option></select></label><label class="v20-field">Tratativa<select id="sri-pack-status-filter"><option value="all">Todas</option><option value="pending">Sem tratativa</option><option value="filled">Com tratativa</option></select></label><button type="button" class="v20-button secondary" id="sri-pack-clear">Limpar filtros</button></div><div class="sri-pack-controls" id="sri-p03-shortcuts"><button type="button" class="v20-button secondary" data-quick="critical">Críticos</button><button type="button" class="v20-button secondary" data-quick="today">Vencem hoje</button><button type="button" class="v20-button secondary" data-quick="backlog">Backlog</button><button type="button" class="v20-button secondary" data-quick="untreated">Sem tratativa</button><button type="button" class="v20-button secondary" data-quick="processed">Finalizados na ferramenta</button><button type="button" class="v20-button secondary" data-quick="whats">WhatsSAC</button></div><details id="sri-p03-advanced" style="margin:12px 0"><summary>Filtros avançados</summary><div class="sri-pack-controls"><label class="v20-field">SLA<select multiple size="3" data-p03-field="sla_band"><option value="">Todos</option></select></label><label class="v20-field">Situação do prazo<select multiple size="3" data-p03-field="due_situation"><option value="">Todos</option></select></label><label class="v20-field">Canal<select multiple size="3" data-p03-field="channel"><option value="">Todos</option></select></label><label class="v20-field">Turno<select multiple size="3" data-p03-field="shift_label"><option value="">Todos</option></select></label><label class="v20-field">Motivo da prioridade<select multiple size="3" data-p03-field="priority_reason"><option value="">Todos</option></select></label><label class="v20-field">Status registrado<select multiple size="3" data-p03-field="treatment_status"><option value="">Todos</option></select></label><label class="v20-field">Prazo inicial<input type="date" id="sri-p03-due-from"></label><label class="v20-field">Prazo final<input type="date" id="sri-p03-due-to"></label><label class="v20-field">Modo de exibição<select id="sri-p03-density"><option value="compact">Compacto</option><option value="detail">Detalhado</option></select></label><label class="v20-field">Ordenação<select id="sri-p03-sort"><option value="priority">Prioridade operacional</option><option value="protocol">Protocolo</option><option value="area">Área</option><option value="recent">Última atualização</option></select></label></div></details><div class="sri-pack-controls"><label class="v20-field">Carteira do dia<select id="sri-p03-state"><option value="all">Todos</option><option value="active">Demandas ativas</option><option value="processed">Tratativas finalizadas na ferramenta</option></select></label><label class="v20-field">Registros por página<select id="sri-p03-size"><option>25</option><option selected>50</option><option>100</option></select></label><button class="v20-button secondary" id="sri-p03-prev" type="button">Anterior</button><button class="v20-button secondary" id="sri-p03-next" type="button">Próxima</button><span id="sri-p03-count" role="status"></span></div><div id="sri33-task-table" style="overflow:auto;max-height:65vh"></div><div id="sri33-priority" hidden></div></div>
        <section id="sri-operator-reviews" class="v20-panel" hidden><h3>Revisões solicitadas pela supervisão</h3><div id="sri-operator-review-list"></div></section>
        <div id="sri-pack-history" hidden><h3>Meu Histórico</h3><p class="v20-muted">Movimentações disponíveis no histórico autorizado. A consulta é paginada; registros mais antigos podem ser carregados.</p><div class="sri-pack-controls"><label class="v20-field">Visualização<select id="sri-p03-history-mode"><option value="protocol">Protocolos tratados</option><option value="log">Log de movimentações</option></select></label><label class="v20-field">Buscar protocolo<input id="sri-p03-history-search" type="search"></label><label class="v20-field">Tratativa desde<input id="sri-p03-history-from" type="date"></label><label class="v20-field">Tratativa até<input id="sri-p03-history-to" type="date"></label></div><p id="sri-p03-history-count" role="status"></p><div id="sri33-history"></div><button type="button" class="v20-button secondary" id="sri-p03-history-more" hidden>Carregar movimentações anteriores</button></div>
        <div id="sri33-treatment" hidden role="presentation">
@@ -7532,6 +7532,7 @@ body.sri33-modal-open{overflow:hidden}
          </div>
        </div>
       </section>`);
+    setupP03Preferences();
     document.body.appendChild($('sri33-treatment'));
     $('sri33-mine-refresh').addEventListener('click',()=>safeMine(loadTasks));
     for(const id of ['sri-pack-search','sri-pack-filter','sri-pack-status-filter','sri-pack-base','sri-pack-area'])$(id)?.addEventListener(id==='sri-pack-search'?'input':'change',renderPackTasks);
@@ -7549,7 +7550,7 @@ body.sri33-modal-open{overflow:hidden}
     $('sri-pack-summary').addEventListener('click',e=>{const b=e.target.closest('[data-level]');if(!b)return;const f=$('sri-pack-filter');f.value=f.value===b.dataset.level?'all':b.dataset.level;renderPackTasks()});
     window.sriPackOperatorView=mode=>{const history=mode==='history';$('sri-pack-carteira').hidden=history;$('sri-pack-history').hidden=!history;};
     window.sriPackOperatorView(document.body.dataset.sriOperatorView||'active');
-    window.sriPackResetOperator=()=>{operatorEpoch++;operatorLoadSeq++;savePending=null;taskRows=[];currentTask=null;operatorFingerprint='';p03History=[];p03HistoryCursor=null;p03Page=0;p03Quick='';if($('sri-p03-history-more'))$('sri-p03-history-more').hidden=true;for(const id of ['sri-p03-history-count','sri33-task-table','sri33-history','sri33-mine-status','sri-pack-summary'])if($(id))$(id).textContent='';if($('sri33-treatment'))$('sri33-treatment').hidden=true;document.body.classList.remove('sri33-modal-open');};
+    window.sriPackResetOperator=()=>{p03PreferenceScope='';resetP03Controls();operatorEpoch++;operatorLoadSeq++;savePending=null;taskRows=[];currentTask=null;operatorFingerprint='';p03History=[];p03HistoryCursor=null;p03Page=0;p03Quick='';if($('sri-p03-history-more'))$('sri-p03-history-more').hidden=true;for(const id of ['sri-p03-history-count','sri33-task-table','sri33-history','sri33-mine-status','sri-pack-summary'])if($(id))$(id).textContent='';if($('sri33-treatment'))$('sri33-treatment').hidden=true;document.body.classList.remove('sri33-modal-open');};
     let modalOpener=null;
     closeTreatment=function(force=false){
       if(inProgress&&!force)return;
@@ -7584,7 +7585,7 @@ body.sri33-modal-open{overflow:hidden}
     if(profile.role!=='operator')return;
     const rows=[];let from=0;
     for(let round=0;round<20;round++){
-      const fields='id,protocol_number,criticality,due_situation,sla_band,channel,source_status,work_status,treatment_status,operational_day,shift_label,updated_at';
+      const fields='id,team_id,protocol_number,criticality,due_situation,sla_band,channel,source_status,work_status,treatment_status,operational_day,shift_label,updated_at';
       const fetchPage=cols=>client.from('daily_operator_tasks').select(cols)
         .eq('operator_user_id',user.id).eq('active',true)
         .eq('operational_day',window.sriOperationalContext?.().day||'1900-01-01')
@@ -7606,6 +7607,11 @@ body.sri33-modal-open{overflow:hidden}
     if(epoch!==operatorEpoch||seq!==operatorLoadSeq)return;taskRows=rows;
     taskRows.sort((a,b)=>Number(!!a.p03Readonly)-Number(!!b.p03Readonly)||packRank(a)-packRank(b)||packDueDate(a,b)||packDue(a)-packDue(b)||String(a.protocol_number).localeCompare(String(b.protocol_number)));
     renderPackTasks();
+    const scope=JSON.stringify([user.id,[...new Set(rows.map(row=>row.team_id).filter(Boolean))].sort()]);
+    if(scope!==p03PreferenceScope){
+      p03PreferenceScope=scope;
+      restoreP03Preferences();
+    }
     stateMsg('sri33-mine-status',archivedUnavailable?'Carteira ativa atualizada; consulta das tratativas anteriores indisponível.':`${rows.length} protocolo(s) na sua carteira de hoje.`,archivedUnavailable?'warning':'success');
     void loadHistory(client,user.id,epoch).catch(()=>stateMsg('sri33-mine-status','Carteira atualizada; histórico temporariamente indisponível.','warning'));void window.sriOperatorReviewRefresh?.(client,user.id);
   }
@@ -7617,8 +7623,8 @@ body.sri33-modal-open{overflow:hidden}
   let p03Page=0,p03History=[],p03HistoryCursor=null,p03Quick='';
   function p03QuickMatch(r){const text=String(r.due_situation||'');switch(p03Quick){case 'critical':return packLevel(r)==='Crítico'&&!r.p03Readonly;case 'today':return /VENC(E|ENDO) HOJE/i.test(text)&&!r.p03Readonly;case 'backlog':return /BACKLOG|VENCIDO/i.test(text)&&!r.p03Readonly;case 'untreated':return !r.p03Readonly&&(!r.treatment_status||r.treatment_status==='SEM STATUS');case 'processed':return r.work_status==='completed_in_tool'||r.p03Readonly;case 'whats':return /WHATS/i.test(r.channel||'');default:return true;}}
   function packFilteredRows(){const search=$('sri-pack-search').value.trim(),level=$('sri-pack-filter').value,status=$('sri-pack-status-filter').value,base=$('sri-pack-base').value,area=$('sri-pack-area').value;
-    const extra=[...document.querySelectorAll('[data-p03-field]')].filter(el=>el.value);
-    const view=$('sri-p03-state')?.value||'all',from=$('sri-p03-due-from')?.value||'',to=$('sri-p03-due-to')?.value||'';const rows=taskRows.filter(r=>p03QuickMatch(r)&&(!from||Boolean(r.due_date&&r.due_date>=from))&&(!to||Boolean(r.due_date&&r.due_date<=to))&&(view==='all'||(view==='active'&&!r.p03Readonly&&r.work_status!=='completed_in_tool')||(view==='processed'&&(r.p03Readonly||r.work_status==='completed_in_tool')))&&(!search||String(r.protocol_number).includes(search))&&(level==='all'||packLevel(r)===level)&&(status==='all'||(status==='filled')===Boolean(r.treatment_status&&r.treatment_status!=='SEM STATUS'))&&(!base||(r.base_name||'Não informada')===base)&&(!area||(r.area_name||'Não informada')===area)&&extra.every(el=>String(r[el.dataset.p03Field]||'Não informado')===el.value));
+    const extra=[...document.querySelectorAll('[data-p03-field]')].map(el=>({key:el.dataset.p03Field,values:[...el.selectedOptions].map(o=>o.value).filter(Boolean)})).filter(f=>f.values.length);
+    const view=$('sri-p03-state')?.value||'all',from=$('sri-p03-due-from')?.value||'',to=$('sri-p03-due-to')?.value||'';const rows=taskRows.filter(r=>p03QuickMatch(r)&&(!from||Boolean(r.due_date&&r.due_date>=from))&&(!to||Boolean(r.due_date&&r.due_date<=to))&&(view==='all'||(view==='active'&&!r.p03Readonly&&r.work_status!=='completed_in_tool')||(view==='processed'&&(r.p03Readonly||r.work_status==='completed_in_tool')))&&(!search||String(r.protocol_number).includes(search))&&(level==='all'||packLevel(r)===level)&&(status==='all'||(status==='filled')===Boolean(r.treatment_status&&r.treatment_status!=='SEM STATUS'))&&(!base||(r.base_name||'Não informada')===base)&&(!area||(r.area_name||'Não informada')===area)&&extra.every(filter=>filter.values.includes(String(r[filter.key]||'Não informado'))));
     const sort=$('sri-p03-sort')?.value;
     if(sort==='protocol')rows.sort((a,b)=>String(a.protocol_number).localeCompare(String(b.protocol_number)));else if(sort==='area')rows.sort((a,b)=>String(a.area_name||'').localeCompare(String(b.area_name||'')));else if(sort==='recent')rows.sort((a,b)=>String(b.updated_at||'').localeCompare(String(a.updated_at||'')));
     return rows;
@@ -7629,10 +7635,90 @@ body.sri33-modal-open{overflow:hidden}
     const filled=r=>Boolean(r.treatment_status&&r.treatment_status!=='SEM STATUS');
     const sum=$('sri-pack-summary');
     sum.innerHTML='<div class="v20-stat"><span>Registros da carteira do dia</span><b>'+taskRows.length+'</b></div><div class="v20-stat"><span>Com tratativa</span><b>'+taskRows.filter(filled).length+'</b></div><div class="v20-stat"><span>Sem tratativa</span><b>'+taskRows.filter(r=>!filled(r)).length+'</b></div>'+['Crítico','Alto','Médio','Baixo','Não avaliado'].map(l=>'<button type="button" data-level="'+h(l)+'" aria-pressed="'+(level===l)+'"><span class="sri-pack-level" data-level="'+h(l)+'">'+h(l)+'</span><strong>'+taskRows.filter(r=>packLevel(r)===l).length+'</strong></button>').join('');
-    for(const el of document.querySelectorAll('[data-p03-field]')){const old=el.value,values=[...new Set(taskRows.map(r=>String(r[el.dataset.p03Field]||'Não informado')))].sort();el.innerHTML='<option value="">Todos</option>'+values.map(v=>'<option value="'+h(v)+'">'+h(v)+'</option>').join('');if(values.includes(old))el.value=old;}
+    for(const el of document.querySelectorAll('[data-p03-field]')){const selected=new Set([...el.selectedOptions].map(o=>o.value)),values=[...new Set(taskRows.map(r=>String(r[el.dataset.p03Field]||'Não informado')))].sort();el.innerHTML='<option value="">Todos</option>'+values.map(v=>'<option value="'+h(v)+'"'+(selected.has(v)?' selected':'')+'>'+h(v)+'</option>').join('');}
     const all=packFilteredRows(),size=Number($('sri-p03-size')?.value)||50,pages=Math.max(1,Math.ceil(all.length/size));p03Page=Math.min(p03Page,pages-1);const rows=all.slice(p03Page*size,(p03Page+1)*size);
     $('sri-p03-count').textContent=all.length+' de '+taskRows.length+' protocolos · página '+(p03Page+1)+'/'+pages;$('sri-p03-prev').disabled=p03Page===0;$('sri-p03-next').disabled=p03Page>=pages-1;
-    $('sri33-task-table').innerHTML=rows.length?`<table class="v20-table" style="min-width:670px;width:100%"><thead><tr><th>Protocolo</th><th>Base</th><th>Área</th><th>Criticidade</th><th>Prazo / sinalização</th><th>Motivo da prioridade</th><th>Status da tratativa</th><th>Ação</th></tr></thead><tbody>${rows.map(r=>`<tr class="${r.p03Readonly?'sri-p03-processed':''}"><td>${h(r.protocol_number)}</td><td>${h(r.base_name||"—")}</td><td>${h(r.area_name||"—")}</td><td><span class="sri-pack-level" data-level="${h(packLevel(r))}">${h(packLevel(r))}</span></td><td>${h(r.due_situation||r.sla_band||'—')}${packDate(r)?' · '+h(packDate(r)):''}</td><td>${h(r.priority_reason||r.due_situation||r.sla_band||'Não informado')}</td><td>${h(r.treatment_status||'SEM STATUS')}</td><td>${r.p03Readonly?'<span class="sri-pack-level">Finalizado na ferramenta · consultar Meu Histórico</span>':`<button class="v20-button secondary" type="button" data-sri33-task="${h(r.id)}">Tratar</button>`}</td></tr>`).join('')}</tbody></table>`:'<p>Nenhuma demanda para esta seleção.</p>';wrap.scrollTop=scrollTop;wrap.scrollLeft=scrollLeft;
+    $('sri33-task-table').innerHTML=rows.length?`<table class="v20-table" style="min-width:670px;width:100%"><thead><tr><th>Protocolo</th><th>Base</th><th>Área</th><th>Criticidade</th><th>Prazo / sinalização</th><th>Motivo da prioridade</th><th>Status da tratativa</th><th>Ação</th></tr></thead><tbody>${rows.map(r=>`<tr class="${r.p03Readonly?'sri-p03-processed':''}"><td>${h(r.protocol_number)}</td><td>${h(r.base_name||"—")}</td><td>${h(r.area_name||"—")}</td><td><span class="sri-pack-level" data-level="${h(packLevel(r))}">${h(packLevel(r))}</span></td><td>${h(r.due_situation||r.sla_band||'—')}${packDate(r)?' · '+h(packDate(r)):''}</td><td>${h(r.priority_reason||r.due_situation||r.sla_band||'Não informado')}</td><td>${h(r.treatment_status||'SEM STATUS')}</td><td>${r.p03Readonly?'<span class="sri-pack-level">Finalizado na ferramenta · consultar Meu Histórico</span>':`<button class="v20-button secondary" type="button" data-sri33-task="${h(r.id)}">Tratar</button>`}</td></tr>`).join('')}</tbody></table>`:'<p>Nenhuma demanda para esta seleção.</p>';wrap.scrollTop=scrollTop;wrap.scrollLeft=scrollLeft;applyP03Columns();
+  }
+
+  let p03PreferenceScope='';
+  const p03FilterControls=()=>[...document.querySelectorAll('#sri-pack-carteira input[id],#sri-pack-carteira select[id],#sri-pack-carteira [data-p03-field]')].filter(el=>!el.closest('#sri-p03-preferences')||el.dataset.p03Column!==undefined);
+  const p03ControlKey=el=>el.dataset.p03Field||el.id;
+  function p03PreferenceKey(){return 'sri_p03_filters_v1:'+p03PreferenceScope;}
+  function readP03Preferences(){
+    try{return JSON.parse(localStorage.getItem(p03PreferenceKey())||'{}');}catch(_){return {};}
+  }
+  function p03FilterState(){
+    return {quick:p03Quick,controls:Object.fromEntries(p03FilterControls().map(el=>[
+      p03ControlKey(el),el.multiple?[...el.selectedOptions].map(o=>o.value):el.type==='checkbox'?el.checked:el.value
+    ]))};
+  }
+  function applyP03FilterState(state={}){
+    p03Quick=['critical','today','backlog','untreated','processed','whats'].includes(state.quick)?state.quick:'';
+    for(const el of p03FilterControls()){
+      const value=state.controls?.[p03ControlKey(el)];
+      if(el.multiple){
+        for(const option of el.options)option.selected=Array.isArray(value)&&value.includes(option.value);
+      }else if(el.type==='checkbox')el.checked=value!==false;
+      else if(typeof value==='string')el.value=value;
+    }
+    p03Page=0;renderPackTasks();
+  }
+  function resetP03Controls(){
+    for(const el of p03FilterControls()){
+      if(el.multiple)for(const option of el.options)option.selected=false;
+      else if(el.type==='checkbox')el.checked=true;
+      else if(el.tagName==='SELECT')el.selectedIndex=Math.max(0,[...el.options].findIndex(option=>option.defaultSelected));
+      else el.value='';
+    }
+  }
+  function writeP03Preferences(update){
+    if(!p03PreferenceScope)return;
+    try{
+      const old=readP03Preferences();
+      localStorage.setItem(p03PreferenceKey(),JSON.stringify({...old,...update}));
+      $('sri-p03-preference-status').textContent='';
+    }catch(_){$('sri-p03-preference-status').textContent='Não foi possível salvar as preferências neste navegador.';}
+  }
+  function restoreP03Preferences(){
+    const preferences=readP03Preferences();
+    resetP03Controls();applyP03FilterState(preferences.current);
+    const select=$('sri-p03-favorites');select.replaceChildren(new Option('Escolha um favorito',''));
+    for(const name of Object.keys(preferences.favorites||{}))select.add(new Option(name,name));
+  }
+  function applyP03Columns(){
+    const columns=[...document.querySelectorAll('[data-p03-column]')];
+    for(const row of $('sri33-task-table').querySelectorAll('tr')){
+      for(const control of columns)if(row.children[Number(control.dataset.p03Column)])row.children[Number(control.dataset.p03Column)].hidden=!control.checked;
+    }
+  }
+  function setupP03Preferences(){
+    const root=$('sri-p03-advanced');
+    root.insertAdjacentHTML('afterend','<details class="v20-panel" id="sri-p03-preferences"><summary>Preferências e filtros favoritos</summary><div class="sri-pack-controls"><label>Nome do filtro<input id="sri-p03-favorite-name" maxlength="60"></label><button type="button" id="sri-p03-favorite-save" class="v20-button secondary">Salvar favorito</button><label>Filtros favoritos<select id="sri-p03-favorites"></select></label><button type="button" id="sri-p03-favorite-apply" class="v20-button secondary">Aplicar</button><button type="button" id="sri-p03-favorite-delete" class="v20-button secondary">Excluir favorito</button></div><fieldset id="sri-p03-columns"><legend>Colunas da carteira</legend></fieldset><p id="sri-p03-preference-status" role="status"></p></details>');
+    const labels=['Protocolo','Base','Área','Criticidade','Prazo','Prioridade','Tratativa'];
+    labels.forEach((label,index)=>{
+      const wrap=document.createElement('label'),input=document.createElement('input');
+      input.type='checkbox';input.checked=true;input.id='sri-p03-column-'+index;input.dataset.p03Column=index;
+      wrap.append(input,document.createTextNode(label));$('sri-p03-columns').append(wrap);
+    });
+    $('sri-p03-favorite-save').onclick=()=>{
+      const name=$('sri-p03-favorite-name').value.trim();
+      if(!name){$('sri-p03-preference-status').textContent='Informe um nome para o filtro.';return;}
+      const favorites=Object.assign(Object.create(null),readP03Preferences().favorites);
+      if(!Object.hasOwn(favorites,name)&&Object.keys(favorites).length>=20){$('sri-p03-preference-status').textContent='Limite de 20 favoritos neste navegador.';return;}
+      favorites[name]=p03FilterState();
+      writeP03Preferences({favorites,current:p03FilterState()});restoreP03Preferences();
+    };
+    $('sri-p03-favorite-apply').onclick=()=>{
+      const state=readP03Preferences().favorites?.[$('sri-p03-favorites').value];
+      if(state){applyP03FilterState(state);writeP03Preferences({current:p03FilterState()});}
+    };
+    $('sri-p03-favorite-delete').onclick=()=>{
+      const favorites=Object.assign(Object.create(null),readP03Preferences().favorites);
+      delete favorites[$('sri-p03-favorites').value];
+      writeP03Preferences({favorites});restoreP03Preferences();
+    };
+    $('sri-pack-carteira').addEventListener('change',()=>{applyP03Columns();writeP03Preferences({current:p03FilterState()});});
   }
   let historySessionRequest=0;
   async function refreshHistory(more=false){
@@ -8112,7 +8198,7 @@ document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.tar
 <script defer src="/assets/sri-mobile-navigation.js?v=20261124-01"></script>
 <script defer src="/assets/sri-integrated-improvements.js?v=20261124-02"></script>
 <script src="/assets/sri-cloud-treatments.js?v=20261124-03"></script>
-<script defer src="/assets/sri-pacote03.js?v=20261125-02"></script>
+<script defer src="/assets/sri-pacote03.js?v=20261125-03"></script>
 <script defer src="/assets/sri-p03-navigation.js?v=20261125-01"></script>
 </body>
 </html>
