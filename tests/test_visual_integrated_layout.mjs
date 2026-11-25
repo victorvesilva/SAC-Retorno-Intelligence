@@ -110,7 +110,7 @@ async function fixtureProbe(){
   const panel=document.getElementById('sri-p03-integrated-reports');
   if(!panel)throw Error('Relatórios integrados não montados');
   const query=[...panel.querySelectorAll('button')].find(el=>el.textContent==='Consultar');await query.onclick();
-  if(location.search.includes('focus=integrated')){document.documentElement.style.scrollBehavior='auto';panel.scrollIntoView();}
+  if(location.search.includes('focus=integrated')){document.documentElement.style.scrollBehavior='auto';panel.scrollIntoView({block:'start',behavior:'instant'});await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));await new Promise(resolve=>setTimeout(resolve,50));}
  }
  const rect=section?.getBoundingClientRect();
  const root=document.documentElement;
@@ -123,6 +123,8 @@ async function fixtureProbe(){
   loginPresent:!!document.getElementById('v20-login'),
   topLayerLogin:!!document.elementFromPoint(Math.floor(innerWidth*.75),Math.floor(innerHeight*.5))?.closest('#v20-login'),
   integratedReports:tab!=='reports'||!!document.querySelector('#sri-p03-integrated-reports tbody tr'),
+  integratedBounds:(()=>{const box=document.getElementById('sri-p03-integrated-reports')?.getBoundingClientRect();return box?{top:box.top,left:box.left,width:box.width,height:box.height}:null;})(),
+  topElement:document.elementFromPoint(Math.floor(innerWidth*.75),Math.floor(innerHeight*.5))?.tagName,
   cards:section?.querySelectorAll('.card,.v3-card,.dist-panel,.v20-panel').length||0
  };
  const result=document.createElement('pre');
@@ -151,13 +153,13 @@ fs.writeFileSync(fixture,'<!doctype html><html lang="pt-BR">'+head+
  '<body><div class="app v5-app">'+menu+mainHtml+'</div>'+js+'</body></html>','utf8');
 
 const devices=[
- [1440,900,['overview','distribution','priorities','agents','intelligence','reports','import','details','v20-mine','v20-closure','v20-settings']],
+ [1440,900,['reports-integrated','overview','distribution','priorities','agents','intelligence','reports','import','details','v20-mine','v20-closure','v20-settings']],
  [1024,768,['overview','distribution','intelligence','reports','import','details','v20-closure']],
- [390,844,['overview','distribution','priorities','agents','intelligence','reports','import','details','v20-mine','v20-closure','v20-settings']]
+ [390,844,['reports-integrated','overview','distribution','priorities','agents','intelligence','reports','import','details','v20-mine','v20-closure','v20-settings']]
 ];
 for(const [width,height,tabs] of devices){
  for(const tab of tabs){
-  const url='file://'+fixture+'?tab='+encodeURIComponent(tab);
+  const url='file://'+fixture+'?tab='+(tab==='reports-integrated'?'reports&focus=integrated':encodeURIComponent(tab));
   const args=['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
    '--disable-background-networking','--allow-file-access-from-files',
    '--virtual-time-budget=650','--force-device-scale-factor=1',
@@ -167,6 +169,7 @@ for(const [width,height,tabs] of devices){
   const match=dom.match(/<pre id="sri-integrated-probe"[^>]*>([\s\S]*?)<\/pre>/);
   assert.ok(match,'Teste visual não executou: '+tab+' em '+width+'x'+height);
   const result=JSON.parse(match[1].replace(/&quot;/g,'"').replace(/&amp;/g,'&'));
+  if(tab==='reports-integrated'){assert.ok(result.integratedBounds?.height>200,JSON.stringify(result));assert.ok(result.integratedBounds.top>=-3&&result.integratedBounds.top<150,JSON.stringify(result));}
   assert.equal(result.loginPresent,false,'Login deve estar ausente da fixture de módulos');
   assert.equal(result.topLayerLogin,false,'Login não pode cobrir o módulo');
   assert.equal(result.integratedReports,true,'Relatórios novos devem apresentar dados reais do modelo sintético');

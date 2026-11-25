@@ -59,6 +59,7 @@ jobs:
           SRI_CAPTURE_INTEGRATED_SCREENSHOT: '1'
         run: node tests/test_visual_integrated_layout.mjs
       - name: Anexar capturas de revisao visual integrada
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: revisao-visual-integrada-dados-sinteticos
