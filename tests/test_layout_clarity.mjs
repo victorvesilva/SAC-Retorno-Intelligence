@@ -10,7 +10,10 @@ const start=html.indexOf('`',at)+1,end=html.indexOf('</section>`);',start)+10;
 const markup=vm.runInNewContext('`'+html.slice(start,end)+'`',{h:String,TREATMENT_STATUSES:['PENDENTE','ACEITOU']});
 const functions=html.slice(html.indexOf('  function p03QuickMatch'),html.indexOf('  let historySessionRequest=0;'));
 const handlers=html.slice(html.indexOf("    $('sri33-mine-refresh').addEventListener"),html.indexOf('    let modalOpener=null;'));
-const styles=[...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m=>m[1]).join('\n')+['sri-integrated-improvements.css','revisao-visual-integrada.css','sri-layout-clarity.css'].map(f=>read('assets/'+f)).join('\n');
+// Match real head styles, excluding PDF template strings embedded in application scripts.
+const head=html.slice(0,html.indexOf('</head>'));
+const operatorStyle=html.match(/<style>(body\.sri33-operator-cloud[\s\S]*?)<\/style>/)[1];
+const styles=[...[...head.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m=>m[1]),operatorStyle,...['sri-integrated-improvements.css','revisao-visual-integrada.css','sri-layout-clarity.css'].map(f=>read('assets/'+f))].join('\n');
 const harness=`
 const $=id=>document.getElementById(id),h=value=>String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 const TREATMENT_STATUSES=['PENDENTE','ACEITOU'];
@@ -41,6 +44,8 @@ const evidence=new URL('../.tmp/layout-clarity/',import.meta.url);fs.mkdirSync(e
 try{
  const page=await browser.page('file://'+fixture,1366,900);
  await page.waitFor("document.querySelector('#sri-p03-reconcile tbody tr')&&document.getElementById('sri-clarity-active')");
+ assert.equal(await page.evaluate("getComputedStyle(document.querySelector('.sri-clarity-legacy-header')).display"),'none','somente um título e uma atualização visíveis');
+ assert.equal(await page.evaluate("getComputedStyle(document.getElementById('sri-pack-summary')).display"),'grid','captura usa a folha de estilos da carteira');
  assert.equal(await page.evaluate("document.getElementById('sri-p03-reconcile').hidden"),true,'pendências fora da carteira ativa');
  assert.equal(await page.evaluate("document.querySelectorAll('#sri-p03-reconcile input').length"),0,'sem filtros de equipe/operador');
  assert.equal(await page.evaluate("document.querySelectorAll('#sri-p03-reconcile tbody tr').length"),2,'consulta não vazia renderiza');
