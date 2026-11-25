@@ -40,6 +40,8 @@ jobs:
         env:
           SRI_PGLITE_MODULE: /tmp/sri-postgres/node_modules/@electric-sql/pglite/dist/index.js
         run: node tests/test_p03_postgres.mjs
+      - name: Testar fluxos funcionais do Pacote 03 no Chromium
+        run: node tests/test_p03_browser.mjs
       - name: Verificar layouts integrados de todos os modulos em dados sinteticos
         env:
           SRI_CAPTURE_INTEGRATED_SCREENSHOT: '1'

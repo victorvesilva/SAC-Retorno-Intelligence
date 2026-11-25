@@ -119,6 +119,28 @@ await identify('viewer');
 await assert.rejects(db.query('SELECT sri_p03_history_tasks('+ref('s23')+')'),/indisponível/);
 await db.exec('RESET ROLE');
 assert.equal(Number((await db.query('SELECT count(*) FROM daily_operator_treatments')).rows[0].count),4);
+
+await db.exec(`
+CREATE TABLE private.sri_monitor_events(id bigint PRIMARY KEY,severity text);
+INSERT INTO private.sri_monitor_events VALUES (1,'FATAL'),(2,'INFO');
+`);
+const protection=sql('2026-11-24_sri_pacote03_protecao_incidentes.sql');
+await db.exec(protection.slice(protection.indexOf('CREATE TABLE IF NOT EXISTS private.sri_p03_incidents')));
+await identify('operator');
+await assert.rejects(db.query("SELECT sri_p03_incident_set(1,'identified','analysis')"),/administrador/);
+await identify('admin');
+await assert.rejects(db.query("SELECT sri_p03_incident_set(2,'identified','analysis')"),/indisponível/);
+await assert.rejects(db.query("SELECT sri_p03_incident_set(1,'identified','resolved')"),/Transição inválida/);
+await db.exec("SELECT sri_p03_incident_set(1,'identified','analysis')");
+await assert.rejects(db.query("SELECT sri_p03_incident_set(1,'identified','analysis')"),/Incidente alterado/);
+for(const [from,to] of [['analysis','correction'],['correction','validation'],['validation','resolved'],['resolved','analysis']]){
+ await db.query('SELECT sri_p03_incident_set(1,$1,$2)',[from,to]);
+}
+const [incident]=await values('SELECT sri_p03_incident_list() result');
+assert.equal(incident.stage,'analysis');
+await db.exec('RESET ROLE');
+assert.equal(Number((await db.query('SELECT count(*) FROM private.sri_p03_incident_history')).rows[0].count),5);
+console.log('PASS: ciclo de incidente com controle de concorrência, reabertura auditada e acesso exclusivo do Administrador.');
 await db.close();
 console.log('PASS: migração aditiva e repetível, estados de 23/11 preservados após conclusão em 24/11, autoria/equipe congeladas, Base/Área do evento imutáveis, proteção de tabelas e ausência histórica explícita.');
 
