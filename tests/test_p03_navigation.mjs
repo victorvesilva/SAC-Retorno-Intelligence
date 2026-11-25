@@ -10,6 +10,7 @@ const markup='<main><button data-tab="overview">A</button><button data-tab="deta
 const dispatcher=String.raw`
 document.body.dataset.v20Role='admin';
 window.onerror=message=>document.body.dataset.error=message;
+window.onunhandledrejection=event=>document.body.dataset.error=String(event.reason);
 document.addEventListener('click',event=>{
  const route=event.target.closest('[data-tab]');if(!route)return;
  document.querySelectorAll('.tab-content').forEach(el=>el.classList.toggle('active',el.id===route.dataset.tab));
@@ -19,6 +20,7 @@ const probe=String.raw`
 const click=id=>document.querySelector('[data-tab="'+id+'"]').click();
 const wait=()=>new Promise(resolve=>setTimeout(resolve,30));
 (async()=>{
+ if(document.readyState==='loading')await new Promise(resolve=>document.addEventListener('DOMContentLoaded',resolve,{once:true}));
  document.getElementById('filter-a').value='consulta A';
  click('details');await wait();click('reports');await wait();
  const back=document.getElementById('sri-p03-back');

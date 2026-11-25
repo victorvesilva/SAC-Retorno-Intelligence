@@ -144,4 +144,16 @@ END $$;
 REVOKE ALL ON FUNCTION private.sri_p03_preserve_open_tasks(uuid,date,text,uuid,bigint) FROM PUBLIC,anon,authenticated;
 
 
+-- Repeated publication must preserve the active flag derived by the carry trigger.
+DO $publication_active$
+DECLARE routine regprocedure; definition text;
+BEGIN
+ FOREACH routine IN ARRAY ARRAY['public.publish_daily_operator_tasks(uuid,bigint,jsonb)'::regprocedure,
+  'public.publish_general_operator_tasks(uuid,bigint,jsonb)'::regprocedure] LOOP
+  definition:=pg_get_functiondef(routine);
+  definition:=replace(definition,'active=true,distribution_revision=EXCLUDED.distribution_revision',
+   'active=EXCLUDED.active,distribution_revision=EXCLUDED.distribution_revision');
+  EXECUTE definition;
+ END LOOP;
+END $publication_active$;
 COMMIT;

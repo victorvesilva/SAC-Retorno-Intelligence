@@ -22,7 +22,7 @@ for(const policy of rls.policies){
  await db.exec(ddl);
 }
 await db.exec('SET check_function_bodies=on');
-const files=['2026-11-24_sri_pacote03_historico_carteira.sql','2026-11-24_sri_pacote03_produtividade.sql','2026-11-24_sri_pacote03_protecao_incidentes.sql','2026-11-24_sri_criticos_persistencia_status.sql','2026-11-24_sri_p03_historico_datas.sql','2026-11-24_sri_p03_perfil_assistente.sql','2026-11-25_sri_p03_historico_imutavel.sql','2026-11-25_sri_p03_escopo_publicacao.sql','2026-11-25_sri_p03_metricas_rpc.sql','2026-11-25_sri_p03_produtividade_carga.sql','2026-11-25_sri_p03_monitor_ocorrencias.sql','2026-11-25_sri_p03_continuidade_carteira.sql'];
+const files=['2026-11-24_sri_pacote03_historico_carteira.sql','2026-11-24_sri_pacote03_produtividade.sql','2026-11-24_sri_pacote03_protecao_incidentes.sql','2026-11-24_sri_criticos_persistencia_status.sql','2026-11-24_sri_p03_historico_datas.sql','2026-11-24_sri_p03_perfil_assistente.sql','2026-11-25_sri_p03_historico_imutavel.sql','2026-11-25_sri_p03_escopo_publicacao.sql','2026-11-25_sri_p03_metricas_rpc.sql','2026-11-25_sri_p03_produtividade_carga.sql','2026-11-25_sri_p03_monitor_ocorrencias.sql','2026-11-25_sri_p03_continuidade_carteira.sql','2026-11-25_sri_p03_auditoria_contexto.sql'];
 for(const file of files){await db.exec(readFileSync(new URL('../sql/'+file,import.meta.url),'utf8'));console.log('PASS migration '+file);}
 
 // Use today's civil date for flows whose production authorization requires the current day.
@@ -170,6 +170,7 @@ VALUES (${id(16)},'{"assignments":{"A":{"opId":"acct:00000000-0000-0000-0000-000
 SET ROLE authenticated;
 `);
 await db.query('SELECT publish_general_operator_tasks('+id(16)+",1,'{}')");
+await db.query('SELECT publish_general_operator_tasks('+id(16)+",1,'{}')");
 await db.exec('RESET ROLE');
 const repeatedDay=(await db.query('SELECT active,work_status FROM daily_operator_tasks WHERE snapshot_id='+id(16)+" AND protocol_number='A'")).rows[0];
 assert.equal(repeatedDay.active,false,'segunda importação do dia seguinte não reativa conclusão transportada');
@@ -177,4 +178,43 @@ assert.equal((await db.query("SELECT active FROM daily_operator_tasks WHERE prot
 
 assert.equal(Number((await db.query("SELECT count(*) FROM daily_operator_treatments WHERE action='ACEITOU'")).rows[0].count),1,'continuidade não cria tratativa fictícia');
 console.log('PASS: conclusão preservada entre turnos e no dia seguinte, sem reativação nem nova tratativa fictícia.');
+
+await db.exec('SET request.jwt.claim.sub='+id(1)+'; SET ROLE authenticated');
+const movement=(await db.query("SELECT sri_movement_read(now()-interval '1 day',now()+interval '1 day','A') result")).rows.map(row=>row.result);
+assert.ok(movement.some(row=>row.action==='DAY_TASK_TREATMENT'));
+assert.ok(movement.some(row=>row.action==='TASK_CARRIED'));
+assert.ok(movement.every(row=>row.protocol==='A'));
+assert.ok(movement.filter(row=>row.action==='TASK_CARRIED').every(row=>row.perfil==='assistant'));
+const otherMovement=(await db.query("SELECT sri_movement_read(now()-interval '1 day',now()+interval '1 day','B') result")).rows;
+assert.equal(otherMovement.length,0,'histórico da outra equipe permanece restrito');
+await db.exec('RESET ROLE');
+const beforeAudit=Number((await db.query('SELECT count(*) FROM audit_events')).rows[0].count);
+await db.exec('SET ROLE authenticated');
+await assert.rejects(db.query('DELETE FROM audit_events RETURNING id'),/permission denied|row.level/i,'permissões impedem exclusão direta da auditoria');
+await db.exec('RESET ROLE');
+assert.equal(Number((await db.query('SELECT count(*) FROM audit_events')).rows[0].count),beforeAudit);
+console.log('PASS: auditoria por protocolo preserva autoria/perfil do evento, transporte automático e bloqueio de outra equipe e de exclusão.');
+
+await db.exec(readFileSync(new URL('../sql/2026-11-25_sri_p03_escopo_apuracao_geral.sql',import.meta.url),'utf8'));
+await db.exec('SET request.jwt.claim.sub='+id(4)+'; SET ROLE authenticated');
+assert.equal((await db.query('SELECT id FROM daily_result_snapshots')).rows.length,0,'supervisor não lê base geral de outro importador');
+await assert.rejects(db.query('SELECT publish_general_operator_tasks('+id(16)+",1,'{}')"),/fora do escopo/);
+await db.exec('RESET ROLE; SET request.jwt.claim.sub='+id(1)+'; SET ROLE authenticated');
+assert.ok((await db.query('SELECT id FROM daily_result_snapshots')).rows.length>0,'assistente consulta sua própria importação');
+const allowed=(await db.query("SELECT private.sri_p03_distribution_is_scoped($1) allowed",[JSON.stringify({assignments:{A:{opId:'acct:00000000-0000-0000-0000-000000000002'}}})])).rows[0].allowed;
+assert.equal(allowed,true);
+const denied=(await db.query("SELECT private.sri_p03_distribution_is_scoped($1) allowed",[JSON.stringify({assignments:{B:{opId:'acct:00000000-0000-0000-0000-000000000003'}}})])).rows[0].allowed;
+assert.equal(denied,false,'distribuição com operador de outra equipe não é legível nem editável');
+await assert.rejects(db.query("UPDATE daily_result_distributions SET state=$1,updated_by=auth.uid() WHERE snapshot_id="+id(16),[JSON.stringify({assignments:{B:{opId:'acct:00000000-0000-0000-0000-000000000003'}}})]),/row.level|policy|permiss/i);
+await db.exec('RESET ROLE; SET request.jwt.claim.sub='+id(10)+'; SET ROLE authenticated');
+assert.ok((await db.query('SELECT id FROM daily_result_snapshots')).rows.length>0,'administrador mantém visão global');
+await db.exec('RESET ROLE');
+console.log('PASS: RLS da apuração geral impede leitura de outro importador e edição de carteira fora da equipe, mantendo visão administrativa.');
+
+await db.exec(readFileSync(new URL('../sql/2026-11-25_sri_p03_guard_distribuicao_fechada.sql',import.meta.url),'utf8'));
+await db.exec("INSERT INTO sri_general_day_closures(operational_day,snapshot_id,protocol_count) VALUES ('2026-11-25',"+id(13)+",2)");
+await db.exec('SET ROLE authenticated');
+await assert.rejects(db.query("UPDATE daily_result_distributions SET revision=revision+1,updated_by=auth.uid() WHERE snapshot_id="+id(13)),/encerrado|bloqueada/i);
+await db.exec('RESET ROLE');
+console.log('PASS: dia fechado impede alteração direta de distribuição, inclusive para administrador, preservando o fechamento existente.');
 await db.close();

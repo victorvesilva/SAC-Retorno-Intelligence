@@ -14,7 +14,7 @@
    let recorded=false;
    const record=failed=>{
     if(recorded)return;recorded=true;
-    const duration=Math.min(600000,Math.max(0,Math.round(performance.now()-started)));
+    const duration=Math.min(2147483647,Math.max(0,Math.round(performance.now()-started)));
     Promise.resolve(rpc('sri_p03_rpc_measure',{p_duration:duration,p_failed:failed})).catch(()=>{});
     if(failed)window.sriMonitorEvent?.('ERROR','RPC_ERROR','Supabase');
    };

@@ -1,4 +1,6 @@
 BEGIN;
+CREATE INDEX IF NOT EXISTS sri_p03_monitor_level_date ON private.sri_monitor_events(severity,occurred_at DESC,id DESC);
+CREATE INDEX IF NOT EXISTS sri_p03_monitor_date ON private.sri_monitor_events(occurred_at DESC,id DESC);
 CREATE TABLE IF NOT EXISTS private.sri_p03_monitor_occurrences(
  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
  event_id bigint NOT NULL REFERENCES private.sri_monitor_events(id) ON DELETE RESTRICT,

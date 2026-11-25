@@ -3,17 +3,18 @@ CREATE TABLE IF NOT EXISTS private.sri_p03_rpc_metrics(
  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
  actor_id uuid NOT NULL,
  occurred_at timestamptz NOT NULL DEFAULT now(),
- duration_ms integer NOT NULL CHECK(duration_ms BETWEEN 0 AND 600000),
+ duration_ms integer NOT NULL CHECK(duration_ms BETWEEN 0 AND 2147483647),
  failed boolean NOT NULL
 );
 ALTER TABLE private.sri_p03_rpc_metrics ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON private.sri_p03_rpc_metrics FROM PUBLIC,anon,authenticated;
 CREATE INDEX IF NOT EXISTS sri_p03_rpc_time ON private.sri_p03_rpc_metrics(occurred_at,actor_id);
+CREATE INDEX IF NOT EXISTS sri_p03_rpc_actor_time ON private.sri_p03_rpc_metrics(actor_id,occurred_at);
 CREATE OR REPLACE FUNCTION private.sri_p03_rpc_measure(p_duration integer,p_failed boolean)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 BEGIN
  IF NOT EXISTS(SELECT 1 FROM public.profiles WHERE id=auth.uid()) THEN RAISE EXCEPTION 'Sessão obrigatória'; END IF;
- IF p_duration IS NULL OR p_duration NOT BETWEEN 0 AND 600000 OR p_failed IS NULL THEN RAISE EXCEPTION 'Medição inválida'; END IF;
+ IF p_duration IS NULL OR p_duration NOT BETWEEN 0 AND 2147483647 OR p_failed IS NULL THEN RAISE EXCEPTION 'Medição inválida'; END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended('sri-rpc-metric:'||auth.uid()::text,0));
  IF (SELECT count(*) FROM private.sri_p03_rpc_metrics WHERE actor_id=auth.uid() AND occurred_at>now()-interval '1 minute')>=200 THEN RETURN; END IF;
  INSERT INTO private.sri_p03_rpc_metrics(actor_id,duration_ms,failed) VALUES(auth.uid(),p_duration,p_failed);

@@ -9,6 +9,7 @@
    const view=document.body.dataset.sriOperatorView;
    return view==='history'?'v20-mine-history':view==='pending'?'v20-operator-pending':base;
   }
+  if(base==='v20-settings')return base+'|settings:'+(document.body.dataset.sriSettingsPage||'users');
   const pane=document.querySelector('.tab-content.active [data-v49-pane].active,.tab-content.active [data-v46-pane].active');
   return pane?base+'|'+(pane.dataset.v49Pane||pane.dataset.v46Pane):base||null;
  };
@@ -28,7 +29,7 @@
   requestAnimationFrame(()=>window.scrollTo({top:saved.y,behavior:'auto'}));
  }
  function canLeave(){
-  const unsaved=document.querySelector('.tab-content.active form[data-sri-p03-dirty="true"],#sri33-treatment:not([hidden])[data-sri-p03-dirty="true"]');
+  const unsaved=document.querySelector('.tab-content.active form[data-sri-p03-dirty="true"],.tab-content.active [data-sri-p03-form][data-sri-p03-dirty="true"],#sri33-treatment:not([hidden])[data-sri-p03-dirty="true"]');
   return !unsaved||window.confirm('Existem alterações não salvas. Deseja sair desta tela?');
  }
 
@@ -46,7 +47,7 @@
   current=id;goingBack=false;btn.disabled=!stack.length;
  }
  function route(target){const [id,pane]=target.split('|');const selectors=['[data-v20-go]','[data-v5-tab]','[data-tab]'];
-  for(const sel of selectors){const node=[...document.querySelectorAll(sel)].find(el=>(el.dataset.v20Go||el.dataset.v5Tab||el.dataset.tab)===id&&!el.disabled);if(node){node.click();if(pane){const sub=[...document.querySelectorAll('[data-v49-pane],[data-v46-pane]')].find(el=>(el.dataset.v49Pane||el.dataset.v46Pane)===pane&&!el.disabled);sub?.click();}return active()===target;}}
+  for(const sel of selectors){const node=[...document.querySelectorAll(sel)].find(el=>(el.dataset.v20Go||el.dataset.v5Tab||el.dataset.tab)===id&&!el.disabled);if(node){node.click();if(pane){const sub=pane.startsWith('settings:')?[...document.querySelectorAll('[data-v20]')].find(el=>el.dataset.v20==='settings'+pane.slice(9,10).toUpperCase()+pane.slice(10)):[...document.querySelectorAll('[data-v49-pane],[data-v46-pane]')].find(el=>(el.dataset.v49Pane||el.dataset.v46Pane)===pane&&!el.disabled);sub?.click();}return active()===target;}}
   return false;
  }
  btn.addEventListener('click',()=>{if(!stack.length)return;
@@ -59,15 +60,15 @@
  });
  document.addEventListener('click',e=>{
   if(e.target.closest?.('#sri-p03-back'))return;
-  const link=e.target.closest?.('[data-v20-go],[data-v5-tab],[data-tab],[data-v49-pane],[data-v46-pane],[data-v20-rail-tab],[data-v20-rail-group]');
+  const link=e.target.closest?.('[data-v20-go],[data-v5-tab],[data-tab],[data-v49-pane],[data-v46-pane],[data-v20-rail-tab],[data-v20-rail-group],[data-v20^="settings"]');
   if(!link||goingBack)return;
   if(!canLeave()){e.preventDefault();e.stopImmediatePropagation();return;}
   remember();
  },true);
- document.addEventListener('input',e=>{const f=e.target.closest?.('form,#sri33-treatment');if(f&&(f.closest('.tab-content.active')||f.id==='sri33-treatment'))f.dataset.sriP03Dirty='true';},true);
+ document.addEventListener('input',e=>{const f=e.target.closest?.('form,[data-sri-p03-form],#sri33-treatment');if(f&&(f.closest('.tab-content.active')||f.id==='sri33-treatment'))f.dataset.sriP03Dirty='true';},true);
  document.addEventListener('reset',e=>{const f=e.target.closest?.('form');if(f)delete f.dataset.sriP03Dirty;},true);
  const prior=window.sriPackLogout;
  window.sriPackLogout=(...args)=>{clear();profile='';return typeof prior==='function'?prior(...args):undefined;};
- function boot(){restoreFocus();current=active();const obs=new MutationObserver(()=>{restoreFocus();observe()});obs.observe(document.body,{subtree:true,attributes:true,attributeFilter:['class','data-v20-role','data-role','data-sri-operator-view']});observe();}
+ function boot(){restoreFocus();current=active();const obs=new MutationObserver(()=>{restoreFocus();observe()});obs.observe(document.body,{subtree:true,attributes:true,attributeFilter:['class','data-v20-role','data-role','data-sri-operator-view','data-sri-settings-page']});observe();}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
