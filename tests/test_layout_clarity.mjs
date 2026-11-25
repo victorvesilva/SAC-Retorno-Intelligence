@@ -10,7 +10,7 @@ const start=html.indexOf('`',at)+1,end=html.indexOf('</section>`);',start)+10;
 const markup=vm.runInNewContext('`'+html.slice(start,end)+'`',{h:String,TREATMENT_STATUSES:['PENDENTE','ACEITOU']});
 const functions=html.slice(html.indexOf('  function p03QuickMatch'),html.indexOf('  let historySessionRequest=0;'));
 const handlers=html.slice(html.indexOf("    $('sri33-mine-refresh').addEventListener"),html.indexOf('    let modalOpener=null;'));
-const styles=[...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m=>m[1]).join('\n')+read('assets/revisao-visual-integrada.css')+read('assets/sri-layout-clarity.css');
+const styles=[...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m=>m[1]).join('\n')+['sri-integrated-improvements.css','revisao-visual-integrada.css','sri-layout-clarity.css'].map(f=>read('assets/'+f)).join('\n');
 const harness=`
 const $=id=>document.getElementById(id),h=value=>String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 const TREATMENT_STATUSES=['PENDENTE','ACEITOU'];
@@ -25,7 +25,7 @@ setupP03Preferences();p03PreferenceScope='synthetic/team';renderPackTasks();
 ${handlers}
 window.fixture={rows:value=>taskRows=value,render:renderPackTasks};
 window.testRole='operator';window.pendingMode='rows';window.calls=[];
-window.sriGetSupabaseClient=async()=>({auth:{getUser:async()=>({data:{user:{id:'synthetic'}}}),onAuthStateChange:()=>{}},from:()=>({select:()=>({eq:()=>({single:async()=>({data:{id:'synthetic',role:window.testRole}})})})}),rpc:async name=>{
+window.sriGetSupabaseClient=async()=>({auth:{getUser:async()=>({data:{user:{id:'synthetic'}}}),onAuthStateChange:callback=>{window.authChanged=callback;}},from:()=>({select:()=>({eq:()=>({single:async()=>({data:{id:'synthetic',role:window.testRole}})})})}),rpc:async name=>{
  window.calls.push(name);if(name==='sri_p03_my_unresolved'){
  if(window.pendingMode==='wait')await new Promise(resolve=>window.releasePending=resolve);
  if(window.pendingMode==='error')return {error:{message:'technical details'}};
@@ -77,11 +77,15 @@ try{
  await page.evaluate("window.pendingMode='wait';document.querySelector('#sri-p03-reconcile button').click()");
  await page.waitFor("window.releasePending");
  assert.equal(await page.evaluate("document.querySelector('#sri-p03-reconcile button').disabled"),true);
- await page.evaluate("window.testRole='manager'");
+ await page.waitFor("window.authChanged");
+ await page.evaluate("window.testRole='manager';window.authChanged('USER_UPDATED')");
  await page.waitFor("document.getElementById('sri-p03-reconcile')===null");
  await page.evaluate("window.releasePending()");
  assert.equal(await page.evaluate("document.getElementById('sri-p03-reconcile')===null"),true,'resposta atrasada não vaza para outra conta');
  assert.equal(await page.evaluate("window.calls.some(name=>/reopen_task|task_treat|update/.test(name))"),false,'consulta nunca escreve protocolos');
+ await page.waitFor("document.querySelector('#sri-p03-productivity .sri-clarity-exports button')");
+ assert.equal(await page.evaluate("[...document.querySelectorAll('#sri-p03-productivity .sri-clarity-exports button')].length"),3,'formatos preservados no menu de resultados');
+ assert.equal(await page.evaluate("[...document.querySelectorAll('#sri-p03-productivity > .v20-row button')].some(b=>b.textContent==='Consultar')"),true,'consultar permanece junto dos filtros');
  await page.close();
  console.log('PASS: filtros combinados, chips, paginação, concluídos, pendências preenchidas/vazias/erro/loading/troca de perfil; 1366/768/390px.');
 }finally{await browser.close();}

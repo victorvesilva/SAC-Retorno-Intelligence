@@ -2,11 +2,11 @@
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
 function element(tag,text,cls){const el=document.createElement(tag);if(text)el.textContent=text;if(cls)el.className=cls;return el;}
-function group(title,id){const box=element('section',null,'sri-clarity-group');box.id=id;box.append(element('h4',title));return box;}
+function group(title,id){const box=element('details',null,'sri-clarity-group');box.id=id;box.append(element('summary',title));return box;}
 function wallet(){
  const root=$('sri-pack-carteira');if(!root||root.dataset.clarity)return;
  root.dataset.clarity='1';
- const state=$('sri-p03-wallet-state');state.className='sri-clarity-state';state.append($('sri-p03-state').closest('label'));
+ const state=$('sri-p03-wallet-state');state.className='sri-clarity-state';state.append($('sri-p03-state').closest('label'));root.prepend(state);
  const basic=$('sri-pack-search').closest('.sri-pack-controls');basic.classList.add('sri-clarity-basic');
  const caption=element('h4','Buscar e filtrar');basic.before(caption);
  const shortcuts=$('sri-p03-shortcuts');shortcuts.setAttribute('aria-label','Atalhos combinados com os filtros selecionados');shortcuts.prepend(element('span','Atalhos:'));

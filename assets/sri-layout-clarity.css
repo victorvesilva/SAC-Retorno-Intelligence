@@ -10,6 +10,10 @@ body[data-sri-operator-view=history] #sri33-mine>.v20-between,body[data-sri-oper
 #sri-p03-shortcuts [aria-pressed=true]{background:#164da2!important;color:#fff!important}
 #sri-p03-advanced,#sri-p03-preferences,.sri-clarity-group{border:1px solid #dae3ed;border-radius:10px;padding:12px 14px;margin:12px 0!important;background:#fff}
 #sri-p03-advanced summary,#sri-p03-preferences summary{cursor:pointer;font-weight:700;color:#234569}
+.sri-clarity-group summary{cursor:pointer;font-weight:700;color:#234569}
+#sri33-mine .sri-clarity-pagination{display:flex;flex-wrap:wrap}
+#sri33-mine #sri-p03-shortcuts{display:flex;flex-wrap:wrap}
+#sri33-mine #sri-clarity-display .sri-pack-controls{grid-template-columns:repeat(2,minmax(0,1fr))}
 .sri-clarity-group h4{margin-top:0!important}
 .sri-clarity-group fieldset{margin-top:12px;display:flex;flex-wrap:wrap;gap:10px;border:0;padding:0}
 .sri-clarity-group fieldset label{display:flex;gap:6px;align-items:center}
@@ -37,5 +41,5 @@ body[data-sri-operator-view=history] #sri33-mine>.v20-between,body[data-sri-oper
  .sri-clarity-exports{margin-left:0;width:100%;box-sizing:border-box}
  #sri33-mine>.v20-between{align-items:start;flex-direction:column}
  #sri33-mine{padding:12px!important}
- .sri-clarity-group .sri-pack-controls{display:grid;grid-template-columns:1fr}
+ #sri33-mine #sri-clarity-display .sri-pack-controls{grid-template-columns:1fr}
 }
