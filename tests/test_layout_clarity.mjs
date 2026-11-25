@@ -64,6 +64,8 @@ try{
  assert.equal(await page.evaluate("document.getElementById('sri-p03-state').closest('#sri-p03-wallet-state')!==null"),true);
  assert.equal(await page.evaluate("document.getElementById('sri33-task-table').compareDocumentPosition(document.querySelector('.sri-clarity-pagination'))&Node.DOCUMENT_POSITION_FOLLOWING"),4);
  assert.equal(await page.evaluate("document.querySelectorAll('#sri-pack-summary button').length"),0,'indicadores não repetem filtros');
+ await page.evaluate("document.getElementById('sri-pack-search').value='101';document.getElementById('sri-pack-search').dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('#sri-clarity-active button').click()");
+ assert.equal(await page.evaluate("JSON.parse(localStorage.getItem('sri_p03_filters_v1:synthetic/team')).current.controls['sri-pack-search']"),'','remover busca também atualiza a preferência persistida');
  for(const width of [1366,768,390]){
   const view=width===1366?page:await browser.page('file://'+fixture,width,900);
   await view.waitFor("document.getElementById('sri-clarity-active')");

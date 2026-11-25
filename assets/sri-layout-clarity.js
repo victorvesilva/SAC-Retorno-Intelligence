@@ -30,7 +30,7 @@ function refreshFilters(){
   if(!values.length)continue;
   const label=input.closest('label')?.firstChild?.textContent.trim()||'Filtro';
   const chip=element('button',label+': '+values.join(', ')+' ×','v20-button secondary');chip.type='button';chip.setAttribute('aria-label','Remover filtro '+label);
-  chip.onclick=()=>{if(input.multiple)for(const o of input.options)o.selected=false;else input.value=['sri-pack-filter','sri-pack-status-filter','sri-p03-state'].includes(input.id)?'all':'';input.dispatchEvent(new Event(input.type==='search'?'input':'change',{bubbles:true}));};wrap.append(chip);
+  chip.onclick=()=>{if(input.multiple)for(const o of input.options)o.selected=false;else input.value=['sri-pack-filter','sri-pack-status-filter','sri-p03-state'].includes(input.id)?'all':'';if(input.type==='search')input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));};wrap.append(chip);
  }
  for(const active of document.querySelectorAll('#sri-p03-shortcuts [aria-pressed="true"]')){const chip=element('button','Atalho: '+active.textContent+' ×','v20-button secondary');chip.type='button';chip.onclick=()=>active.click();wrap.append(chip);}
  if(!wrap.children.length)wrap.append(element('span','Nenhum filtro aplicado.'));

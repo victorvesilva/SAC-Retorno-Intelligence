@@ -1,5 +1,6 @@
 .sri-clarity-legacy-header{display:none!important}
 body[data-sri-operator-view=history] #sri33-mine>.v20-between,body[data-sri-operator-view=pending] #sri33-mine>.v20-between,body[data-sri-operator-view=history] #sri33-mine-status,body[data-sri-operator-view=pending] #sri33-mine-status{display:none!important}
+body[data-sri-operator-view=history] #sri-operator-reviews,body[data-sri-operator-view=pending] #sri-operator-reviews{display:none!important}
 #sri-pack-carteira h4{margin:16px 0 10px;color:#173858;font-size:14px}
 .sri-clarity-state{padding:14px 16px;background:#eef4ff;border:1px solid #c8d8f2;border-radius:10px;margin:16px 0}
 .sri-clarity-state label{max-width:360px;width:100%}
