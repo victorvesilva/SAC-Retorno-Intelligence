@@ -58,3 +58,16 @@ Portões pré-produção: backup verificável; revisar grants, RLS, SECURITY DEF
 Os previews automáticos estão desativados para evitar consumo da cota.
 
 Limitação: não se comprovou ainda a conclusão das 120 MEL-071 a MEL-190; permanecer com bloqueio de liberação integral do Pacote 03 até auditoria do escopo.
+
+## Continuação com o backlog de consulta em 25/11/2026
+
+Fonte lida em `docs/pacote-03-consulta@7fc125e44be85cfe1eb6d36ace084e851e3c0c16`, arquivo `docs/backlog-pacote-03.md`. As 125 entradas, os critérios derivados e as ressalvas estão relacionados em `PACOTE03-MATRIZ-125-20261125.csv`. A definição das 120 MEL foi localizada. Os critérios reconstruídos seguem sujeitos às ressalvas do documento de origem.
+
+Acrescentar à sequência de seis migrações, para validação e futura janela autorizada, na ordem abaixo.
+
+7. `sql/2026-11-25_sri_p03_historico_imutavel.sql` captura versões de tarefas e contexto de tratativas. A captura começa na instalação. Dados anteriores continuam preservados e a ausência de estado histórico é sinalizada.
+8. `sql/2026-11-25_sri_p03_escopo_publicacao.sql` restringe transporte e desativação de tarefas na publicação geral ao escopo do autor. Assistente e Supervisor compartilham a mesma regra.
+
+Foram acrescentados testes de PostgreSQL isolado e fluxos reais no Chromium à integração contínua. Cobrem imutabilidade do estado histórico, metadados por evento, autoria, fuso, acesso por equipe, ciclo dos incidentes, critérios múltiplos, favoritos por conta/equipe e personalização de colunas. As oito migrações também foram executadas em uma cópia local das definições de tabelas, funções, constraints e triggers consultadas no projeto conectado, com dados sintéticos. Essa cópia não incluiu o conjunto completo de policies e grants. Os testes de RLS disponíveis usam o esquema sintético descrito no teste.
+
+As consultas ao projeto conectado foram somente de leitura. O desenvolvimento continua na branch do PR #42. A matriz registra os itens que ainda exigem implementação ou validação individual. O pacote integral permanece sem prontidão para produção.
