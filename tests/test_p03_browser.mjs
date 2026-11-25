@@ -14,8 +14,13 @@ const start=html.indexOf('`',from)+1,end=html.indexOf('</section>`);',start)+10;
 const markup=html.slice(start,end);
 const filters=html.slice(html.indexOf('  function p03QuickMatch'),html.indexOf('  let historySessionRequest=0;'));
 const renderedMarkup=vm.runInNewContext(String.fromCharCode(96)+markup+String.fromCharCode(96),{h:value=>String(value),TREATMENT_STATUSES:['PENDENTE','FILIAL']});
+const stage=html.indexOf('<script id="sri-operator-cloud-stage33">');
+const encode=html.slice(html.indexOf('  const h =',stage),html.indexOf('  const TREATMENT_STATUSES=',stage));
+const historyRenderer=html.slice(html.indexOf('  function renderP03History()',stage),html.indexOf('  async function saveTreatment',stage));
 const harness=`
-const $=id=>document.getElementById(id),h=value=>String(value??''),TREATMENT_STATUSES=['PENDENTE','FILIAL'];
+const $=id=>document.getElementById(id),TREATMENT_STATUSES=['PENDENTE','FILIAL'];
+${encode}
+const DIST_STATUS_DEFS=[['ACEITOU','',3],['PENDENTE','',0]],DIST_STATUS_CHOICES=['ACEITOU','PENDENTE'];
 let p03Page=0,p03Quick='',p03History=[],p03HistoryCursor=null;
 const packLevel=row=>row.criticality||'Baixo',packDate=row=>row.due_date||'';
 const packDue=()=>0,packRank=()=>0,packDueDate=()=>0;
@@ -44,11 +49,35 @@ if(document.querySelectorAll('#sri33-task-table tbody tr').length!==2)throw Erro
 p03PreferenceScope='other-user/team-a';restoreP03Preferences();
 if($('sri-p03-favorites').options.length!==1)throw Error('Favorito de outra conta exposto');
 document.body.dataset.filters='PASS';
+${historyRenderer}
+p03History=[
+ {id:'1',protocol_number:'501',action:'ACEITOU',created_at:'2026-11-23T12:00Z',notes:'<img src=x onerror=alert(1)>'},
+ {id:'2',protocol_number:'501',action:'PENDENTE',created_at:'2026-11-23T11:00Z'},
+ {id:'3',protocol_number:'502',action:'PENDENTE',created_at:'2026-11-23T10:00Z'}
+];
+renderP03History();
+if(document.querySelectorAll('#sri33-history details').length!==2)throw Error('Histórico não agrupou por protocolo');
+if(document.querySelectorAll('#sri33-history article').length!==3)throw Error('Histórico perdeu eventos individuais');
+if(document.querySelector('#sri33-history img'))throw Error('Notas históricas não foram escapadas');
+if(!$('sri-p03-history-count').textContent.includes('2 protocolos distintos'))throw Error('Indicador duplicou protocolos');
+$('sri-p03-history-mode').value='log';renderP03History();
+if(document.querySelectorAll('#sri33-history .sri-p03-history-card').length!==3)throw Error('Log não preservou os eventos');
+document.body.dataset.treatments='PASS';
+
 `;
 const probe=`
 window.onerror=message=>{document.body.dataset.error=message;};
 const button=()=>[...document.querySelectorAll('#sri-p03-go-history button')].find(el=>el.textContent==='Consultar data');
 setTimeout(()=>{
+ let printed=null;
+ window.open=()=>({
+  document:document.implementation.createHTMLDocument(''),closed:false,opener:null,
+  close(){this.closed=true;},focus(){},print(){printed=this.document;document.body.dataset.graph='PASS';}
+ });
+ const chart=document.querySelector('.sri-p03-chart-export');
+ if(!chart)throw Error('Exportação individual ausente');
+ chart.click();
+ if(!document.querySelector('.sri-p03-chart-nav')?.textContent.includes('Riscos Operacionais'))throw Error('Categorias de gráficos ausentes');
  const day=document.querySelector('#sri-p03-go-history input[type=date]');
  if(!day||!button())throw Error('Consulta histórica ausente');
  day.value='2026-11-23';button().click();
@@ -101,12 +130,14 @@ window.sriGetSupabaseClient=async()=>({
 `;
 const folder=mkdtempSync(join(tmpdir(),'sri-p03-browser-'));
 const fixture=join(folder,'fixture.html');
-writeFileSync(fixture,'<!doctype html><meta charset="utf-8"><div id="overview"></div><div id="operator"></div><div id="v20-settings"></div><script>'+mock+harness+'</script><script>'+source+'</script><script>'+probe+'</script>');
+writeFileSync(fixture,'<!doctype html><meta charset="utf-8"><div id="overview"></div><div id="operator"></div><div id="v20-settings"></div><section id="agents"><div class="card"><h3>Gráfico sintético</h3><div id="chart-areas"><svg xmlns="http://www.w3.org/2000/svg" width="200" height="60"><text x="5" y="20">10</text></svg></div></div></section><script>'+mock+harness+'</script><script>'+source+'</script><script>'+probe+'</script>');
 const chromium=process.env.CHROME_BIN||['/usr/bin/chromium','/usr/bin/google-chrome'].find(existsSync);
 assert.ok(chromium);
 const dom=execFileSync(chromium,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--disable-background-networking','--virtual-time-budget=1500','--user-data-dir='+join(folder,'profile'),'--dump-dom','file://'+fixture],{encoding:'utf8',timeout:60000,maxBuffer:8*1024*1024});
 assert.match(dom,/<body[^>]*data-filters="PASS"/);
 assert.match(dom,/<body[^>]*data-history="PASS"/);
 assert.match(dom,/<body[^>]*data-monitor="PASS"/);
+assert.match(dom,/<body[^>]*data-treatments="PASS"/);
+assert.match(dom,/<body[^>]*data-graph="PASS"/);
 assert.doesNotMatch(dom,/<body[^>]*data-error=/);
 console.log('PASS: Chromium executou filtros múltiplos, colunas, favoritos por conta e consulta histórica por data sem reaproveitar recorte vazio.');

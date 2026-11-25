@@ -22,7 +22,7 @@ for(const policy of rls.policies){
  await db.exec(ddl);
 }
 await db.exec('SET check_function_bodies=on');
-const files=['2026-11-24_sri_pacote03_historico_carteira.sql','2026-11-24_sri_pacote03_produtividade.sql','2026-11-24_sri_pacote03_protecao_incidentes.sql','2026-11-24_sri_criticos_persistencia_status.sql','2026-11-24_sri_p03_historico_datas.sql','2026-11-24_sri_p03_perfil_assistente.sql','2026-11-25_sri_p03_historico_imutavel.sql','2026-11-25_sri_p03_escopo_publicacao.sql','2026-11-25_sri_p03_metricas_rpc.sql','2026-11-25_sri_p03_produtividade_carga.sql','2026-11-25_sri_p03_monitor_ocorrencias.sql'];
+const files=['2026-11-24_sri_pacote03_historico_carteira.sql','2026-11-24_sri_pacote03_produtividade.sql','2026-11-24_sri_pacote03_protecao_incidentes.sql','2026-11-24_sri_criticos_persistencia_status.sql','2026-11-24_sri_p03_historico_datas.sql','2026-11-24_sri_p03_perfil_assistente.sql','2026-11-25_sri_p03_historico_imutavel.sql','2026-11-25_sri_p03_escopo_publicacao.sql','2026-11-25_sri_p03_metricas_rpc.sql','2026-11-25_sri_p03_produtividade_carga.sql','2026-11-25_sri_p03_monitor_ocorrencias.sql','2026-11-25_sri_p03_continuidade_carteira.sql'];
 for(const file of files){await db.exec(readFileSync(new URL('../sql/'+file,import.meta.url),'utf8'));console.log('PASS migration '+file);}
 
 // Use today's civil date for flows whose production authorization requires the current day.
@@ -125,4 +125,56 @@ const retained=(await db.query("SELECT sri_monitor_read(now()-interval '130 days
 assert.equal(retained.length,2,'logs antigos preservados permanecem consultáveis');
 await db.exec('RESET ROLE');
 console.log('PASS: falha crítica agrupada mantém ocorrências individuais, acesso administrativo e consulta de logs antigos preservados.');
+
+await db.exec('SET request.jwt.claim.sub='+id(1));
+await db.exec(`
+INSERT INTO daily_operator_tasks(snapshot_id,team_id,operational_day,shift_label,protocol_number,operator_user_id,base_name,area_name)
+VALUES (${id(13)},${id(6)},'2026-11-25','Manhã','C',${id(2)},'Base C','Área C');
+`);
+await db.exec(`
+INSERT INTO daily_result_snapshots(id,operational_day,shift_label,reference_serial,imported_by,payload_sha256,payload_gzip,protocol_count,created_at)
+VALUES (${id(14)},'2026-11-25','Tarde',1,${id(1)},repeat('3',64),repeat('x',20),1,now());
+INSERT INTO daily_result_distributions(snapshot_id,state,updated_by,revision)
+VALUES (${id(14)},'{"assignments":{"A":{"opId":"acct:00000000-0000-0000-0000-000000000002"}}}',${id(1)},1);
+SET ROLE authenticated;
+`);
+await db.query('SELECT publish_general_operator_tasks('+id(14)+",1,'{}')");
+await db.exec('RESET ROLE');
+const later=(await db.query('SELECT active,work_status,carried_from_task_id FROM daily_operator_tasks WHERE snapshot_id='+id(14)+" AND protocol_number='A'")).rows[0];
+assert.equal(later.work_status,'completed_in_tool','novo turno não reabre conclusão');
+assert.equal(later.active,true,'concluído permanece na carteira no mesmo dia');
+assert.ok(later.carried_from_task_id);
+const sameDay=(await db.query("SELECT protocol_number,count(*) AS total FROM daily_operator_tasks WHERE active AND operator_user_id="+id(2)+" AND operational_day='2026-11-25' GROUP BY protocol_number")).rows;
+assert.ok(sameDay.every(row=>Number(row.total)===1),'novo turno mantém uma atribuição ativa por protocolo');
+
+await db.exec(`
+INSERT INTO daily_result_snapshots(id,operational_day,shift_label,reference_serial,imported_by,payload_sha256,payload_gzip,protocol_count,created_at)
+VALUES (${id(15)},(now() AT TIME ZONE 'America/Sao_Paulo')::date+1,'Manhã',1,${id(1)},repeat('4',64),repeat('x',20),1,now()+interval '1 day');
+INSERT INTO daily_result_distributions(snapshot_id,state,updated_by,revision)
+VALUES (${id(15)},'{"assignments":{"A":{"opId":"acct:00000000-0000-0000-0000-000000000002"}}}',${id(1)},1);
+SET ROLE authenticated;
+`);
+await db.query('SELECT publish_general_operator_tasks('+id(15)+",1,'{}')");
+await db.exec('RESET ROLE');
+const tomorrow=(await db.query('SELECT active,work_status FROM daily_operator_tasks WHERE snapshot_id='+id(15)+" AND protocol_number='A'")).rows[0];
+assert.equal(tomorrow.work_status,'completed_in_tool');
+assert.equal(tomorrow.active,false,'dia seguinte mantém conclusão fora da carga ativa');
+const pending=(await db.query('SELECT active,base_name,area_name FROM daily_operator_tasks WHERE snapshot_id='+id(15)+" AND protocol_number='C'")).rows[0];
+assert.equal(pending.active,true,'pendência ausente da nova importação continua no dia seguinte');
+assert.equal(pending.base_name,'Base C');assert.equal(pending.area_name,'Área C');
+await db.exec(`
+INSERT INTO daily_result_snapshots(id,operational_day,shift_label,reference_serial,imported_by,payload_sha256,payload_gzip,protocol_count,created_at)
+VALUES (${id(16)},(now() AT TIME ZONE 'America/Sao_Paulo')::date+1,'Manhã',1,${id(1)},repeat('5',64),repeat('x',20),1,now()+interval '2 days');
+INSERT INTO daily_result_distributions(snapshot_id,state,updated_by,revision)
+VALUES (${id(16)},'{"assignments":{"A":{"opId":"acct:00000000-0000-0000-0000-000000000002"}}}',${id(1)},1);
+SET ROLE authenticated;
+`);
+await db.query('SELECT publish_general_operator_tasks('+id(16)+",1,'{}')");
+await db.exec('RESET ROLE');
+const repeatedDay=(await db.query('SELECT active,work_status FROM daily_operator_tasks WHERE snapshot_id='+id(16)+" AND protocol_number='A'")).rows[0];
+assert.equal(repeatedDay.active,false,'segunda importação do dia seguinte não reativa conclusão transportada');
+assert.equal((await db.query("SELECT active FROM daily_operator_tasks WHERE protocol_number='B'")).rows[0].active,true,'continuidade não altera carteira de outra equipe');
+
+assert.equal(Number((await db.query("SELECT count(*) FROM daily_operator_treatments WHERE action='ACEITOU'")).rows[0].count),1,'continuidade não cria tratativa fictícia');
+console.log('PASS: conclusão preservada entre turnos e no dia seguinte, sem reativação nem nova tratativa fictícia.');
 await db.close();

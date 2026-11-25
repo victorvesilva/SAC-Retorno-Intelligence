@@ -128,7 +128,13 @@ for(const format of monitor?['xlsx']:['xlsx','pdf']){
 }
 button(controls,'Copiar diagnóstico',()=>{const q=search.value.trim().toLowerCase();navigator.clipboard?.writeText(JSON.stringify(rows.filter(matches).map(r=>Object.fromEntries(cols.map(([k])=>[k,r[k]??null]))),null,2)).catch(()=>{})});root.append(section);}
 function makeProductivity(root){if(!root||$('sri-p03-productivity'))return;const section=document.createElement('section');section.id='sri-p03-productivity';section.className='v20-panel';section.style.margin='16px 0';const h=document.createElement('h3');h.textContent='Produtividade por operador e equipe';section.append(h);const note=document.createElement('p');note.textContent='Fonte: carteiras publicadas e tratativas registradas. Finalizado na ferramenta não significa resolução confirmada no SIGO. Cada linha conta protocolos distintos por operador/equipe/dia; não some linhas como protocolos globais.';section.append(note);const controls=document.createElement('div');controls.className='v20-row';controls.style.flexWrap='wrap';section.append(controls);const civil=d=>d.toLocaleDateString('sv-SE',{timeZone:'America/Fortaleza'}),now=new Date(),start=new Date(now.getTime()-6*86400000);const from=field(controls,'De','date'),to=field(controls,'Até','date'),team=field(controls,'Equipe'),op=field(controls,'Operador');from.value=civil(start);to.value=civil(now);const status=document.createElement('p');status.setAttribute('role','status');section.append(status);const chart=document.createElement('div');section.append(chart);const wrap=document.createElement('div');wrap.style.overflow='auto';wrap.style.maxHeight='420px';const table=document.createElement('table');table.className='v20-table';wrap.append(table);section.append(wrap);let rows=[],seq=0,page=0;const cols=[['operational_day','Data'],['team_name','Equipe'],['operator_name','Operador'],['received','Recebidos'],['treated','Com tratativa'],['active_stock','Estoque ativo'],['finalized_in_tool','Finalizados na ferramenta'],['untreated_active','Ativos sem tratativa']];const filtered=()=>rows.filter(r=>String(r.team_name||'').toLowerCase().includes(team.value.trim().toLowerCase())&&String(r.operator_name||'').toLowerCase().includes(op.value.trim().toLowerCase()));function render(){const list=filtered(),pages=Math.max(1,Math.ceil(list.length/50));page=Math.min(page,pages-1);prev.disabled=page===0;next.disabled=page>=pages-1;table.replaceChildren();const head=table.createTHead().insertRow();for(const [,label] of cols){const th=document.createElement('th');th.textContent=label;head.append(th);}const body=table.createTBody();for(const r of list.slice(page*50,page*50+50)){const tr=body.insertRow();for(const [k] of cols)cell(tr,r[k]);}status.textContent=list.length+' linhas · página '+(page+1)+'/'+pages;chart.replaceChildren();const caption=document.createElement('p');caption.textContent='Evolução: ocorrências de protocolos por operador/equipe/dia (não deduplicadas entre operadores)';chart.append(caption);const days=new Map();for(const r of list){const key=r.operational_day;const v=days.get(key)||[0,0];v[0]+=Number(r.received||0);v[1]+=Number(r.treated||0);days.set(key,v);}const max=Math.max(1,...[...days.values()].map(v=>v[0]));for(const [day,[received,treated]] of [...days].sort((a,b)=>a[0].localeCompare(b[0]))){const row=document.createElement('div');row.style.margin='8px 0';const label=document.createElement('span');label.textContent=day+' · '+received+' recebidos / '+treated+' tratados';row.append(label);for(const [value,color] of [[received,'#16458d'],[treated,'#16a34a']]){const bar=document.createElement('div');bar.style.width=(100*value/max)+'%';bar.style.height='7px';bar.style.margin='3px 0';bar.style.background=color;row.append(bar);}chart.append(row);}}
-const load=async()=>{const id=++seq,e=epoch;status.textContent='Consultando…';try{const a=await identity();if(!a||!['admin','manager','supervisor','assistant'].includes(a.p.role))throw Error('Acesso não autorizado.');if(!from.value||!to.value||from.value>to.value||(Date.parse(to.value)-Date.parse(from.value))/86400000>31)throw Error('Selecione um período de até 32 dias corridos.');let all=[];for(let offset=0;offset<10000;offset+=200){const {data,error}=await a.c.rpc('sri_p03_productivity',{p_from:from.value,p_to:to.value}).range(offset,offset+199);if(error)throw Error('Consulta de produtividade indisponível.');all.push(...(data||[]));if((data||[]).length<200)break;if(offset===9800)throw Error('Recorte muito grande; reduza o período.');}if(id!==seq||e!==epoch||!section.isConnected)return;rows=all;page=0;render();}catch(err){if(id===seq&&e===epoch){rows=[];render();status.textContent=err.message;}}};button(controls,'Consultar',load);const prev=button(controls,'Anterior',()=>{page--;render()});const next=button(controls,'Próxima',()=>{page++;render()});prev.disabled=next.disabled=true;for(const el of [team,op])el.oninput=()=>{page=0;render()};button(controls,'Exportar CSV',()=>{const q=filtered();if(!q.length)return;const esc=v=>'"'+String(v??'').replace(/^[\s]*[=+@-]/,x=>"'"+x).replace(/"/g,'""')+'"';const csv=[cols.map(x=>esc(x[1])).join(';'),...q.map(r=>cols.map(([k])=>esc(r[k])).join(';'))].join('\r\n');const url=URL.createObjectURL(new Blob(['\ufeff',csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='produtividade_sac.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});root.append(section);}
+const load=async()=>{const id=++seq,e=epoch;status.textContent='Consultando…';try{const a=await identity();if(!a||!['admin','manager','supervisor','assistant'].includes(a.p.role))throw Error('Acesso não autorizado.');if(!from.value||!to.value||from.value>to.value||(Date.parse(to.value)-Date.parse(from.value))/86400000>31)throw Error('Selecione um período de até 32 dias corridos.');let all=[];for(let offset=0;offset<10000;offset+=200){const {data,error}=await a.c.rpc('sri_p03_productivity',{p_from:from.value,p_to:to.value}).range(offset,offset+199);if(error)throw Error('Consulta de produtividade indisponível.');all.push(...(data||[]));if((data||[]).length<200)break;if(offset===9800)throw Error('Recorte muito grande; reduza o período.');}if(id!==seq||e!==epoch||!section.isConnected)return;rows=all;page=0;render();}catch(err){if(id===seq&&e===epoch){rows=[];render();status.textContent=err.message;}}};button(controls,'Consultar',load);const prev=button(controls,'Anterior',()=>{page--;render()});const next=button(controls,'Próxima',()=>{page++;render()});prev.disabled=next.disabled=true;for(const el of [team,op])el.oninput=()=>{page=0;render()};button(controls,'Exportar CSV',()=>{const q=filtered();if(!q.length)return;const esc=v=>'"'+String(v??'').replace(/^[\s]*[=+@-]/,x=>"'"+x).replace(/"/g,'""')+'"';const csv=[cols.map(x=>esc(x[1])).join(';'),...q.map(r=>cols.map(([k])=>esc(r[k])).join(';'))].join('\r\n');const url=URL.createObjectURL(new Blob(['\ufeff',csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='produtividade_sac.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});for(const format of ['xlsx','pdf'])button(controls,format==='xlsx'?'Exportar Excel':'Gerar PDF',()=>{
+ if(!filtered().length){status.textContent='Nenhum registro carregado para exportar.';return;}
+ try{exportP03Report('Produtividade por operador e equipe',cols,filtered(),from.value+' a '+to.value,format);}
+ catch(error){status.textContent=error.message;}
+});
+for(const input of [from,to])input.addEventListener('change',()=>{++seq;rows=[];page=0;render();status.textContent='Clique em Consultar para carregar o período selecionado.';});
+root.append(section);}
 
 function makePendingPanel(){
  if($('sri-p03-reconcile'))return;
@@ -284,8 +290,62 @@ function makeManagementHistory(){
  reset();
 }
 
-function clear(){document.getElementById('overview')?.classList.remove('sri-p03-historical');$('sri-p03-reconcile')?.remove();$('sri-p03-go-history')?.remove();epoch++;client=null;profile=null;userId=null;seen.clear();$('sri-monitor-panel')?.remove();$('sri-movement-panel')?.remove();$('sri-p03-productivity')?.remove();}
-let checking=false;async function refresh(){if(checking)return;checking=true;const e=epoch;try{const a=await identity();if(e!==epoch)return;if(!a){if(profile)clear();return;}if(userId!==a.p.id||profile?.role!==a.p.role){clear();client=a.c;profile=a.p;userId=a.p.id;log('SUCCESS','AUTH_OK','Autenticação');}if(profile.role==='operator')makePendingPanel();else $('sri-p03-reconcile')?.remove();if(profile.role==='admin')make($('v20-settings'),'sri-monitor-panel',true);else $('sri-monitor-panel')?.remove();if(['admin','manager','supervisor','assistant'].includes(profile.role)){makeManagementHistory();make($('reports'),'sri-movement-panel',false);makeProductivity($('reports'));}else {$('sri-movement-panel')?.remove();$('sri-p03-productivity')?.remove();}}catch(_){}finally{checking=false;}}
+function makeDashboardNavigation(){
+ const routes=[['overview','Visão Geral'],['agents','Desempenho'],['priorities','Riscos Operacionais'],['intelligence','Evolução Histórica']];
+ for(const [sectionId]of routes){
+  const section=$(sectionId);if(!section||section.querySelector('.sri-p03-chart-nav'))continue;
+  const nav=document.createElement('nav');nav.className='sri-p03-chart-nav v20-row';nav.setAttribute('aria-label','Categorias dos gráficos');
+  for(const [target,label]of routes){
+   const link=button(nav,label,()=>{
+    if(target==='intelligence'&&typeof v49SetPane==='function')v49SetPane('evolucao');
+   });
+   link.dataset.v20Go=target;
+   if(target===sectionId)link.setAttribute('aria-current','page');
+  }
+  section.prepend(nav);
+ }
+}
+const graphButtons=new WeakMap();
+function makeGraphExports(){
+ const ids=['chart-areas','chart-bko','chart-days','chart-eligibility','chart-filial','chart-priority','chart-sla','chart-timeline','bko-bars','dm-area-chart','dm-bko-chart','dm-channel-chart','dm-coverage-chart','dm-operators-chart','dm-sla-chart','dm-status-chart','historical-chart','sri-p03-heat','v3-agent-bars','v3-trend-chart','v47-chart','v49-bko-trend','v49-compare-chart','v52-day-chart'];
+ for(const id of ids){
+  const graph=$(id);if(!graph||graphButtons.get(graph)?.isConnected)continue;
+  const exportButton=document.createElement('button');exportButton.type='button';exportButton.className='v20-button secondary sri-p03-chart-export';
+  const card=graph.closest('.card,.v3-card,.dm-card,.v49-card,.v20-panel,.v47-chartwrap');
+  const title=card?.querySelector('h3,h4,.card-title')?.textContent?.trim()||graph.getAttribute('aria-label')||'Gráfico';
+  exportButton.textContent='Exportar gráfico PDF';exportButton.setAttribute('aria-label','Exportar '+title+' em PDF');
+  exportButton.onclick=async()=>{
+   if(!graph.getClientRects().length)return;
+   const output=window.open('','_blank');
+   if(!output){window.sriPackNotify?.('Permita abrir a impressão para exportar o gráfico.','warning');return;}
+   output.opener=null;const currentEpoch=epoch;
+   try{
+    const auth=await identity();
+    if(currentEpoch!==epoch||!auth||!['admin','manager','supervisor','assistant'].includes(auth.p.role))throw Error('Acesso à exportação não autorizado.');
+    const doc=output.document;doc.title=title;
+    const style=doc.createElement('style');style.textContent='@page{size:A4 landscape;margin:14mm}body{font:13px sans-serif;color:#173858}svg{max-width:100%;height:auto}button{font:inherit}';
+    doc.head.append(style);
+    const heading=doc.createElement('h1');heading.textContent=title;doc.body.append(heading);
+    const context=doc.createElement('p');
+    const filters=[...document.querySelectorAll('#global-controls select,#global-controls input[type=date]')].map(input=>input.tagName==='SELECT'?[...input.selectedOptions].map(option=>option.textContent).join(', '):input.value).filter(Boolean);
+    context.textContent='Gerado em '+new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})+(filters.length?' · '+filters.join(' · '):'');doc.body.append(context);
+    const clone=graph.cloneNode(true),originals=[graph,...graph.querySelectorAll('*')],copies=[clone,...clone.querySelectorAll('*')];
+    const properties=['color','background-color','fill','stroke','stroke-width','font-family','font-size','font-weight','display','width','height','padding','margin','border','border-radius','grid-template-columns','gap','align-items','justify-content'];
+    originals.forEach((node,index)=>{
+     const computed=getComputedStyle(node),copy=copies[index];
+     for(const property of properties)copy.style.setProperty(property,computed.getPropertyValue(property));
+     for(const attribute of [...copy.attributes])if(attribute.name.startsWith('on'))copy.removeAttribute(attribute.name);
+    });
+    clone.style.maxWidth='100%';doc.body.append(clone);
+    await doc.fonts.ready;if(output.closed||currentEpoch!==epoch)return;output.focus();output.print();
+   }catch(error){output.close();window.sriPackNotify?.(error.message,'error');}
+  };
+  graph.before(exportButton);graphButtons.set(graph,exportButton);
+ }
+}
+
+function clear(){document.querySelectorAll('.sri-p03-chart-nav,.sri-p03-chart-export').forEach(node=>node.remove());document.getElementById('overview')?.classList.remove('sri-p03-historical');$('sri-p03-reconcile')?.remove();$('sri-p03-go-history')?.remove();epoch++;client=null;profile=null;userId=null;seen.clear();$('sri-monitor-panel')?.remove();$('sri-movement-panel')?.remove();$('sri-p03-productivity')?.remove();}
+let checking=false;async function refresh(){if(checking)return;checking=true;const e=epoch;try{const a=await identity();if(e!==epoch)return;if(!a){if(profile)clear();return;}if(userId!==a.p.id||profile?.role!==a.p.role){clear();client=a.c;profile=a.p;userId=a.p.id;log('SUCCESS','AUTH_OK','Autenticação');}if(profile.role==='operator')makePendingPanel();else $('sri-p03-reconcile')?.remove();if(profile.role==='admin')make($('v20-settings'),'sri-monitor-panel',true);else $('sri-monitor-panel')?.remove();if(['admin','manager','supervisor','assistant'].includes(profile.role)){makeManagementHistory();makeDashboardNavigation();makeGraphExports();make($('reports'),'sri-movement-panel',false);makeProductivity($('reports'));}else {$('sri-movement-panel')?.remove();$('sri-p03-productivity')?.remove();}}catch(_){}finally{checking=false;}}
 async function checkCritical(){
  const currentEpoch=epoch;
  try{
