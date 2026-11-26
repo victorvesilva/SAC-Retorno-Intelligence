@@ -1794,6 +1794,7 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
 <style>.sri-p03-history-card{border:1px solid var(--border,#dce5ef);border-radius:12px;padding:14px;margin:8px 0}.sri-p03-history-card summary{cursor:pointer;display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px}.sri-p03-history-card summary span,.sri-p03-event small{font-size:.82em;opacity:.8}.sri-p03-event{border-inline-start:3px solid #3475ce;padding:8px 14px;margin:10px 0;overflow-wrap:anywhere;display:grid;gap:5px}#sri33-task-table thead th{position:sticky;top:0;z-index:2;background:var(--card,#f3f7fc)}</style>
 <style>.sri-p03-report-tools{display:flex;flex-wrap:wrap;align-items:end;gap:10px;margin:12px 0}.sri-p03-report-tools label{display:grid;gap:4px}.sri-p03-report-tools input{max-width:100%;padding:8px;border:1px solid var(--border,#b8c6d5);border-radius:8px;background:transparent;color:inherit}.v55-report-option[hidden]{display:none!important}.sri-p03-favorite b::before{content:"★ ";color:#c28b22}.sri-p03-preview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}.sri-p03-heat-card{margin-bottom:16px}.sri-p03-heat-scroll{overflow:auto;max-height:420px}.sri-p03-heat-cell{width:100%;min-width:48px;border:1px solid transparent;border-radius:5px;padding:8px;background:color-mix(in srgb,#16458d var(--heat),transparent);color:inherit;font-weight:600;cursor:pointer}.sri-p03-heat-cell:hover:not(:disabled){outline:2px solid #3475ce}.sri-p03-heat-cell:disabled{opacity:.5;cursor:default}</style>
 <style>#sri-p03-shortcuts [aria-pressed="true"]{outline:2px solid #3475ce;font-weight:700}.sri-p03-processed td{background:color-mix(in srgb,#16a34a 10%,transparent)}#sri33-task-table.sri-p03-detail td{padding-block:16px;white-space:normal}</style>
+<link rel="stylesheet" href="/assets/sri-interface.css?v=1">
 </head>
 <body>
 <div id="sri-boot-modal" role="dialog" aria-modal="true" aria-labelledby="sri-boot-title" aria-describedby="sri-boot-message" tabindex="-1" data-state="loading" hidden>
@@ -1843,7 +1844,7 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
 <button data-v114-tab="import" type="button">Importar bases</button>
 <button data-v114-tab="priorities" type="button">Ver prioridades</button>
 <button data-v114-tab="distribution" type="button">Distribuir protocolos</button>
-<button data-v114-close="" type="button">Fechamento Diário</button>
+<button data-v114-close="" type="button">Fechamento diário da distribuição</button>
 </div>
 </div>
 <div class="go-kpi-stack"><div class="kpi-grid" id="kpis-primary"></div><div class="kpi-grid secondary" id="kpis-secondary"></div></div>
@@ -1862,7 +1863,7 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
 <div class="v49-kpi-gap" aria-hidden="true"></div>
 <div class="v2-grid equal">
 <div class="card"><div class="card-head"><div><div class="card-title">Carteira por BKO</div><div class="card-sub">Clique em uma barra para abrir os protocolos</div></div><span class="i" data-icon="bar"></span></div><div class="chart-surface chart-clickable" id="bko-bars"></div></div>
-<div class="card"><div class="card-head"><div><div class="card-title">Criticidade por BKO</div><div class="card-sub">Backlog, vencendo hoje, D6 e fila CRITICA; categorias podem se sobrepor</div></div><span class="i" data-icon="shield"></span></div><div class="chart-surface" id="bko-risks"></div></div>
+<div class="card"><div class="card-head"><div><div class="card-title">Criticidade por BKO</div><div class="card-sub">Backlog, vencendo hoje, D6 e fila crítica; categorias podem se sobrepor</div></div><span class="i" data-icon="shield"></span></div><div class="chart-surface" id="bko-risks"></div></div>
 </div>
 <div class="section-heading"><div><h2>Tabela comparativa por operadora</h2></div><button class="btn btn-ghost" id="export-bko"><span class="i" data-icon="download"></span> Exportar BKO</button></div>
 <div class="card"><div class="table-scroll" id="bko-table"></div><p class="matrix-caption">As contagens seguem as linhas da APURAÇÃO, inclusive protocolos repetidos.</p></div>
@@ -2085,7 +2086,7 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
 <div aria-live="polite" class="v55-note" id="v55-history-warning">Os dados detalhados dos protocolos são gerados exclusivamente a partir da carteira atual.</div>
 </div>
 </div>
-<div class="sri-p03-report-tools"><button type="button" class="btn btn-ghost" id="sri-p03-report-preview">Prévia dos indicadores</button><button type="button" class="btn btn-ghost" id="sri-p03-report-csv">Exportar indicadores agregados (CSV)</button></div><div id="sri-p03-report-preview-body" class="card-body" hidden></div><details class="card-body" id="sri-p03-compare"><summary><b>Comparativo entre extrações históricas</b></summary><p class="mini-explain">Compare duas fotos agregadas da carteira integral. Variação de estoque não equivale a produtividade ou resolução.</p><div class="sri-p03-report-tools"><label>Extração anterior<select id="sri-p03-compare-a"></select></label><label>Extração posterior<select id="sri-p03-compare-b"></select></label><button type="button" class="btn btn-ghost" id="sri-p03-compare-run">Comparar</button><button type="button" class="btn btn-ghost" id="sri-p03-compare-csv">Exportar CSV</button></div><div id="sri-p03-compare-result" role="status"></div></details><div class="v194-report-block"><div><strong>Fechamento Diário da Distribuição · Supervisor e Operadores</strong><p>Relatório analítico completo por equipe, status, resolutividade e histórico de movimentações; disponível também em PDF e Excel.</p></div><button class="v194-launch" id="v194-from-reports" type="button">Abrir Fechamento Diário</button></div>
+<div class="sri-p03-report-tools"><button type="button" class="btn btn-ghost" id="sri-p03-report-preview">Prévia dos indicadores</button><button type="button" class="btn btn-ghost" id="sri-p03-report-csv">Exportar indicadores agregados (CSV)</button></div><div id="sri-p03-report-preview-body" class="card-body" hidden></div><details class="card-body" id="sri-p03-compare"><summary><b>Comparativo entre extrações históricas</b></summary><p class="mini-explain">Compare duas fotos agregadas da carteira integral. Variação de estoque não equivale a produtividade ou resolução.</p><div class="sri-p03-report-tools"><label>Extração anterior<select id="sri-p03-compare-a"></select></label><label>Extração posterior<select id="sri-p03-compare-b"></select></label><button type="button" class="btn btn-ghost" id="sri-p03-compare-run">Comparar</button><button type="button" class="btn btn-ghost" id="sri-p03-compare-csv">Exportar CSV</button></div><div id="sri-p03-compare-result" role="status"></div></details><div class="v194-report-block"><div><strong>Fechamento diário da distribuição · Supervisor e Operadores</strong><p>Relatório analítico completo por equipe, status, resolutividade e histórico de movimentações; disponível também em PDF e Excel.</p></div><button class="v194-launch" id="v194-from-reports" type="button">Abrir Fechamento Diário</button></div>
 <div class="v55-runbar"><p>Os PDFs mostram a data/hora identificada nos arquivos SAC e ATIVO, o horário do processamento e a geração do documento. Se o horário da extração não estiver no nome dos arquivos, aparecerá “não identificado”.</p><button class="btn btn-primary" id="v55-generate" type="button"><span class="i" data-icon="download"></span> Gerar relatório em PDF</button></div>
 </div>
 </section>
@@ -2094,10 +2095,10 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
 <section class="tab-content fade-in v20-tab" id="v20-closure"><div class="v20-between"><div><div class="eyebrow">ACOMPANHAMENTO E RESULTADOS</div><h2 class="v20-hero-title">Fechamento Operacional</h2><p class="v20-muted">Prévias por extração e consolidado diário gerado sob demanda.</p></div><div class="v20-steps"><span>1 · Prévia horária</span><span>2 · Consolidado diário</span></div></div><div class="v20-panel"><div class="v20-controls"><label class="v20-field">Data de referência<input id="v20-cl-date" type="date"/></label><label class="v20-field">Visualização<select id="v20-cl-mode"><option value="hour">Prévia por horário</option><option value="day">Consolidado diário</option></select></label><label class="v20-field">Equipe<select id="v20-cl-team"></select></label><button class="v20-button secondary" data-v20="closingRefresh">Aplicar filtros</button></div><div class="v20-notice" style="margin-top:12px">A primeira rodada SAC + ATIVO do dia é a referência. Cada rodada seguinte compara a anterior; sem importação, não são criadas comparações fictícias.</div></div><div id="v20-cl-body"></div></section>
 <section class="tab-content fade-in v20-tab" id="v20-pending"><div class="eyebrow">OPERAÇÃO DIÁRIA</div><h2 class="v20-hero-title">Pendências e Ações</h2><p class="v20-muted">Atalhos para ocorrências existentes, sem criar uma segunda base de registros.</p><div id="v20-pending-body"></div></section>
 <section class="tab-content fade-in v20-tab" id="v20-alerts"><div class="eyebrow">BASE E QUALIDADE</div><h2 class="v20-hero-title">Conciliação e Alertas</h2><p class="v20-muted">Análise das divergências após as extrações e validação presencial das tratativas.</p><div id="v20-alert-body"></div></section>
-<section class="tab-content fade-in v20-tab" id="v20-settings"><div class="eyebrow">ADMINISTRAÇÃO</div><h2 class="v20-hero-title">Configurações</h2><div class="v20-row" style="margin:14px 0"><button class="v20-button secondary" data-v20="settingsUsers">Gestão de Usuários</button><button class="v20-button secondary" data-v20="settingsGoals">Metas e Indicadores</button></div><div id="v20-settings-body"></div></section>
+<section class="tab-content fade-in v20-tab" id="v20-settings"><div class="eyebrow">ADMINISTRAÇÃO</div><h2 class="v20-hero-title">Configurações</h2><div class="v20-row" style="margin:14px 0"><button class="v20-button secondary" data-v20="settingsUsers">Gestão de usuários</button><button class="v20-button secondary" data-v20="settingsGoals">Metas e Indicadores</button></div><div id="v20-settings-body"></div></section>
 <section class="tab-content fade-in v20-tab" id="v20-account"><div class="eyebrow">CONTA</div><h2 class="v20-hero-title">Minha Conta</h2><div id="v20-account-body"></div></section>
 <section class="tab-content fade-in v20-tab" id="v20-catalog"><div class="eyebrow">ACOMPANHAMENTO E RESULTADOS</div><h2 class="v20-hero-title">Consultas e Exportações</h2><p class="v20-muted">Consultas e exportações da mesma base, complementando os relatórios especializados sem novos cadastros ou cálculos paralelos.</p><div id="v20-catalog-body"></div></section>
-<div aria-labelledby="v20-dialog-title" aria-modal="true" class="v20-modal" id="v20-modal" role="dialog"><div class="v20-dialog"><div class="v20-between"><h2 id="v20-dialog-title" style="margin:0;color:#124179">Detalhes</h2><button class="v20-button secondary" data-v20="closeModal">Fechar</button></div><div id="v20-dialog-body" style="margin-top:16px"></div><div class="v20-modal-foot" id="v20-dialog-foot"></div></div></div>
+<div aria-labelledby="v20-dialog-title" aria-modal="true" aria-hidden="true" class="v20-modal" id="v20-modal" role="dialog"><div class="v20-dialog"><div class="v20-between"><h2 id="v20-dialog-title" style="margin:0;color:#124179">Detalhes</h2><button type="button" class="v20-button secondary" data-v20="closeModal">Fechar</button></div><div id="v20-dialog-body" style="margin-top:16px"></div><div class="v20-modal-foot" id="v20-dialog-foot"></div></div></div>
 <div aria-labelledby="v20-login-title" aria-modal="true" id="v20-login" role="dialog">
  <div class="v20-login-wrap sri-login-v3">
   <div class="sri-login-photo" aria-label="Profissional de atendimento com headset em ambiente corporativo">
@@ -2203,7 +2204,7 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
 </div>
 <div aria-hidden="true" aria-labelledby="v194-modal-title" aria-modal="true" class="v194-modal" id="v194-report-modal" role="dialog">
 <div class="v194-dialog">
-<div class="v194-head"><div><small>SAC RETORNO INTELLIGENCE · VER.1.9.17</small><h2 id="v194-modal-title">Fechamento Diário da Distribuição</h2><p id="v194-context">Relatório gerencial por supervisor e operador</p></div><button aria-label="Fechar relatório" id="v194-close" type="button">×</button></div>
+<div class="v194-head"><div><small>SAC RETORNO INTELLIGENCE · VER.1.9.17</small><h2 id="v194-modal-title">Fechamento diário da distribuição</h2><p id="v194-context">Relatório gerencial por supervisor e operador</p></div><button aria-label="Fechar relatório" id="v194-close" type="button">×</button></div>
 <div class="v194-filters"><label>Período<select id="v194-period"><option value="day">Diário</option><option value="week">Semanal</option><option value="month">Mensal</option></select></label><label>Data de referência<input id="v194-date" type="date"/></label><label>Supervisor / equipe<select id="v194-team"><option value="all">Todas as equipes</option></select></label><label>Operador<select id="v194-operator"><option value="all">Todos os operadores</option></select></label></div>
 <div class="v194-tabs" role="tablist"><button class="active" data-v194-tab="summary" type="button">Fechamento</button><button data-v194-tab="teams" type="button">Por equipe e operador</button><button data-v194-tab="results" type="button">Resultados / Resolutividade</button><button data-v194-tab="movements" type="button">Movimentações</button><button data-v194-tab="evolution" type="button">Evolução entre extrações</button></div>
 <div aria-live="polite" class="v194-content" id="v194-report-content" role="region"></div>
@@ -2710,10 +2711,6 @@ function v3ShowLayout(){const list=document.getElementById('v3-widget-list');lis
 function v3ApplyLayout(){v3ApplyOrder(v3Layout.order||[]);document.body.classList.toggle('v3-compact',!!v3Layout.compact);for(const [id]of v3WidgetTargets){const el=document.getElementById(id);if(!el)continue;const root=el.closest('.card')||el;root.classList.toggle('hide',!!v3Layout.hidden?.includes(id))}}
 function v3SaveLayout(){v3Layout={compact:document.getElementById('v3-layout-compact').checked,hidden:[...document.querySelectorAll('#v3-widget-list input:not(:checked)')].map(e=>e.dataset.v3Widget),order:v3ReadLayoutOrder()};jsonLocalSet(V3_KEY_LAYOUT,v3Layout);v3ApplyLayout();document.getElementById('v3-layout-modal').classList.remove('show');v2Toast('Preferências visuais atualizadas.')}
 function v3Report(){if(!ui.live){v2Toast('Importe as bases antes de gerar relatório.');return}const rows=ui.filtered,d=v3Metrics(rows),byBko=sorted(mapCounter(rows,'bko')),areas=sorted(mapCounter(rows,'area')),ruleStatus=document.getElementById('v3-validation-summary').textContent.trim(),date=new Date().toLocaleString('pt-BR');document.getElementById('v3-print-root').innerHTML=`<div class="print-header"><h1>SAC RETORNO INTELLIGENCE · HAPVIDA</h1><b>Relatório gerencial | SAC Retorno</b><p>Gerado em ${safe(date)} • Referência: ${longDate(ui.reference)} • SAC: ${safe(ui.quality.sacName)} • ATIVO: ${safe(ui.quality.ativoName)}</p><p>Escopo: filtros aplicados no dashboard. Processamento local. Sem dados pessoais.</p></div><section><h2>Resumo dos indicadores</h2><div class="print-kpis">${[['Monitorados',d.total],['SAC Retorno',d.ret],['WhatsSAC',d.what],['Vencendo hoje',d.d7]].map(([a,b])=>`<div><small>${a}</small><b>${fmt.format(b)}</b></div>`).join('')}</div><div class="print-kpis" style="margin-top:8px">${[['D6',d.d6],['Backlog',d.backlog],['Fila crítica',d.crit],['Filiais',new Set(rows.map(r=>r.filial)).size]].map(([a,b])=>`<div><small>${a}</small><b>${fmt.format(b)}</b></div>`).join('')}</div></section><section><h2>Distribuição por operadora</h2><table><thead><tr><th>BKO</th><th>Atendimentos</th><th>Participação</th></tr></thead><tbody>${byBko.map(([a,b])=>`<tr><td>${safe(a)}</td><td>${fmt.format(b)}</td><td>${div(b,rows.length)}</td></tr>`).join('')}</tbody></table></section><section><h2>Áreas de maior volume</h2><table><thead><tr><th>Área</th><th>Quantidade</th></tr></thead><tbody>${areas.slice(0,10).map(([a,b])=>`<tr><td>${safe(a)}</td><td>${fmt.format(b)}</td></tr>`).join('')}</tbody></table></section><section><h2>Qualidade dos dados</h2><p>${safe(ruleStatus)}</p><p>Mesclados: ${fmt.format(ui.quality.merged)} • Sem correspondência ATIVO: ${fmt.format(ui.quality.noJoin)} • Repetições SAC: ${fmt.format(ui.quality.duplicateSac)}.</p><p>Relatório gerencial: os totais incluem registros duplicados quando presentes na APURAÇÃO. Rankings de prioridade são auxiliares. Os dados são locais e não são enviados a servidores.</p></section><footer style="font-size:9px;color:#70839e;margin-top:20px">SAC Retorno Intelligence 5.1</footer>`;window.print()}
-function v3PresentRender(){const root=document.getElementById('v3-present-body');const rows=v3LiveRows(),d=v3Metrics(rows),panels=[{title:'Painel executivo',data:[['Carteira monitorada',d.total],['SAC Retorno',d.ret],['WhatsSAC',d.what],['Vencendo hoje',d.d7]],summary:'Visão resumida da operação no período da extração.'},{title:'Prazos e riscos',data:[['Vencendo hoje',d.d7],['Em D6',d.d6],['Backlog',d.backlog],['Fila crítica',d.crit]],summary:'Priorize atendimentos próximos ao vencimento e com sinalização de risco.'},{title:'Distribuição da carteira',data:sorted(mapCounter(rows,'bko')).slice(0,4).map(([k,v])=>[k,v]),summary:'Participação por BKO no recorte atualmente filtrado.'}];const p=panels[v3PresentSlide];root.innerHTML=`<h1>${safe(p.title)}</h1><p>Data de referência: ${longDate(ui.reference)} · ${fmt.format(d.total)} atendimentos na seleção</p><div class="v3-present-metrics">${p.data.map(([k,v])=>`<div><small>${safe(k)}</small><b>${fmt.format(v)}</b></div>`).join('')}</div><div class="v3-present-block">${safe(p.summary)}</div>`;document.getElementById('v3-present-index').textContent=(v3PresentSlide+1)+' / '+panels.length}
-function v3PresentStart(){if(!ui.live){v2Toast('Importe SAC e ATIVO antes de apresentar.');return}v3PresentSlide=0;document.getElementById('v3-present').classList.add('show');v3PresentRender();const el=document.getElementById('v3-present');el.requestFullscreen?.().catch(()=>{})}
-function v3PresentStop(){document.getElementById('v3-present').classList.remove('show');if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{})}
-function v3PresentStep(step){v3PresentSlide=(v3PresentSlide+step+3)%3;v3PresentRender()}
 // Complementos de navegação operacional e alertas de SLA configuráveis.
 const V3_SLA_KEY='sacpulse_v3_avisos_sla';
 let v3SlaHours=Math.min(168,Math.max(24,Number(jsonLocalGet(V3_SLA_KEY,48))||48));
@@ -3368,25 +3365,64 @@ function distInit(){distBuildFilterOptions();document.getElementById('dist-expor
  distRefresh();}
 
 /* Seleção dedicada de operadores para exportação: não modifica atribuições. */
-const distExportSelection={type:'operational',selected:new Set(),available:[],lastFocus:null};
+const sriDialogOrigins = new WeakMap();
+function sriOpenDialog(dialog, initialFocus){
+ if(!dialog.classList.contains('show'))sriDialogOrigins.set(dialog,document.activeElement);
+ dialog.classList.add('show');
+ dialog.setAttribute('aria-hidden','false');
+ initialFocus.focus({preventScroll:true});
+}
+function sriCloseDialog(dialog){
+ if(!dialog.classList.contains('show'))return;
+ dialog.classList.remove('show');
+ const origin=sriDialogOrigins.get(dialog);
+ sriDialogOrigins.delete(dialog);
+ if(origin?.isConnected)origin.focus({preventScroll:true});
+ if(dialog.contains(document.activeElement))document.activeElement.blur();
+ dialog.setAttribute('aria-hidden','true');
+}
+function sriBindDialog(dialog, close){
+ dialog.addEventListener('click',event=>{if(event.target===dialog)close()});
+ dialog.addEventListener('keydown',event=>{
+  if(event.key==='Escape'){
+   event.preventDefault();
+   event.stopPropagation();
+   close();
+   return;
+  }
+  if(event.key!=='Tab')return;
+  const focusable=[...dialog.querySelectorAll('button,input,select,textarea,a[href],[tabindex],summary')]
+   .filter(el=>el.tabIndex>=0&&!el.matches(':disabled')&&el.getClientRects().length&&getComputedStyle(el).visibility==='visible');
+  const first=focusable[0],last=focusable.at(-1);
+  if(first&&document.activeElement===(event.shiftKey?first:last)){
+   event.preventDefault();
+   (event.shiftKey?last:first).focus();
+  }
+ });
+}
+const distExportSelection={type:'operational',selected:new Set(),available:[]};
 function distExportOpen(type){
  if(!ui.live){v2Toast('Importe as bases antes de exportar.');return}
  const counts=new Map();for(const r of distState.rows){const op=distOwner(r.id);if(op){const entry=counts.get(op.id)||{op,count:0,sac:0,whats:0};entry.count++;if(r.where==='SAC RETORNO')entry.sac++;else if(r.where==='WHATSSAC')entry.whats++;counts.set(op.id,entry)}}
  const available=[...counts.values()].sort((a,b)=>a.op.name.localeCompare(b.op.name,'pt-BR'));
  if(!available.length){v2Toast('Não há protocolos distribuídos para exportar.');return}
- distExportSelection.type=type==='consolidated'?'consolidated':'operational';distExportSelection.available=available;distExportSelection.selected=new Set();distExportSelection.lastFocus=document.activeElement;
+ distExportSelection.type=type==='consolidated'?'consolidated':'operational';distExportSelection.available=available;distExportSelection.selected=new Set();
  document.getElementById('dist-export-modal-title').textContent=distExportSelection.type==='operational'?'Exportar Distribuição':'Exportar Base Consolidada';
  document.getElementById('dist-export-modal-subtitle').textContent='Selecione um, vários ou todos os operadores com protocolos na extração atual.';
  document.getElementById('dist-export-confirm').textContent=distExportSelection.type==='operational'?'Exportar Distribuição (.xlsx)':'Exportar Base Consolidada (.xlsx)';
- document.getElementById('dist-export-search').value='';const modal=document.getElementById('dist-export-modal');modal.classList.add('show');modal.setAttribute('aria-hidden','false');distExportRender();document.getElementById('dist-export-search').focus();
+ document.getElementById('dist-export-search').value='';const modal=document.getElementById('dist-export-modal');distExportRender();sriOpenDialog(modal,document.getElementById('dist-export-search'));
 }
-function distExportClose(){const modal=document.getElementById('dist-export-modal');if(!modal.classList.contains('show'))return;modal.classList.remove('show');modal.setAttribute('aria-hidden','true');distExportSelection.lastFocus?.focus?.()}
+function distExportClose(){sriCloseDialog(document.getElementById('dist-export-modal'))}
 function distExportRender(){
  const state=distExportSelection,q=distNormalize(document.getElementById('dist-export-search').value);
  const matches=state.available.filter(x=>distNormalize(x.op.name+' '+(x.op.supervisor||'')).includes(q));
  document.getElementById('dist-export-operator-list').innerHTML=matches.length?matches.map(x=>`<label class="dist-export-item ${state.selected.has(x.op.id)?'selected':''}"><input type="checkbox" data-export-op="${safe(x.op.id)}" ${state.selected.has(x.op.id)?'checked':''}/><span class="dist-export-person"><strong>${safe(x.op.name)}</strong><small>${safe(x.op.supervisor||'Sem supervisor')} · ${safe(distSituation(x.op))}</small></span><b class="dist-export-volume">${fmt.format(x.count)} protocolo(s)</b></label>`).join(''):'<div class="dist-empty">Nenhum operador encontrado na pesquisa.</div>';
- const count=state.available.filter(x=>state.selected.has(x.op.id));const sum=count.reduce((acc,x)=>acc+x.count,0);
- document.getElementById('dist-export-summary-count').textContent=`${count.length} de ${state.available.length} operadores selecionados`;
+ distExportRenderSummary();
+}
+function distExportRenderSummary(){
+ const {available,selected}=distExportSelection;
+ const count=available.filter(x=>selected.has(x.op.id));const sum=count.reduce((acc,x)=>acc+x.count,0);
+ document.getElementById('dist-export-summary-count').textContent=`${count.length} de ${available.length} operadores selecionados`;
  document.getElementById('dist-export-summary-protocols').textContent=`${fmt.format(sum)} protocolos serão exportados`;
  document.getElementById('dist-export-confirm').disabled=count.length===0;
 }
@@ -3399,13 +3435,20 @@ function distExportConfirm(){
 function distExportInit(){
  const modal=document.getElementById('dist-export-modal');
  document.getElementById('dist-export-search').addEventListener('input',distExportRender);
- document.getElementById('dist-export-operator-list').addEventListener('change',e=>{const input=e.target.closest('input[data-export-op]');if(!input)return;if(input.checked)distExportSelection.selected.add(input.dataset.exportOp);else distExportSelection.selected.delete(input.dataset.exportOp);distExportRender()});
+ document.getElementById('dist-export-operator-list').addEventListener('change',event=>{
+  const input=event.target.closest('input[data-export-op]');
+  if(!input)return;
+  const id=input.dataset.exportOp;
+  if(input.checked)distExportSelection.selected.add(id);
+  else distExportSelection.selected.delete(id);
+  input.closest('.dist-export-item').classList.toggle('selected',input.checked);
+  distExportRenderSummary();
+ });
  document.getElementById('dist-export-select-all').addEventListener('click',()=>{distExportSelection.selected=new Set(distExportSelection.available.map(x=>x.op.id));distExportRender()});
  document.getElementById('dist-export-clear').addEventListener('click',()=>{distExportSelection.selected.clear();distExportRender()});
  document.getElementById('dist-export-confirm').addEventListener('click',distExportConfirm);
  for(const id of ['dist-export-modal-close','dist-export-modal-cancel'])document.getElementById(id).addEventListener('click',distExportClose);
- modal.addEventListener('click',e=>{if(e.target===modal)distExportClose()});
- document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.classList.contains('show')){e.preventDefault();e.stopImmediatePropagation();distExportClose()};if(e.key==='Tab'&&modal.classList.contains('show')){const focusables=[...modal.querySelectorAll('button:not(:disabled),input:not(:disabled)')].filter(x=>x.offsetParent!==null);if(!focusables.length)return;const first=focusables[0],last=focusables[focusables.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}},true);
+ sriBindDialog(modal,distExportClose);
 }
 distExportInit();
 distInit();
@@ -5829,8 +5872,15 @@ function note(msg,warn=false){return `<div class="v20-notice${warn?' warning':''
 function badge(label,tone=''){return `<span class="v20-pill ${tone}">${esc(label)}</span>`}
 function table(headers,rows){return `<div class="v20-tablewrap"><table class="v20-table"><thead><tr>${headers.map(x=>'<th>'+esc(x)+'</th>').join('')}</tr></thead><tbody>${rows.join('')||'<tr><td colspan="12" style="padding:22px;color:#74839c">Nenhum registro para esta seleção.</td></tr>'}</tbody></table></div>`}
 function action(name,act,secondary=false){return `<button type="button" class="v20-button${secondary?' secondary':''}" data-v20="${esc(act)}">${esc(name)}</button>`}
-function modal(title,html,buttons=''){ $('v20-dialog-title').textContent=title;$('v20-dialog-body').innerHTML=html;$('v20-dialog-foot').innerHTML=buttons;$('v20-modal').classList.add('show');const pane=$('v20-modal').querySelector('.v20-dialog');if(pane)pane.scrollTop=0}
-function closeModal(){ $('v20-modal').classList.remove('show');$('v20-dialog-body').innerHTML='';$('v20-dialog-foot').innerHTML=''}
+function modal(title,html,buttons=''){
+ const dialog=$('v20-modal');
+ $('v20-dialog-title').textContent=title;
+ $('v20-dialog-body').innerHTML=html;
+ $('v20-dialog-foot').innerHTML=buttons;
+ dialog.querySelector('.v20-dialog').scrollTop=0;
+ sriOpenDialog(dialog,dialog.querySelector('[data-v20="closeModal"]'));
+}
+function closeModal(){ sriCloseDialog($('v20-modal'));$('v20-dialog-body').innerHTML='';$('v20-dialog-foot').innerHTML=''}
 function msg(t){try{v2Toast(t)}catch(e){alert(t)}}
 function requireRole(manage=false,admin=false){if(!current)throw Error('Faça login primeiro.');if(manage&&!authManager())throw Error('Permissão de supervisão necessária.');if(admin&&role()!=='admin')throw Error('Ação exclusiva do Gestor/ADM.')}
 const NAV_GROUPS=[
@@ -6154,29 +6204,12 @@ function movesFor(d,team='all'){return roundsFor(d).flatMap(r=>(r.moves||[]).fil
 function filteredTreat(d,team='all'){return data.treatments.filter(t=>dayKey(t.at)===d&&(team==='all'||(t.teamIdAtAction&&v20FindTeam(team)?.id===t.teamIdAtAction)||(t.teamAtAction||data.users.find(u=>u.id===t.user)?.team)===team)).map(v20EffectiveTreatment)}
 function teamFilter(){let teams=teamNames();return `<option value="all">Todas as equipes</option>`+teams.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('')}
 function closingSummary(d,team){const rounds=roundsFor(d),moves=movesFor(d,team),ts=filteredTreat(d,team),unique=new Set(moves.filter(m=>m.type==='finalizado').map(m=>m.id)),distinctTreat=new Set(ts.map(t=>t.pid)),finalized=unique.size,changes=moves.filter(m=>m.type==='mudanca_status').length,new12=moves.filter(m=>m.type==='novo'&&m.afterStatus==='12').length;return {rounds,moves,ts,unique,finalized,changes,new12,distinctTreat,treated:distinctTreat.size,complete:new Set(ts.filter(t=>complete.has(t.to)).map(t=>t.pid)).size};}
-function renderClosing(){requireRole(true);const days=availableDays();const date=$('v20-cl-date');if(!date.value)date.value=days[0]||dayKey();if(!activeClosingDay)activeClosingDay=date.value;const selectedDay=date.value||dayKey();$('v20-cl-mode').value=activeClosing;const team=$('v20-cl-team');const prev=team.value;team.innerHTML=teamFilter();team.value=(role()==='supervisor'?current.team:(prev||'all'));if(!team.value)team.value='all';if(role()==='supervisor'){team.querySelectorAll('option').forEach(o=>{if(o.value!==current.team)o.disabled=true});team.value=current.team;}
- const s=closingSummary(selectedDay,team.value),body=$('v20-cl-body');const last=s.rounds.at(-1);let cumulativeStatus=Object.keys((v113State.latestByDay||{})[selectedDay]?.rows||{}).length;
- if(activeClosing==='hour'){
- body.innerHTML=`<div class="v20-grid">${stat('Rodadas comparadas',s.rounds.length)}${stat('Finalizados (únicos)',s.finalized)}${stat('Mudanças de CD_STATUS',s.changes)}${stat('Novos CD 12',s.new12)}</div>
- <div class="v20-panel"><div class="v20-between"><h3>Prévias por horário</h3>${action('Exportar evolução CSV','exportHourly',true)}</div>${!s.rounds.length?note('Ainda não existem comparações para este dia. Importe duas rodadas completas SAC + ATIVO, em ordem cronológica.',true):''}
- ${table(['Comparação','CD 12 anterior','Finalizados','Mudanças CD_STATUS','Localização','Novos CD 12','Conferir'],s.rounds.map((r,i)=>`<tr><td>${esc(r.fromLabel)} → ${esc(r.toLabel)}</td><td>${BR(r.totals?.old12)}</td><td><b>${BR(r.totals?.finalized)}</b></td><td>${BR(r.totals?.statusChanges)}</td><td>${BR(r.totals?.locationChanges)}</td><td>${BR(r.totals?.new12)}</td><td>${action('Ver protocolos','round_'+i,true)}</td></tr>`))}</div>
- <div class="v20-panel"><h3>Movimentações do dia</h3>${table(['Protocolo','Horário','Tipo','Antes','Depois','Operador'],s.moves.slice(0,120).map(m=>`<tr><td>${esc(m.id)}</td><td>${esc(m.fromLabel)} → ${esc(m.toLabel)}</td><td>${badge(v113MovementLabel(m.type),m.type==='finalizado'?'ok':'')}</td><td>${esc(m.beforeStatus)}</td><td>${esc(m.afterStatus||'Ausente SAC + ATIVO')}</td><td>${esc(m.operator)}</td></tr>`))}</div>`;
- } else {
- const closures=data.closures.filter(x=>x.day===selectedDay&&(team.value==='all'||x.team===team.value));body.innerHTML=`<div class="v20-grid">${stat('Finalizados únicos',s.finalized)}${stat('Protocolos tratados',s.treated)}${stat('Tratativas concluídas',s.complete)}${stat('Comparações horárias',s.rounds.length)}</div>
- <div class="v20-panel"><div class="v20-between"><h3>Consolidado do expediente</h3>${action('Gerar relatório local','generateClosure')} </div>${note('<b>Regra:</b> FINALIZADOS = apenas protocolo antes em CD_STATUS 12, ausente em SAC e ATIVO da extração seguinte. 12 → 11 ou 12 → 10 conta como mudança de status, não como finalização.')}
- <p class="v20-muted">O fechamento é gerado sob demanda e registra horário, usuário, equipe e rodadas utilizadas. Protocolos únicos não são somados repetidamente entre horários.</p><div class="v20-row">${action('Exportar consolidado CSV','exportDaily',true)} ${action('Ver rodadas horárias','switchHourly',true)}</div>
- <h3 style="margin-top:20px">Fechamentos já gerados</h3>${table(['Gerado em','Supervisor','Equipe','Rodadas','Finalizados','Tratados'],closures.map(c=>`<tr><td>${pretty(c.at)}</td><td>${esc(userName(c.user))}</td><td>${esc(c.team)}</td><td>${BR(c.rounds)}</td><td>${BR(c.finalized)}</td><td>${BR(c.treated)}</td></tr>`))}</div>`;
- }
-}
 function detailRound(i){const d=$('v20-cl-date').value,team=$('v20-cl-team').value,r=roundsFor(d)[i];if(!r)throw Error('Rodada não encontrada.');const move=(r.moves||[]).filter(m=>team==='all'||m.supervisor===team||ownerLink(m.opId)?.team===team);modal('Prévia da extração '+esc(r.fromLabel)+' → '+esc(r.toLabel),`<div class="v20-grid">${stat('Finalizados',r.totals.finalized)}${stat('Mudanças CD',r.totals.statusChanges)}${stat('Novos CD 12',r.totals.new12)}${stat('Acompanhamento',r.totals.remains12)}</div><div class="v20-panel">${table(['Protocolo','Mudança','Antes','Depois'],move.slice(0,180).map(m=>`<tr><td>${esc(m.id)}</td><td>${esc(v113MovementLabel(m.type))}</td><td>${esc(m.beforeStatus)}</td><td>${esc(m.afterStatus||'Ausente')}</td></tr>`))}</div>`)}
 function generateClosure(){const d=$('v20-cl-date').value,team=$('v20-cl-team').value,s=closingSummary(d,team);if(!s.rounds.length)throw Error('Não há comparações entre extrações para fechar este dia.');const snapshot={id:mkid(),day:d,team,user:current.id,at:time(),rounds:s.rounds.length,finalized:s.finalized,changes:s.changes,new12:s.new12,treated:s.treated,complete:s.complete,protocolIds:[...s.unique],sourceTimes:s.rounds.map(x=>x.fromLabel+' → '+x.toLabel)};data.closures.push(snapshot);audit('fechamento_gerado',d+' / '+team);msg('Fechamento consolidado gerado e registrado.');renderClosing()}
 function exportData(rows,filename){csvDownload(rows,filename)}
 function exportHourly(){const d=$('v20-cl-date').value,team=$('v20-cl-team').value,s=closingSummary(d,team);exportData([['De','Até','CD 12 anterior','Finalizados','Mudanças CD_STATUS','Novos CD 12'],...s.rounds.map(r=>[r.fromLabel,r.toLabel,r.totals?.old12,r.totals?.finalized,r.totals?.statusChanges,r.totals?.new12])],`SAC_Evolucao_Horaria_${d}.csv`)}
 function exportDaily(){const d=$('v20-cl-date').value,team=$('v20-cl-team').value,s=closingSummary(d,team);exportData([['Dia','Equipe','Rodadas','Finalizados únicos','Mudanças CD_STATUS','Novos CD 12','Protocolos tratados','Tratativas concluídas'],[d,team,s.rounds.length,s.finalized,s.changes,s.new12,s.treated,s.complete]],`SAC_Fechamento_Diario_${d}.csv`)}
 // Cadastro único e Gestão de acessos.
-function renderSettings(){requireRole(true);document.body.dataset.sriSettingsPage=settingsPage;if(settingsPage==='users'){if(window.sriUnifiedUsersRender)window.sriUnifiedUsersRender($('v20-settings-body'));else $('v20-settings-body').textContent='Gestão de usuários: módulo Supabase indisponível. Atualize a página.';return;}if(settingsPage==='goals')v20RenderGoalSettings()}
-function renderUsers(){const list=data.users.filter(scopedUser);$('v20-settings-body').innerHTML=`<div class="v20-panel"><div class="v20-between"><div><h3>Gestão de Usuários e Operadores</h3><p class="v20-muted">Cadastro único. Não é necessário importar operadores para distribuição.</p></div>${action('Novo usuário','newUser')}</div>${note('Cadastro local legado: não insira CPF nem credenciais neste formulário. Utilize a Gestão de Usuários integrada ao Supabase.')}
- ${table(['Usuário / e-mail','Perfil','Equipe','CPF (mascarado)','Situação','Operação'],list.map(u=>`<tr><td><b>${esc(u.name)}</b><div class="v20-muted">${esc(u.email)}</div></td><td>${badge(u.role)}</td><td>${esc(u.team)}</td><td>${esc(u.cpfMask||'—')}</td><td>${badge(u.active?'Ativo':'Inativo',u.active?'ok':'warn')}</td><td>${action('Editar','editUser_'+u.id,true)}</td></tr>`))}</div>`}
 function cpfCheck(c){const v=String(c||'').replace(/\D/g,'');if(v.length!==11||/^(\d)\1+$/.test(v))return false;for(let t=9;t<11;t++){let s=0;for(let i=0;i<t;i++)s+=Number(v[i])*(t+1-i);let digit=(s*10)%11;if(digit===10)digit=0;if(digit!==Number(v[t]))return false}return true}
 function cpfMask(c){const v=String(c).replace(/\D/g,'');return '***.***.***-'+v.slice(-2)}
 function cpfKey(c){let h=2166136261;for(const ch of String(c).replace(/\D/g,'')){h^=ch.charCodeAt(0);h=Math.imul(h,16777619)}return 'DEMO-'+(h>>>0).toString(16)}
@@ -6197,7 +6230,6 @@ function saveUser(id){requireRole(true);const u=id!=='new'?data.users.find(x=>x.
  if(!admin&&supervisorId!==current.id)throw Error('Supervisor só pode cadastrar operadores vinculados à própria equipe.');
  const teamRecord=v20FindTeam(team);if(!teamRecord||!teamRecord.active)throw Error('Selecione uma equipe ativa cadastrada em Configurações → Equipes.');const fields={name,email,role:roleNew,team,teamId:teamRecord.id,supervisorId,operationalStatus:status,active};if(u){Object.assign(u,fields)}else data.users.push({id:mkid(),...fields,cpfToken:cpfKey(cpf),cpfMask:cpfMask(cpf),importAuthorized:false,rosterId:null});
  audit(u?'editar_usuario':'criar_usuario',email);syncRoster();closeModal();renderUsers();msg('Cadastro atualizado e refletido na distribuição.');}
-function renderTeams(){const groups=teamNames();$('v20-settings-body').innerHTML=`<div class="v20-grid">${stat('Equipes',groups.length)}${stat('Operadores ativos',data.users.filter(x=>x.role==='operator'&&x.active).length)}${stat('Supervisores',data.users.filter(x=>x.role==='supervisor').length)}${stat('Operadores habilitados',distRoster.filter(distEligible).length)}</div><div class="v20-panel"><h3>Equipes vinculadas aos cadastros</h3>${table(['Equipe','Supervisor','Operadores','Habilitados'],groups.filter(g=>role()==='admin'||g===current.team).map(g=>`<tr><td>${esc(g)}</td><td>${esc(data.users.filter(u=>u.role==='supervisor'&&u.team===g).map(u=>u.name).join(', ')||'—')}</td><td>${BR(data.users.filter(u=>u.role==='operator'&&u.team===g).length)}</td><td>${BR(data.users.filter(u=>u.role==='operator'&&u.team===g&&u.active&&['Ativo','Promovido'].includes(u.operationalStatus)).length)}</td></tr>`))}</div>`}
 function renderAccess(){const users=data.users.filter(scopedUser),vis=scopeEvents(data.access),last=new Map();for(const a of vis)if(!last.has(a.user)&&a.type==='login')last.set(a.user,a.at);const since=Date.now()-86400000;const accessed=new Set(vis.filter(a=>a.type==='login'&&new Date(a.at).getTime()>=since).map(a=>a.user));
  const sessions=data.access.filter(a=>a.type==='login'&&Date.now()-new Date(a.at).getTime()<15*60*1000&&a.user===current.id);$('v20-settings-body').innerHTML=`${note('Esta seção mostra apenas eventos locais do navegador, não o histórico de autenticação. Para auditoria de acessos, utilize as ferramentas administrativas do Supabase.')}
  <div class="v20-grid">${stat('Usuários visíveis',users.length)}${stat('Acessaram hoje',accessed.size)}${stat('Sua sessão local',current?1:0)}${stat('Acessos negados',vis.filter(a=>a.type==='negado').length)}</div>
@@ -6372,14 +6404,6 @@ function setupImportGuard(){const btn=$('process-btn');if(!btn)return;
 }
 // Catálogo de relatórios: fonte única; outros relatórios legados preservados.
 function renderCatalog(){requireRole(true);$('v20-catalog-body').innerHTML=`<div class="v20-panel"><div class="v20-controls"><label class="v20-field">Tipo de relatório<select id="v20-report-type"><option value="productivity">Produtividade e tratativas</option><option value="distribution">Distribuição e responsáveis</option><option value="distribution_events">Movimentações de distribuição (histórico)</option><option value="hourly">Evolução por horário</option><option value="daily">Fechamento diário</option><option value="quality">Conciliação e decisões</option><option value="access">Acessos por equipe</option></select></label><label class="v20-field">Data<input type="date" id="v20-report-day" value="${dayKey()}"></label><label class="v20-field">Equipe<select id="v20-report-team" ${role()==='supervisor'?'disabled':''}>${teamFilter()}</select></label>${action('Consultar prévia','previewReport')}${action('Exportar CSV','exportReport',true)}</div></div><div class="v20-saneamento-hint">A consulta <b>Distribuição e responsáveis</b> representa a carteira <b>atual</b>, independentemente da data. Para consultar o período, selecione <b>Movimentações de distribuição (histórico)</b>. Os indicadores por equipe dependem da identificação do responsável na origem.</div><div id="v20-report-preview"></div>${note('Consultas e exportações complementam os relatórios especializados no mesmo módulo, utilizando as mesmas fontes de dados.')}`;const t=$('v20-report-team');if(role()==='supervisor')t.value=current.team;else t.value='all';previewReport()}
-function reportRows(){const d=$('v20-report-day').value||dayKey(),type=$('v20-report-type').value,team=role()==='supervisor'?current.team:'all';let cols=[],rows=[];
- if(type==='productivity'){cols=['Protocolo','Operador','Equipe','Anterior','Novo status','Observação','Data / hora'];rows=filteredTreat(d,team).map(x=>[x.pid,userName(x.user),data.users.find(u=>u.id===x.user)?.team,x.from,x.to,x.note,pretty(x.at)])}
- if(type==='distribution'){cols=['Protocolo','Responsável','Equipe','Status','Canal','SLA'];rows=distState.rows.filter(p=>role()==='admin'||ownerLink(distOwner(p.id)?.id)?.team===current.team).map(p=>[p.id,distOwner(p.id)?.name,ownerLink(distOwner(p.id)?.id)?.team,distStatus(p.id),p.where,p.sla])}
- if(type==='hourly'){cols=['Extração anterior','Extração atual','Finalizados','Mudanças CD_STATUS','Novos CD 12'];rows=roundsFor(d).map(r=>[r.fromLabel,r.toLabel,r.totals.finalized,r.totals.statusChanges,r.totals.new12])}
- if(type==='daily'){cols=['Data','Equipe','Gerado em','Supervisor','Finalizados','Tratados','Rodadas'];rows=data.closures.filter(x=>x.day===d&&(team==='all'||x.team===team)).map(x=>[x.day,x.team,pretty(x.at),userName(x.user),x.finalized,x.treated,x.rounds])}
- if(type==='quality'){cols=['Protocolo','Tipo','Estado','Decisão','Justificativa','Data'];rows=data.alerts.filter(x=>role()==='admin'||x.team===current.team).map(x=>[x.protocol,x.kind,x.state,x.decision,x.justification,pretty(x.at)])}
- if(type==='access'){cols=['Data','Usuário','Evento'];rows=scopeEvents(data.access).filter(x=>dayKey(x.at)===d).map(x=>[pretty(x.at),x.name,x.type])}return {cols,rows,type,d}}
-function previewReport(){const {cols,rows}=reportRows();$('v20-report-preview').innerHTML=`<div class="v20-grid">${stat('Registros',rows.length)}${stat('Colunas',cols.length)}${stat('Fonte de dados',1)}${stat('Duplicações de bases',0)}</div><div class="v20-panel"><h3>Prévia dos resultados</h3>${table(cols,rows.slice(0,60).map(r=>'<tr>'+r.map(v=>`<td>${esc(v??'')}</td>`).join('')+'</tr>'))}<p class="v20-muted">Exibindo até 60 registros. A exportação consulta o conjunto inteiro permitido pelo perfil.</p></div>`}
 function exportReport(){const r=reportRows();exportData([r.cols,...r.rows],`SAC_Relatorio_${r.type}_${r.d}.csv`)}
 // Amostra sintética apenas para homologar o fluxo sem expor bases pessoais.
 function loadSample(){requireRole(true);if(location.protocol==='https:')throw Error('Carga fictícia desabilitada no ambiente publicado. Importe os arquivos SAC e ATIVO pelo módulo de Importação.');if(ui.live&&!confirm('Já existe uma carteira carregada neste navegador. Substituir apenas para demonstração?'))return;
@@ -6417,7 +6441,7 @@ function syncRoster(){if(window.sriGetSupabaseClient)return;
 }
 function renderSettings(){requireRole(true);document.body.dataset.sriSettingsPage=settingsPage;if(settingsPage==='users'){if(window.sriUnifiedUsersRender)window.sriUnifiedUsersRender($('v20-settings-body'));else $('v20-settings-body').textContent='Gestão de usuários: módulo Supabase indisponível. Atualize a página.';return;}if(settingsPage==='goals')v20RenderGoalSettings()}
 function renderUsers(){const list=data.users.filter(scopedUser),orphans=v20LegacyPending();
- $('v20-settings-body').innerHTML=`<div class="v20-panel"><div class="v20-between"><div><h3>Gestão de Usuários e Operadores</h3><p class="v20-muted">Cadastro único para login, equipe, situação e elegibilidade na distribuição.</p></div>${action('Novo cadastro','newUser')}</div>
+ $('v20-settings-body').innerHTML=`<div class="v20-panel"><div class="v20-between"><div><h3>Gestão de usuários e Operadores</h3><p class="v20-muted">Cadastro único para login, equipe, situação e elegibilidade na distribuição.</p></div>${action('Novo cadastro','newUser')}</div>
  <div class="v20-grid">${stat('Cadastros visíveis',list.length)}${stat('Operadores habilitados',list.filter(v20EligibleUser).length)}${stat('Operadores legados sem vínculo',role()==='admin'?orphans.length:orphans.filter(x=>x.supervisor===current.name||x.supervisor===current.team).length)}${stat('Cadastros pendentes',list.filter(x=>!x.active).length)}</div>
  ${note('Módulo local legado: não informe CPF nem credenciais aqui. Contas e vínculos operacionais devem ser administrados pelo diretório Supabase. Carteiras antigas requerem conciliação.',false)}
  <div class="v20-row">${action('Vincular operadores antigos','settingsLegacy',true)} ${action('Importar cadastros de teste','settingsBulk',true)}</div>
@@ -6462,7 +6486,7 @@ function v20CommitLegacy(id){const userId=$('v20-link-user')?.value,u=data.users
  u.rosterId=id;audit('vinculo_legado',`${u.email} → ${old.id}`);syncRoster();closeModal();v20RenderLegacy();msg('Vínculo confirmado e preservado no histórico.');
 }
 function v20RenderBulk(){requireRole(true);$('v20-settings-body').innerHTML=`<div class="v20-panel"><div class="v20-between"><div><h3>Importação opcional de cadastros</h3><p class="v20-muted">Para cadastro inicial em lote. Não importa planilhas operacionais de tratativas ou distribuições.</p></div>${action('Baixar modelo Excel (.xlsx)','bulkTemplate',true)}</div>
- ${note('<b>Cadastro local legado:</b> esta importação não ativa contas nem atualiza permissões no Supabase. Utilize a Gestão de Usuários integrada para alterações reais; não insira dados pessoais neste formulário.',true)}
+ ${note('<b>Cadastro local legado:</b> esta importação não ativa contas nem atualiza permissões no Supabase. Utilize a Gestão de usuários integrada para alterações reais; não insira dados pessoais neste formulário.',true)}
  <label class="v20-field" style="margin-top:12px">Arquivo Excel (.xlsx) ou CSV (UTF-8; ponto e vírgula)<input id="v20-bulk-file" type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"></label>
  <p class="v20-muted">O modelo Excel inclui a aba <b>Observações</b> com instruções de cada campo e lista suspensa na coluna <b>situacao</b>. Cabeçalho da aba Cadastro: nome, email, cpf, supervisor_email, situacao. A equipe será obtida do supervisor. Use somente dados fictícios neste ambiente.</p>
  <div class="v20-row">${action('Validar arquivo e visualizar prévia','bulkPreview')} ${action('Confirmar cadastros válidos','bulkCommit',true)}</div>
@@ -6578,7 +6602,7 @@ function teamNames(){return data.teamRecords.filter(t=>t.active&&data.users.some
 function renderTeams(){requireRole(true);
  const vis=data.teamRecords.filter(t=>role()==='admin'||t.id===current.teamId||v20TeamKey(t.name)===v20TeamKey(current.team));
  $('v20-settings-body').innerHTML=`<div class="v20-panel"><div class="v20-between"><div><h3>Equipes — cadastro único</h3><p class="v20-muted">Cada equipe possui um identificador estável. O vínculo de usuários, operadores e supervisores utiliza o mesmo cadastro.</p></div>${role()==='admin'?action('Nova equipe','newTeam'):''}</div>
- ${note('O histórico de distribuição e tratativas permanece preservado após mudanças de equipe. Alterações na estrutura de equipes são administrativas; supervisores podem consultar a própria equipe e editar operadores autorizados na Gestão de Usuários.')}
+ ${note('O histórico de distribuição e tratativas permanece preservado após mudanças de equipe. Alterações na estrutura de equipes são administrativas; supervisores podem consultar a própria equipe e editar operadores autorizados na Gestão de usuários.')}
  <div class="v20-grid">${stat('Equipes visíveis',vis.length)}${stat('Operadores cadastrados',data.users.filter(u=>u.role==='operator'&&vis.some(t=>u.teamId===t.id)).length)}${stat('Operadores elegíveis',data.users.filter(u=>v20EligibleUser(u)&&vis.some(t=>u.teamId===t.id)).length)}${stat('Supervisores',data.users.filter(u=>u.role==='supervisor'&&vis.some(t=>u.teamId===t.id)).length)}</div>
  ${table(['Equipe','Supervisores','Operadores','Habilitados','Situação','Ação'],vis.map(t=>{const members=data.users.filter(u=>u.teamId===t.id),ops=members.filter(u=>u.role==='operator');return `<tr><td><b>${esc(t.name)}</b><div class="v20-muted">ID: ${esc(t.id)}</div></td><td>${esc(members.filter(u=>u.role==='supervisor').map(u=>u.name).join(', ')||'—')}</td><td>${BR(ops.length)}</td><td>${BR(ops.filter(v20EligibleUser).length)}</td><td>${badge(t.active?'Ativa':'Inativa',t.active?'ok':'warn')}</td><td>${role()==='admin'?action('Editar','editTeam_'+t.id,true):'Consulta'}</td></tr>`}))}</div>`;
 }
@@ -6807,7 +6831,7 @@ function init(){document.body.appendChild($('v20-login'));document.body.appendCh
  sriRestoreSession();
  $('v20-show-pass').addEventListener('change',()=>{$('v20-pass').type=$('v20-show-pass').checked?'text':'password'});
  $('v20-cl-mode').addEventListener('change',()=>{activeClosing=$('v20-cl-mode').value;renderClosing()});$('v20-cl-date').addEventListener('change',renderClosing);$('v20-cl-team').addEventListener('change',renderClosing);
- $('v20-modal').addEventListener('click',e=>{if(e.target.id==='v20-modal')closeModal()});document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+ sriBindDialog($('v20-modal'),closeModal);
  setupImportGuard();
  $('v57-import-team')?.addEventListener('change',v57RefreshImport);
  $('v57-last-check')?.addEventListener('change',()=>{$('v57-last-state').textContent=$('v57-last-check').checked?'Após processar, será solicitada a conferência do fechamento.':'Apuração parcial: turno permanece aberto.'});
@@ -7494,7 +7518,7 @@ body.sri33-modal-open{overflow:hidden}
     if ($('sri33-links')) $('sri33-links').style.display=visible?'block':'none';
     if (!visible) return;
     const team=$('sri-daily-team')?.value;
-    if(!team){stateMsg('sri33-link-status','A importação é geral. A conciliação de nomes legados continua exclusiva da Gestão de Usuários.');return;}
+    if(!team){stateMsg('sri33-link-status','A importação é geral. A conciliação de nomes legados continua exclusiva da Gestão de usuários.');return;}
     const roster=window.sriGetDistributionRoster?.()||[];
     // Formulário excepcional: contas acct:uuid são vinculadas diretamente ao cadastro.
     const uniqueRoster=[...new Map(roster.filter(x=>x&&x.id&&x.name&&!String(x.id).startsWith('acct:')).map(x=>[normalize(x.name),x])).values()];
@@ -8006,7 +8030,7 @@ async function saveTeam(id){const u=state.rows.find(x=>x.id===id);if(!u)return;c
 async function changeRole(id){const u=state.rows.find(x=>x.id===id);const role=$('sri-user-role')?.value;if(!u||!role||u.role===role)return;if(!confirm(`Alterar o perfil de ${u.full_name} de ${roles[u.role]||u.role} para ${roles[role]||role}?\n\nEsta ação modifica permissões reais no Supabase.`))return;
  msg('Atualizando perfil de acesso...');try{const client=await session();if(state.role!=='admin')throw Error('Somente o Administrador pode promover perfis.');const {error}=await client.rpc('admin_change_user_role',{p_user_id:id,p_new_role:role});if(error)throw Error(error.message);await refresh();setTable();openEditor(id);msg('Perfil atualizado no banco. O usuário deve entrar novamente para atualizar a interface.','success');}catch(e){msg('Não foi possível alterar o perfil: '+e.message,'error');}}
 async function createTeam(){const op=$('sri-new-team-operation')?.value;const name=$('sri-new-team-name')?.value?.trim();if(!op||!name||name.length<2){msg('Selecione uma operação e informe o nome da equipe.','error');return;}msg('Criando equipe...');try{const client=await session();const {error}=await client.rpc('create_import_team',{p_operation:op,p_name:name});if(error)throw Error(error.message);await refresh();render($('v20-settings-body'));msg('Equipe criada no banco. Agora atribua os operadores.','success');}catch(e){msg('Não foi possível criar a equipe: '+e.message,'error');}}
-function render(root){if(!root)return;root.innerHTML=`<div class="v20-panel sri-unified-users" style="padding:18px"><div class="v20-between"><div><h3>Gestão de Usuários</h3><p class="v20-muted">Um cadastro por pessoa. Perfil automático Operador; equipe e carteira definidas pela gestão.</p></div><button type="button" class="v20-button secondary" id="sri-unified-refresh">Atualizar</button></div>
+function render(root){if(!root)return;root.innerHTML=`<div class="v20-panel sri-unified-users" style="padding:18px"><div class="v20-between"><div><h3>Gestão de usuários</h3><p class="v20-muted">Um cadastro por pessoa. Perfil automático Operador; equipe e carteira definidas pela gestão.</p></div><button type="button" class="v20-button secondary" id="sri-unified-refresh">Atualizar</button></div>
  <div id="sri-unified-stats"></div>
  <div class="v20-row" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:14px 0"><label class="v20-field">Pesquisar<input id="sri-unified-search" type="search" placeholder="Nome ou e-mail" value="${esc(state.filter)}"></label><label class="v20-field">Perfil<select id="sri-unified-role"><option value="all">Todos</option>${Object.entries(roles).map(([key,label])=>`<option value="${key}" ${state.viewRole===key?'selected':''}>${label}</option>`).join('')}</select></label><label class="v20-field">Situação<select id="sri-unified-status"><option value="all">Todas</option>${avail.map(v=>`<option value="${esc(v)}" ${state.viewStatus===v?'selected':''}>${esc(v)}</option>`).join('')}</select></label><label class="v20-field">Equipe<select id="sri-unified-team"><option value="all">Todas</option><option value="none">Sem equipe</option>${state.teams.map(t=>`<option value="${esc(t.id)}" ${state.viewTeam===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select></label></div>
  <p id="sri-unified-message" role="status" aria-live="polite" class="v20-muted"></p>
@@ -8025,8 +8049,8 @@ function render(root){if(!root)return;root.innerHTML=`<div class="v20-panel sri-
  const linkPanel=$('sri33-links'),legacyTarget=$('sri-unified-legacy-target');if(linkPanel&&legacyTarget){legacyTarget.appendChild(linkPanel);}
  $('sri-unified-legacy-wrap').addEventListener('toggle',e=>{if(e.target.open){document.body.classList.add('sri-unified-legacy-visible');window.sri33LegacyRefresh?.();}else document.body.classList.remove('sri-unified-legacy-visible')});
 }
-async function reload(root){if(state.loading)return;state.loading=true;try{await refresh();render(root);msg('Cadastro de usuários atualizado.','success')}catch(e){if(root)root.innerHTML='<div class="v20-panel" style="padding:18px"><h3>Gestão de Usuários</h3><p role="alert">Não foi possível carregar os usuários: '+esc(window.sriFriendly?.(e.message,'error')||e.message)+'</p><button id="sri-unified-retry" class="v20-button secondary" type="button">Tentar novamente</button></div>';$('sri-unified-retry')?.addEventListener('click',()=>reload(root));}finally{state.loading=false;}}
-window.sriUnifiedUsersRender=el=>{el.innerHTML='<div class="v20-panel" style="padding:18px"><h3>Gestão de Usuários</h3><p>Carregando usuários...</p></div>';reload(el)};
+async function reload(root){if(state.loading)return;state.loading=true;try{await refresh();render(root);msg('Cadastro de usuários atualizado.','success')}catch(e){if(root)root.innerHTML='<div class="v20-panel" style="padding:18px"><h3>Gestão de usuários</h3><p role="alert">Não foi possível carregar os usuários: '+esc(window.sriFriendly?.(e.message,'error')||e.message)+'</p><button id="sri-unified-retry" class="v20-button secondary" type="button">Tentar novamente</button></div>';$('sri-unified-retry')?.addEventListener('click',()=>reload(root));}finally{state.loading=false;}}
+window.sriUnifiedUsersRender=el=>{el.innerHTML='<div class="v20-panel" style="padding:18px"><h3>Gestão de usuários</h3><p>Carregando usuários...</p></div>';reload(el)};
 window.sriRefreshDistributionCandidates=async()=>{
  const client=await window.sriGetSupabaseClient?.();
  if(!client)throw Error('Conexão Supabase indisponível para consultar operadores.');

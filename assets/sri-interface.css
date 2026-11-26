@@ -1,0 +1,52 @@
+:root {
+  --sri-control-height: 40px;
+  --sri-control-radius: 9px;
+  --sri-focus-ring: #ffb33a;
+  --sri-transition-time: 160ms;
+}
+
+.v5-app :is(button.btn, button.light-button, button.dist-btn, button.v20-button,
+  .v20-module-tabs button, .dist-tabbar button, button.v49-tab, button.v46-subtab),
+#v20-modal button.v20-button,
+#dist-export-modal button:is(.btn, .dist-btn) {
+  min-height: var(--sri-control-height) !important;
+  border-radius: var(--sri-control-radius) !important;
+  font-size: 12.5px;
+  line-height: 1.35;
+  white-space: normal;
+  transition: background-color var(--sri-transition-time) ease,
+    border-color var(--sri-transition-time) ease, color var(--sri-transition-time) ease !important;
+  transform: none !important;
+}
+
+.v5-app :is(.field, .field-date, .dist-field, .v20-field, .sri-p03-report-tools)
+  :is(input:not([type]), input[type="text"], input[type="search"], input[type="date"],
+  input[type="number"], input[type="email"], select),
+#v20-modal :is(input:not([type]), input[type="text"], input[type="date"], select) {
+  min-height: var(--sri-control-height) !important;
+  border-radius: var(--sri-control-radius) !important;
+  box-sizing: border-box;
+}
+
+.v5-app :is(button, input, select, textarea, summary):focus-visible,
+#v20-modal :is(button, input, select, textarea):focus-visible,
+#dist-export-modal :is(button, input):focus-visible {
+  outline: 3px solid var(--sri-focus-ring) !important;
+  outline-offset: 2px;
+}
+
+
+@media (max-width: 760px) {
+  :root { --sri-control-height: 44px; }
+}
+
+@layer sri-accessibility {
+  @media (prefers-reduced-motion: reduce) {
+    html:root, html:root body, html:root body *, html:root body *::before, html:root body *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition: none !important;
+    }
+  }
+}
