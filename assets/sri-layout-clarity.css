@@ -142,3 +142,16 @@ body[data-sri-operator-view=history] #sri-operator-reviews,body[data-sri-operato
 @media(max-width:760px){
  .sri-layout-header-actions { width:100%;justify-content:flex-start; }
 }
+
+/* Blocos auxiliares ocultados na revisão da interface. */
+.v5-app #overview .v114-journey,
+.v5-app .sri-p03-chart-nav,
+.v5-app #sri-p03-go-history,
+.v5-app #distribution #dist-import-hint,
+.v5-app #distribution #v198-source-banner,
+.v5-app #distribution #v198-totals {
+  display:none!important;
+}
+.v5-app #distribution .dist-intro:has(#dist-go-import[hidden]) {
+  display:none!important;
+}

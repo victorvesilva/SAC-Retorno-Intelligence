@@ -33,6 +33,10 @@ document.getElementById('v20-settings').insertAdjacentHTML('beforeend','<section
 for(const id of ['overview','details','reports']){
  document.getElementById(id).insertAdjacentHTML('afterbegin','<nav class="v20-module-tabs"><button>Seção</button></nav>');
 }
+document.getElementById('overview').insertAdjacentHTML('beforeend','<section id="sri-p03-go-history">Consulta histórica</section>');
+for(const id of ['overview','agents','priorities','intelligence']){
+ document.getElementById(id).insertAdjacentHTML('beforeend','<nav class="sri-p03-chart-nav">Categorias dos gráficos</nav>');
+}
 window.switchTab('overview');
 const v55Elements={source:document.getElementById('v55-source'),day:document.getElementById('v55-day')},v55CloudPromise=null;
 function v55RefreshSnapshots(){}function v55RefreshView(){}
@@ -55,6 +59,16 @@ try {
    await page.waitFor(`document.getElementById('global-controls').parentElement.id==='${id}'`);
    assert.equal(await run(`document.getElementById('${id}').firstElementChild.classList.contains('sri-module-header')`),true,'Título antes dos filtros em '+id);
   }
+  for(const selector of ['#overview .v114-journey','#sri-p03-go-history','.sri-p03-chart-nav']){
+   assert.equal(await run(`[...document.querySelectorAll('${selector}')].every(el=>getComputedStyle(el).display==='none')`),true,'Bloco auxiliar oculto '+selector);
+  }
+  await run("window.switchTab('distribution');document.getElementById('v198-source-banner').className='v198-source-banner good';document.getElementById('v198-totals').innerHTML='<b>Totais atualizados</b>'");
+  for(const id of ['dist-import-hint','v198-source-banner','v198-totals']){
+   assert.equal(await run(`getComputedStyle(document.getElementById('${id}')).display`),'none','Bloco da distribuição oculto após atualização '+id);
+  }
+  assert.equal(await run("document.querySelector('#dist-pane-protocols .dist-table-wrap').getBoundingClientRect().height>0"),true,'Tabela operacional visível');
+  await run("document.getElementById('dist-go-import').hidden=true");
+  assert.equal(await run("getComputedStyle(document.querySelector('#distribution .dist-intro')).display"),'none','Sem faixa vazia após carregar a base');
   await run("window.switchTab('reports')");
   for(const [key,target]of [['period','sri-p03-integrated-reports'],['pdf','sri-layout-pdf'],['productivity','sri-p03-productivity'],['movements','sri-movement-panel']]){
    await run(`document.querySelector('#sri-report-tabs [data-layout-view="${key}"]').click()`);
