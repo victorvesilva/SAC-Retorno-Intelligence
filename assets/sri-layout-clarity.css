@@ -155,3 +155,45 @@ body[data-sri-operator-view=history] #sri-operator-reviews,body[data-sri-operato
 .v5-app #distribution .dist-intro:has(#dist-go-import[hidden]) {
   display:none!important;
 }
+
+/* Filtros da carteira: busca, prazo e tratativa no primeiro nível. */
+.sri-wallet-filters .sri-clarity-basic {
+  display:grid!important;
+  grid-template-columns:minmax(220px,2fr) repeat(2,minmax(150px,1fr)) auto;
+}
+.sri-wallet-filters .sri-clarity-basic :is(input,select) { width:100%;max-width:none; }
+.sri-wallet-filters .sri-clarity-basic > button { align-self:end; }
+.sri-wallet-more > summary { display:none; }
+.sri-wallet-more:not([open]) { display:none!important; }
+.sri-wallet-filter-group { border:0;margin:0 0 16px;padding:0;min-width:0; }
+.sri-wallet-filter-group > legend { font-weight:700;margin-bottom:10px;color:#173858; }
+.sri-wallet-choice { position:relative;min-width:0; }
+.sri-wallet-choice > summary { padding:10px;border:1px solid #cbd9ec;border-radius:9px;min-height:40px;cursor:pointer;background:white;font-weight:400; }
+.sri-wallet-choice-options { position:absolute;top:100%;left:0;right:0;z-index:4;padding:8px;max-height:220px;overflow-y:auto;border:1px solid #cbd9ec;background:#fff;border-radius:9px;box-shadow:0 8px 20px #14396020; }
+.sri-wallet-choice-options label { display:flex;gap:8px;align-items:center;padding:8px;cursor:pointer;overflow-wrap:anywhere; }
+.sri-wallet-clear { margin:0 0 12px; }
+.sri-wallet-filters :is(label[hidden],.sri-wallet-clear[hidden],.sri-clarity-chips[hidden]),
+#sri-p03-shortcuts[hidden] { display:none!important; }
+@media(max-width:760px){
+ .sri-wallet-filters .sri-clarity-basic { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
+ .sri-wallet-filters .sri-clarity-basic > label:first-child { grid-column:1/-1; }
+ .sri-wallet-filters .sri-clarity-basic > button { grid-column:1/-1; }
+}
+
+.sri-special-field { position:relative;display:flex;align-items:center;gap:10px;margin:16px 0; }
+.sri-special-option { display:flex!important;align-items:center;gap:9px;margin:0!important;font-weight:650;cursor:pointer; }
+.sri-special-option input { width:20px;height:20px;accent-color:#164da2; }
+.sri-special-help { width:28px;height:28px;border:1px solid #c9d9ee;border-radius:50%;background:#f2f6fc;color:#164da2;cursor:help;font-weight:700; }
+.sri-special-tooltip { display:none;position:absolute;left:0;top:calc(100% + 6px);z-index:5;max-width:460px;padding:12px 14px;border-radius:10px;background:#173858;color:#fff;font-size:12px;line-height:1.6;box-shadow:0 8px 24px #17385830; }
+.sri-special-field:hover .sri-special-tooltip,
+.sri-special-field:focus-within .sri-special-tooltip { display:block; }
+.sri-special-badge { display:inline-block;margin:4px;padding:5px 8px;border:1px solid #e1c686;border-radius:7px;background:#fff6df;color:#77530d;font-size:12px;font-weight:700;line-height:1.4; }
+.sri-treatment-details { width:min(560px,calc(100vw - 32px));max-height:90dvh;overflow:auto;padding:24px;border:1px solid #d3dfee;border-radius:16px;background:#fff;color:#173858;box-shadow:0 22px 70px #09234c55; }
+.sri-treatment-details::backdrop { background:rgba(7,26,58,.6); }
+.sri-treatment-details > header { display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px; }
+.sri-treatment-details h2 { font-size:20px;margin:0;line-height:1.4; }
+.sri-treatment-details h3 { font-size:15px;margin-top:20px; }
+.sri-treatment-note { white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6; }
+.sri-treatment-details button { min-height:40px; }
+.sri-treatment-details button:focus-visible,
+.sri-special-help:focus-visible { outline:3px solid #ffb33a;outline-offset:2px; }

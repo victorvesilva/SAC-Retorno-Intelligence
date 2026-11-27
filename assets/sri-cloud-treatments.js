@@ -5,11 +5,55 @@ const $=id=>document.getElementById(id),h=v=>String(v??'').replace(/[&<>"']/g,c=
 let mutationVersion=0,epoch=0,busy=false,map=new Map(),scope='',actor=null,actorRole=null,client=null,reviewRows=[],reviewBusy=false,editBusy=false,request=null;
 const roles=['admin','manager','supervisor'];
 window.sriCloudTreatment=(id)=>{const snapshot=window.sriGetSavedDistributionContext?.()?.snapshotId;return snapshot&&scope===snapshot?map.get(String(id)):undefined};
-window.sriCloudTreatmentReset=()=>{epoch++;map.clear();scope='';actor=null;actorRole=null;client=null;request=null;reviewRows=[];$('sri-reconcile-panel')?.remove();$('sri-reconcile-overview')?.remove();$('sri-cloud-treatment-info')?.remove();};
+window.sriCloudTreatmentReset=()=>{epoch++;map.clear();scope='';actor=null;actorRole=null;client=null;request=null;reviewRows=[];$('sri-reconcile-panel')?.remove();$('sri-reconcile-overview')?.remove();$('sri-cloud-treatment-info')?.remove();$('sri-treatment-details')?.remove();};
 async function auth(){const c=await window.sriGetSupabaseClient?.();if(!c)return null;const {data,error}=await c.auth.getUser();if(error||!data?.user)return null;const p=await c.from('profiles').select('role').eq('id',data.user.id).single();if(p.error||!roles.includes(p.data?.role))return null;return {client:c,id:data.user.id,role:p.data.role}}
+window.sriTreatmentDetailsCell=id=>{
+ const task=window.sriCloudTreatment(id);if(!task)return '—';
+ if(!task.is_special&&(!task.treatment_status||task.treatment_status==='SEM STATUS'))return 'Sem tratativa';
+ return '<button type="button" class="v20-button secondary sri-treatment-details-button" data-sri-treatment-details="'+h(id)+'">'+(task.is_special?'<span class="sri-special-badge">Caso sensível</span>':'Ver observação')+'</button>';
+};
+let detailsRequest=0;
+async function showDetails(protocol){
+ const task=window.sriCloudTreatment(protocol);if(!task)return;
+ const token=epoch,version=++detailsRequest,snapshot=scope;
+ let dialog=$('sri-treatment-details');
+ if(!dialog){
+  dialog=document.createElement('dialog');dialog.id='sri-treatment-details';dialog.className='sri-treatment-details';
+  dialog.setAttribute('aria-labelledby','sri-treatment-details-title');
+  dialog.innerHTML='<header><h2 id="sri-treatment-details-title"></h2><button type="button" class="v20-button secondary">Fechar</button></header><div class="sri-treatment-details-content" role="status" aria-live="polite"></div>';
+  dialog.querySelector('button').onclick=()=>dialog.close();
+  dialog.addEventListener('click',event=>{if(event.target===dialog){const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)dialog.close();}});
+  dialog.addEventListener('close',()=>{detailsRequest++;dialog.querySelector('.sri-treatment-details-content').replaceChildren();});
+  document.body.append(dialog);
+ }
+ dialog.querySelector('h2').textContent='Tratativa · '+protocol;
+ const content=dialog.querySelector('.sri-treatment-details-content');content.textContent='Consultando a última tratativa...';
+ if(!dialog.open)dialog.showModal();
+ const current=()=>version===detailsRequest&&token===epoch&&scope===snapshot&&dialog.isConnected&&dialog.open;
+ try{
+  const session=await auth();if(!current())return;
+  if(!session||session.id!==actor)throw Error('Sessão indisponível.');
+  const {data,error}=await session.client.rpc('sri_protocol_treatment_details',{p_task:task.id});
+  if(!current())return;
+  if(error||!data)throw Error('Tratativa indisponível.');
+  content.replaceChildren();
+  function line(text,className){const el=document.createElement('p');el.textContent=text;if(className)el.className=className;content.append(el);}
+  line(data.is_special?'Protocolo especial · caso sensível':'Sinalização especial desmarcada',data.is_special?'sri-special-badge':'v20-muted');
+  if(data.recorded_at){
+   line('Última tratativa por '+(data.actor_name||'autor não registrado'));
+   line(new Date(data.recorded_at).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}),'v20-muted');
+  }
+  const heading=document.createElement('h3');heading.textContent='Observação';content.append(heading);
+  line(data.notes||'Nenhuma observação registrada.','sri-treatment-note');
+ }catch(error){if(current())content.textContent='Não foi possível consultar a tratativa. Atualize e tente novamente.';}
+}
+document.addEventListener('click',event=>{
+ const button=event.target.closest?.('[data-sri-treatment-details]');
+ if(button)void showDetails(button.dataset.sriTreatmentDetails);
+});
 async function refresh(){
  if(busy||document.hidden||!actor||!client||editBusy)return;const snapshot=window.sriGetSavedDistributionContext?.()?.snapshotId;if(!snapshot)return;const token=epoch,version=mutationVersion;busy=true;
- try{const rows=[];for(let from=0;;from+=500){const q=await client.from('daily_operator_tasks').select('id,protocol_number,treatment_status,updated_at,operator_user_id,source_status').eq('snapshot_id',snapshot).eq('active',true).order('id').range(from,from+499);if(q.error)throw Error(q.error.message);rows.push(...(q.data||[]));if((q.data||[]).length<500)break;if(from>=19500)throw Error('Volume acima do limite de sincronização');}
+ try{const rows=[];for(let from=0;;from+=500){const q=await client.from('daily_operator_tasks').select('id,protocol_number,treatment_status,updated_at,operator_user_id,source_status,is_special').eq('snapshot_id',snapshot).eq('active',true).order('id').range(from,from+499);if(q.error)throw Error(q.error.message);rows.push(...(q.data||[]));if((q.data||[]).length<500)break;if(from>=19500)throw Error('Volume acima do limite de sincronização');}
  if(token!==epoch||version!==mutationVersion||snapshot!==window.sriGetSavedDistributionContext?.()?.snapshotId)return;
  if(editBusy)return;const next=new Map(rows.map(r=>[String(r.protocol_number),r]));const changed=scope!==snapshot||JSON.stringify([...map])!==JSON.stringify([...next]);map=next;scope=snapshot;
  if(changed){window.sriRefreshStatusViews?.();}const info=$('sri-cloud-treatment-info');if(info)info.textContent='Tratativas sincronizadas · '+new Date().toLocaleTimeString('pt-BR');

@@ -16,7 +16,7 @@ for(const path of files){
 }
 assert.match(html,/SRI CSV — correcoes auditaveis/);
 assert.match(html,/rpc\('publish_general_operator_tasks'/);
-assert.match(html,/rpc\('sri_record_treatment_v2'/);
+assert.match(html,/rpc\('sri_record_treatment_v3'/);
 assert.match(html,/rpc\('sri_close_result_shift'/);
 assert.match(panel,/sri_v_daily_operational_metrics/);
 assert.match(panel,/@page\{size:A4 portrait/);

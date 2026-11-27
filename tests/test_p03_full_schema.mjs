@@ -364,4 +364,6 @@ assert.deepEqual(await fingerprint(),beforeReapply,'falha no hash reverte integr
 console.log('PASS: o pacote atômico de 20 migrações pode ser reaplicado sem alterar quantidade nem conteúdo de qualquer registro público/privado existente; adulteração proposital é detectada e revertida.');
 const {verifyDistributionHistory}=await import('./helpers/distribution_history_sql.mjs');
 await verifyDistributionHistory(db,id,fingerprint);
+const {verifySpecialProtocol}=await import('./helpers/special_protocol_sql.mjs');
+await verifySpecialProtocol(db,id,fingerprint);
 await db.close();

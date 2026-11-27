@@ -150,7 +150,7 @@ assert.doesNotMatch(html,/ETAPA 2 · AUTENTICAÇÃO SUPABASE · DADOS OPERACIONA
 assert.doesNotMatch(html,/Não use dados reais antes da homologação de segurança e distribuição/);
 assert.doesNotMatch(html,/\bsb_secret_[A-Za-z0-9_-]{10,}\b/);
 assert.match(html,/rpc\('publish_general_operator_tasks'/);
-assert.match(html,/rpc\('sri_record_treatment_v2'/);
+assert.match(html,/rpc\('sri_record_treatment_v3'/);
 assert.doesNotMatch(html,/rpc\('record_daily_operator_treatment'/);
 assert.match(html,/rpc\('sri_close_result_shift'/);
 assert.match(reports,/sri_v_daily_operational_metrics/);
