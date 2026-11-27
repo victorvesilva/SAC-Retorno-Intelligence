@@ -263,7 +263,7 @@ function tableActions(){
  if(priorities&&filters&&alerts&&filters.parentElement!==priorities){alerts.before(filters);filters.classList.add('sri-layout-filters');}
 }
 function install(){
- wallet();headers();qualityNavigation();distributionLayout();settingsLayout();tableActions();reportCatalog();
+ wallet();headers();qualityNavigation();distributionLayout();settingsLayout();tableActions();reportCatalog();window.sriInstallMenuHelp?.();
  for(const id of ['sri-monitor-panel','sri-movement-panel','sri-p03-productivity','sri-p03-integrated-reports'])resultActions($(id));
  resultActions($('v20-catalog-body'));
  for(const b of document.querySelectorAll('.v54-clear-trigger'))if(b.textContent.trim()!=='Limpar filtros de todas as áreas'){b.textContent='Limpar filtros de todas as áreas';b.title='Remove os filtros globais de todas as áreas do sistema';}

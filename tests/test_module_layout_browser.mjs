@@ -11,6 +11,7 @@ const inline=[...html.slice(0,html.indexOf('<main class="main">')).matchAll(/<st
 const files=['gestao-operacional-refinado.css','refinamento-operacional-etapa2.css','refinamento-analitico-relatorios-etapa3.css','refinamento-bases-qualidade-etapa4.css','revisao-visual-integrada.css','sri-mobile-navigation.css','sri-integrated-improvements.css','sri-p03-reporting.css','sri-layout-clarity.css','sri-interface.css'];
 const styles=inline+'\n'+files.map(file=>read('assets/'+file)).join('\n');
 const routing=html.split('\n').find(line=>line.startsWith('function v46SetPane('))+'\n'+html.split('\n').find(line=>line.startsWith('function distPane('));
+const binder=html.slice(html.indexOf('function sriBindInfoPopover('),html.indexOf('\nfunction initPriorityScoreHelp('));
 const shortcutStart=html.indexOf("document.getElementById('v55-prior-day-shortcut')?.addEventListener");
 const shortcut=html.slice(shortcutStart,html.indexOf('\nv55RefreshDays();v55RefreshView();',shortcutStart));
 const setup=`
@@ -41,11 +42,13 @@ window.switchTab('overview');
 const v55Elements={source:document.getElementById('v55-source'),day:document.getElementById('v55-day')},v55CloudPromise=null;
 function v55RefreshSnapshots(){}function v55RefreshView(){}
 ${shortcut}
+${binder}
+window.sriPriorityScoreHelp=sriBindInfoPopover(document.getElementById('sri-priority-score-help'),document.getElementById('sri-priority-score-info'));
 
 `;
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),'sri-module-layout-'));
 const fixture=path.join(dir,'fixture.html');
-fs.writeFileSync(fixture,'<!doctype html><meta charset="utf-8"><style>'+styles+'</style><div class="app v5-app"><aside class="sidebar"></aside>'+main+'</div><script>'+routing+setup+'</script><script>'+read('assets/sri-layout-clarity.js')+'</script>');
+fs.writeFileSync(fixture,'<!doctype html><meta charset="utf-8"><style>'+styles+'</style><div class="app v5-app"><aside class="sidebar"></aside>'+main+'</div><script>'+routing+setup+'</script><script>'+read('assets/sri-layout-clarity.js')+'</script><script>'+read('assets/sri-menu-help.js')+'</script>');
 const browser=await startChromium(process.env.CHROME_BIN||'/usr/bin/chromium',path.join(dir,'profile'));
 try {
  for(const width of [1440,768,390]){
@@ -58,6 +61,17 @@ try {
    await run(`window.switchTab('${id}')`);
    await page.waitFor(`document.getElementById('global-controls').parentElement.id==='${id}'`);
    assert.equal(await run(`document.getElementById('${id}').firstElementChild.classList.contains('sri-module-header')`),true,'Título antes dos filtros em '+id);
+   await run('window.sriInstallMenuHelp()');
+   const help=id==='priorities'?'#sri-priority-score-help':'#'+id+' .sri-menu-help-button';
+   assert.equal(await run(`document.querySelectorAll('${help}').length`),1,'Uma ajuda por título em '+id);
+   await run(`document.querySelector('${help}').dispatchEvent(new PointerEvent('pointerenter'))`);
+   assert.equal(await run(`document.getElementById(document.querySelector('${help}').getAttribute('aria-controls')).matches(':popover-open')`),true,'Ajuda pelo mouse');
+   await run(`document.querySelector('${help}').click()`);
+   assert.equal(await run(`document.activeElement.id===document.querySelector('${help}').getAttribute('aria-controls')`),true,'Leitura e rolagem por teclado');
+   assert.equal(await run(`document.activeElement.getBoundingClientRect().right<=innerWidth`),true,'Caixa dentro da tela');
+   await run("document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))");
+   assert.equal(await run(`document.querySelector('${help}').getAttribute('aria-expanded')`),'false','Escape fecha a ajuda');
+
   }
   for(const selector of ['#overview .v114-journey','#sri-p03-go-history','.sri-p03-chart-nav']){
    assert.equal(await run(`[...document.querySelectorAll('${selector}')].every(el=>getComputedStyle(el).display==='none')`),true,'Bloco auxiliar oculto '+selector);
@@ -99,6 +113,13 @@ try {
   await new Promise(resolve=>setTimeout(resolve,1100));
   assert.equal(await run("document.querySelectorAll('[data-layout-catalog]').length"),1,'Sem duplicação em remontagens');
   assert.equal(await run("document.querySelectorAll('#sri-report-tabs').length"),1);
+  await run("document.body.dataset.sriOperatorView='history';window.sriInstallMenuHelp()");
+  assert.equal(await run("document.querySelector('#v20-mine .sri-menu-help-button').getAttribute('aria-label')"),'Ajuda sobre Meu Histórico');
+  await run("document.body.dataset.sriOperatorView='pending';window.sriInstallMenuHelp()");
+  assert.equal(await run("document.querySelector('#v20-mine .sri-menu-help-button').getAttribute('aria-label')"),'Ajuda sobre Pendências anteriores');
+  await run("window.sriInstallMenuHelp();window.sriInstallMenuHelp()");
+  assert.equal(await run("document.querySelectorAll('#overview .sri-menu-help-button').length"),1,'Ajuda sem duplicação');
+
   assert.deepEqual(await run('window.layoutErrors'),[],'Sem erros de interface');
   await page.close();
   console.log('PASS organização dos módulos '+width+'px, navegação e preservação dos filtros.');

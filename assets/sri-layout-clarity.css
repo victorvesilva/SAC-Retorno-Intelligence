@@ -243,3 +243,7 @@ body:not([data-sri-module="reports"]) #v194-pdf { display:none!important; }
 .sri-score-info p { margin:8px 0;color:#fff; }
 .sri-score-info ul { margin:6px 0;padding-left:20px; }
 .sri-score-info:focus-visible { outline:3px solid #ffb827;outline-offset:2px; }
+.sri-menu-help-heading { display:flex;align-items:center;flex-wrap:wrap;gap:10px;min-width:0; }
+.sri-menu-help-heading > h2,.sri-menu-help-heading > h3 { margin:0; }
+.sri-menu-help-button { flex-shrink:0; }
+.sri-score-info .sri-menu-help-category { margin:0 0 6px;font-size:11px;font-weight:650;letter-spacing:.03em;color:#c9ddff; }
