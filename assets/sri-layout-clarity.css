@@ -203,3 +203,21 @@ body[data-sri-operator-view=history] #sri-operator-reviews,body[data-sri-operato
 #sri-cloud-treatment-toolbar { display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px; }
 #sri-cloud-treatment-toolbar p { flex:1 1 280px;margin:0; }
 #sri-cloud-treatment-refresh { flex:0 0 auto; }
+
+.sri-import-history-trigger { display:block;margin-top:6px;padding:3px 0;border:0;background:transparent;color:#164da2;font:inherit;font-size:11px;text-decoration:underline;cursor:pointer; }
+.sri-import-history { box-sizing:border-box;width:min(640px,calc(100vw - 24px));max-height:90dvh;overflow:auto;padding:24px;border:1px solid #d3dfee;border-radius:16px;background:#fff;color:#173858; }
+.sri-import-history::backdrop { background:rgba(7,26,58,.6); }
+.sri-import-history header,.sri-import-history nav { display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px; }
+.sri-import-history h2 { font-size:20px;margin:0; }
+.sri-import-history nav button { min-width:40px;min-height:40px;border:1px solid #d3dfee;border-radius:8px;background:#f0f5fd;color:#164da2;font-size:22px;cursor:pointer; }
+.sri-import-calendar { display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;text-align:center; }
+.sri-import-calendar button { min-width:0;min-height:40px;padding:5px 0;border:1px solid #e1e9f4;border-radius:8px;background:#fff;color:#345171;cursor:pointer;font:inherit;font-size:12px; }
+.sri-import-calendar .has-imports { background:#edf4ff;color:#164da2;font-weight:700; }
+.sri-import-calendar [aria-pressed="true"] { background:#164da2;color:#fff;border-color:#164da2; }
+.sri-import-event { padding:14px;border:1px solid #d3dfee;border-radius:10px;margin:10px 0;overflow-wrap:anywhere; }
+.sri-import-event summary { cursor:pointer; }
+.sri-import-event summary span { display:block;margin-top:6px;line-height:1.5; }
+.sri-import-event dl { display:grid;grid-template-columns:1fr 2fr;gap:8px; }
+.sri-import-event dt { font-weight:650; }.sri-import-event dd { margin:0;white-space:pre-wrap; }
+.sri-import-history button:focus-visible,.sri-import-history summary:focus-visible,.sri-import-history-trigger:focus-visible { outline:3px solid #ffb33a;outline-offset:2px; }
+@media(max-width:480px){.sri-import-history { padding:16px; }.sri-import-history h2 { font-size:18px; }}

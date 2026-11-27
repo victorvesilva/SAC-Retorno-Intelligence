@@ -2920,7 +2920,7 @@ function v112ChangeOperator(id,inputValue){const row=distState.rows.find(r=>Stri
 function distRenderTable(reset=true){
  const n=distState.visible.length,tbody=document.getElementById('dist-table-body'),scroller=document.querySelector('.dist-table-wrap');if(reset){distState.rendered=0;tbody.innerHTML='';if(scroller)scroller.scrollTop=0}
  const segment=distState.visible.slice(distState.rendered,distState.rendered+distState.pageSize);
- if(segment.length){v112OperatorSuggestions();tbody.insertAdjacentHTML('beforeend',segment.map(r=>{const owner=distOwner(r.id),sup=owner?.supervisor||'Sem supervisor',critic=distCriticity(r),age=r.diasAgente;return `<tr><td><input class="dist-check" type="checkbox" data-dist-id="${safe(r.id)}" ${distState.selected.has(r.id)?'checked':''} aria-label="Selecionar protocolo ${safe(r.id)}" /></td><td><strong>${safe(r.id)}</strong>${v53RowMarker(r.id)}</td><td>${safe(shortDate(r.envio))}</td><td>${safe(r.bko||'—')}</td><td>${safe(r.area||'—')}</td><td>${distBadge(r.situacao)}</td><td>${safe(r.nip||r.perfil||'—')}</td><td><select class="dist-status-select" data-dist-status-id="${safe(r.id)}" ${!ui.live?'disabled':''} aria-label="Status do protocolo ${safe(r.id)}">${distStatusOptions(r.id)}</select></td><td>${v112OperatorCell(r,owner)}</td><td>${owner?safe(sup):'—'}</td><td><select class="dist-critical-select ${critic.className}" data-dist-critic-id="${safe(r.id)}" aria-label="Criticidade do protocolo ${safe(r.id)}" title="Alterar criticidade deste protocolo">${distCriticityOptions(r)}</select></td><td class="${age>=6?'dist-age-high':age>=4?'dist-age-mid':''}">${age===null?'—':safe(age)}</td><td>${distBadge(r.sla)}</td><td>${safe(r.where||'—')}</td><td>${window.sriTreatmentDetailsCell?.(r.id)||'—'}</td></tr>`}).join(''));distState.rendered+=segment.length}
+ if(segment.length){v112OperatorSuggestions();tbody.insertAdjacentHTML('beforeend',segment.map(r=>{const owner=distOwner(r.id),sup=owner?.supervisor||'Sem supervisor',critic=distCriticity(r),age=r.diasAgente;return `<tr><td><input class="dist-check" type="checkbox" data-dist-id="${safe(r.id)}" ${distState.selected.has(r.id)?'checked':''} aria-label="Selecionar protocolo ${safe(r.id)}" /></td><td><strong>${safe(r.id)}</strong>${v53RowMarker(r.id)}<button type="button" class="sri-import-history-trigger" data-sri-import-history="${safe(r.id)}">Histórico de importações</button></td><td>${safe(shortDate(r.envio))}</td><td>${safe(r.bko||'—')}</td><td>${safe(r.area||'—')}</td><td>${distBadge(r.situacao)}</td><td>${safe(r.nip||r.perfil||'—')}</td><td><select class="dist-status-select" data-dist-status-id="${safe(r.id)}" ${!ui.live?'disabled':''} aria-label="Status do protocolo ${safe(r.id)}">${distStatusOptions(r.id)}</select></td><td>${v112OperatorCell(r,owner)}</td><td>${owner?safe(sup):'—'}</td><td><select class="dist-critical-select ${critic.className}" data-dist-critic-id="${safe(r.id)}" aria-label="Criticidade do protocolo ${safe(r.id)}" title="Alterar criticidade deste protocolo">${distCriticityOptions(r)}</select></td><td class="${age>=6?'dist-age-high':age>=4?'dist-age-mid':''}">${age===null?'—':safe(age)}</td><td>${distBadge(r.sla)}</td><td>${safe(r.where||'—')}</td><td>${window.sriTreatmentDetailsCell?.(r.id)||'—'}</td></tr>`}).join(''));distState.rendered+=segment.length}
  if(!distState.rendered){tbody.innerHTML='<tr><td colspan="15"><div class="dist-empty">'+(ui.live?'Nenhum protocolo atende aos filtros.':'Importe SAC e ATIVO para visualizar protocolos.')+'</div></td></tr>'}
  document.getElementById('dist-visible-note').textContent=`${fmt.format(n)} no filtro · ${fmt.format(distState.selected.size)} selecionados`;document.getElementById('dist-page-info').textContent=`Exibindo ${fmt.format(distState.rendered)} de ${fmt.format(n)} · role para continuar`;document.getElementById('dist-check-page').checked=n>0&&distState.visible.every(r=>distState.selected.has(r.id));distUpdateSelect();}
 function distScrollTable(){const el=document.querySelector('.dist-table-wrap');if(!el)return;if(el.scrollTop+el.clientHeight>el.scrollHeight-380&&distState.rendered<distState.visible.length)distRenderTable(false)}
@@ -6005,7 +6005,7 @@ function sriToggleSignup(value){sriRegisterMode=!!value;$('sri-signup-fields').h
 }
 async function sriAuthorizeUser(authUser){
  const authorizationEpoch=++sriAuthEpoch;
- window.sriClearHistoricalSession?.();window.sriPackResetOperator?.();window.sriCloudTreatmentReset?.();window.sriOperatorReviewReset?.();
+ window.sriProtocolImportHistoryReset?.();window.sriClearHistoricalSession?.();window.sriPackResetOperator?.();window.sriCloudTreatmentReset?.();window.sriOperatorReviewReset?.();
  const client=await sriClient();
  const {data:result,error}=await client.from('profiles').select('id,full_name,role').eq('id',authUser.id).single();
  if(error||!result)throw Error('Seu perfil ainda não está disponível. Procure a gestão para verificar seu cadastro.');
@@ -6070,7 +6070,7 @@ async function sriRestoreSession(){
  }catch(e){console.warn('Autenticação não disponível:',e.message);$('v20-login-error').textContent='Não foi possível conectar ao sistema: '+(window.sriFriendly?.(sriAuthMessage(e),'error')||sriAuthMessage(e));}
 }
 async function logout(){try{const client=await sriClient();await client.auth.signOut()}catch(e){console.warn('Não foi possível encerrar sessão remota',e)}
- window.sriClearHistoricalSession?.();window.sriPackLogout?.();window.sriPackResetOperator?.();window.sriCloudTreatmentReset?.();window.sriOperatorReviewReset?.();document.body.classList.remove('sri33-operator-cloud');sriAuthEpoch++;current=null;data=seed();void window.sriLoadLocalIdentity?.(null);$('v20-email').value='';$('v20-pass').value='';$('v20-login').hidden=false;
+ window.sriProtocolImportHistoryReset?.();window.sriClearHistoricalSession?.();window.sriPackLogout?.();window.sriPackResetOperator?.();window.sriCloudTreatmentReset?.();window.sriOperatorReviewReset?.();document.body.classList.remove('sri33-operator-cloud');sriAuthEpoch++;current=null;data=seed();void window.sriLoadLocalIdentity?.(null);$('v20-email').value='';$('v20-pass').value='';$('v20-login').hidden=false;
  delete document.body.dataset.v20Role;
  document.body.classList.add('v20-not-logged');document.body.classList.remove('v20-active');
  closeModal();$('v20-login-error').textContent='';
@@ -8318,8 +8318,9 @@ document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.tar
 <link rel="stylesheet" href="/assets/sri-p03-reporting.css?v=20261125-02">
 <script defer src="/assets/sri-p03-reporting.js?v=20261127-01"></script>
 <script defer src="/assets/sri-p03-navigation.js?v=20261127-01"></script>
-<link rel="stylesheet" href="/assets/sri-layout-clarity.css?v=20261127-04">
+<link rel="stylesheet" href="/assets/sri-layout-clarity.css?v=20261127-05">
 <script defer src="/assets/sri-layout-clarity.js?v=20261127-02"></script>
 <script defer src="/assets/sri-distribution-history.js?v=20261125-01"></script>
+<script defer src="/assets/sri-protocol-import-history.js?v=20261127-01"></script>
 </body>
 </html>
