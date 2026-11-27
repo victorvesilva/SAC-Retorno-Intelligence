@@ -235,3 +235,11 @@ body[data-sri-operator-view=history] #sri-operator-reviews,body[data-sri-operato
 
 #v3-pdf { display:none!important; }
 body:not([data-sri-module="reports"]) #v194-pdf { display:none!important; }
+
+.sri-score-title { display:flex;align-items:center;flex-wrap:wrap;gap:10px; }
+.sri-score-info { position:fixed;inset:auto;margin:0;box-sizing:border-box;width:min(440px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;padding:18px 20px;border:1px solid #315b98;border-radius:12px;background:#163c78;color:#fff;font:13px/1.55 'Segoe UI',Arial,sans-serif;box-shadow:0 14px 32px #0b2d6160; }
+.sri-score-info h3 { margin:0 0 10px;color:#fff;font-size:17px; }
+.sri-score-info h4 { margin:14px 0 6px;color:#fff;font-size:14px; }
+.sri-score-info p { margin:8px 0;color:#fff; }
+.sri-score-info ul { margin:6px 0;padding-left:20px; }
+.sri-score-info:focus-visible { outline:3px solid #ffb827;outline-offset:2px; }
