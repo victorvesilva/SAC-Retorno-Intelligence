@@ -2067,7 +2067,7 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
 </div>
 </section>
 <section aria-label="Central de Relatórios" class="tab-content fade-in" id="reports">
-<div class="v55-header"><div><h2>Central de Relatórios</h2><p>Relatórios em PDF com identificação da extração SAC + ATIVO e do horário de geração.</p></div><span class="v55-tag">Relatórios gerenciais e operacionais</span></div>
+<div class="v55-header"><div><h2>Central de Relatórios</h2><p>Consulte resultados por período, acompanhe a operação e gere relatórios.</p></div><span class="v55-tag">Relatórios gerenciais e operacionais</span></div>
 <div class="v55-shell">
 <div class="v55-main-grid">
 <div>
@@ -4678,7 +4678,7 @@ postLoad=function(...args){const result=v55OldPostLoad.apply(this,args);v55Refre
 document.getElementById('v55-prior-day-shortcut')?.addEventListener('click',async()=>{
  v55Elements.source.value='history';
  const radio=document.querySelector('[name="v55-kind"][value="gestao"]');if(radio)radio.checked=true;
- switchTab('reports');if(v55CloudPromise)await v55CloudPromise;
+ switchTab('reports');window.sriShowReportSection?.('pdf');if(v55CloudPromise)await v55CloudPromise;
  const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Fortaleza',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  const previous=[...v55Elements.day.options].map(o=>o.value).find(d=>d<today);
  if(previous){v55Elements.day.value=previous;v55RefreshSnapshots();}else v55RefreshView();
@@ -8295,10 +8295,10 @@ document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.tar
 <script defer src="/assets/sri-p03-rpc-monitor.js?v=20261125-03"></script>
 <script defer src="/assets/sri-pacote03.js?v=20261125-08"></script>
 <link rel="stylesheet" href="/assets/sri-p03-reporting.css?v=20261125-02">
-<script defer src="/assets/sri-p03-reporting.js?v=20261125-03"></script>
+<script defer src="/assets/sri-p03-reporting.js?v=20261127-01"></script>
 <script defer src="/assets/sri-p03-navigation.js?v=20261127-01"></script>
-<link rel="stylesheet" href="/assets/sri-layout-clarity.css?v=20261125-02">
-<script defer src="/assets/sri-layout-clarity.js?v=20261125-01"></script>
+<link rel="stylesheet" href="/assets/sri-layout-clarity.css?v=20261127-01">
+<script defer src="/assets/sri-layout-clarity.js?v=20261127-01"></script>
 <script defer src="/assets/sri-distribution-history.js?v=20261125-01"></script>
 </body>
 </html>

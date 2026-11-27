@@ -121,7 +121,7 @@ function makeReports(root){
   }catch(error){if(seq===request&&session===epoch){rows=[];other=[];render();status.textContent=error.message;}}}
  button(controls,'Consultar',load);const prev=button(paging,'Anterior',()=>{page--;render();}),next=button(paging,'Próxima',()=>{page++;render();});prev.disabled=next.disabled=true;
  const goalScope=choose(controls,'Metas por',[['team','Equipe'],['operator','Operador']]);goalScope.onchange=()=>{page=0;render();};
- window.sriP03OpenAudit=async item=>{if(!item?.audit_id||!item.audit_at)return;from.value=to.value=new Date(item.audit_at).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});kind.value='audit';team.value=operator.value=base.value=area.value=protocol.value='';compareFrom.value=compareTo.value='';selectedDay=selectedStatus='';linkedAudit=item.audit_id;window.switchTab?.('reports');await load();panel.scrollIntoView({behavior:'smooth'});};
+ window.sriP03OpenAudit=async item=>{if(!item?.audit_id||!item.audit_at)return;from.value=to.value=new Date(item.audit_at).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});kind.value='audit';team.value=operator.value=base.value=area.value=protocol.value='';compareFrom.value=compareTo.value='';selectedDay=selectedStatus='';linkedAudit=item.audit_id;window.switchTab?.('reports');window.sriShowReportSection?.('period');await load();panel.scrollIntoView({behavior:'smooth'});};
  const invalidate=()=>{linkedAudit=null;++request;rows=[];other=[];loaded=false;selectedDay=selectedStatus='';page=0;render();};
  for(const input of [from,to,compareFrom,compareTo])input.onchange=invalidate;
  for(const input of [team,operator,base,area,protocol])input.oninput=()=>{linkedAudit=null;selectedDay=selectedStatus='';page=0;render();};kind.onchange=()=>{linkedAudit=null;selectedDay=selectedStatus='';page=0;render();readFavorite();};
@@ -176,12 +176,12 @@ function makeGoals(root){
   }catch(error){if(session===epoch)status.textContent=error.message;}finally{if(session===epoch)for(const input of form.elements)input.disabled=false;targets();}
  };
  form.addEventListener('input',()=>{form.dataset.sriP03Dirty='true';});
- button(panel,'Consultar Metas e Resultados',()=>{window.switchTab?.('reports');const select=$('sri-p03-report-kind');if(select){select.value='goals';select.dispatchEvent(new Event('change'));}$('sri-p03-integrated-reports')?.scrollIntoView({behavior:'smooth'});});
+ button(panel,'Consultar Metas e Resultados',()=>{window.switchTab?.('reports');window.sriShowReportSection?.('period');const select=$('sri-p03-report-kind');if(select){select.value='goals';select.dispatchEvent(new Event('change'));}$('sri-p03-integrated-reports')?.scrollIntoView({behavior:'smooth'});});
  void load();
 }
 window.sriP03GoalSettings=root=>makeGoals(root);
 window.sriP03GoalPerformance=root=>{if(!root)return;root.replaceChildren();node('h3','Metas e Resultados',root);node('p','Consulte os protocolos trabalhados, concluídos e o percentual de conclusão por dia, equipe ou operador na Central de Relatórios.',root);
- button(root,'Consultar resultado diário',()=>{window.switchTab?.('reports');const select=$('sri-p03-report-kind');if(select){select.value='goals';select.dispatchEvent(new Event('change'));}$('sri-p03-integrated-reports')?.scrollIntoView({behavior:'smooth'});});};
+ button(root,'Consultar resultado diário',()=>{window.switchTab?.('reports');window.sriShowReportSection?.('period');const select=$('sri-p03-report-kind');if(select){select.value='goals';select.dispatchEvent(new Event('change'));}$('sri-p03-integrated-reports')?.scrollIntoView({behavior:'smooth'});});};
 function clear(){epoch++;window.sriP03OpenAudit=null;actor='';profileRole='';section?.remove();section=null;document.querySelectorAll('.sri-p03-goals-shared').forEach(el=>el.remove());goalsSection=null;}
 let refreshing=false;
 async function refresh(){if(refreshing)return;refreshing=true;const request=epoch;
