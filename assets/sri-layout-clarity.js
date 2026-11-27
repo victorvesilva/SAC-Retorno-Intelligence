@@ -70,7 +70,7 @@ function tabs(root,id,label,items,selected,choose){
    const buttons=[...nav.querySelectorAll('button:not(:disabled)')],index=buttons.indexOf(document.activeElement);
    if(index<0)return;
    event.preventDefault();
-   let next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+(event.key==='ArrowRight'?1:-1)+buttons.length)%buttons.length;
+   const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+(event.key==='ArrowRight'?1:-1)+buttons.length)%buttons.length;
    buttons[next].focus();buttons[next].click();
   });
  }
@@ -125,6 +125,8 @@ function headers(){
   const heading=operatorHeader.querySelector('h3');if(heading&&heading.textContent!==title)heading.textContent=title;
   const refresh=$('sri33-mine-refresh');if(refresh)refresh.hidden=mode!=='active';
  }
+ const overview=$('overview')?.querySelector(':scope > .sri-module-header'),upload=$('hero-actions');
+ if(overview&&upload&&upload.parentElement!==overview)overview.append(upload);
  const active=document.querySelector('.tab-content.active'),controls=$('global-controls');
  if(active&&controls&&['overview','priorities','intelligence','agents','details'].includes(active.id)){
   const anchor=active.querySelector(':scope > .v46-subtabs,:scope > .v49-tabs,:scope > .v20-module-tabs')||active.querySelector(':scope > .sri-module-header');

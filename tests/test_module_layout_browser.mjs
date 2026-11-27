@@ -42,6 +42,8 @@ try {
   const page=await browser.page('file://'+fixture,width,900);
   await page.waitFor("document.querySelector('#sri-report-tabs button')");
   const run=expression=>page.evaluate(expression);
+  assert.equal(await run("getComputedStyle(document.querySelector('.main > .hero')).display"),'none','Título da tela sem banner duplicado');
+  assert.equal(await run("document.getElementById('hero-upload').closest('.tab-content').id"),'overview','Atalho de importação preservado');
   for(const id of ['overview','details','agents','intelligence','priorities']){
    await run(`window.switchTab('${id}')`);
    await page.waitFor(`document.getElementById('global-controls').parentElement.id==='${id}'`);

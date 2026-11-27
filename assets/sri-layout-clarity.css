@@ -123,3 +123,18 @@ body[data-sri-operator-view=history] #sri-operator-reviews,body[data-sri-operato
 .v5-app .sri-module-header h3 { margin:0;font-size:22px;line-height:1.3; }
 .sri-layout-table-actions { display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding:14px;border-top:1px solid #dce5ef; }
 .sri-layout-filters { padding:14px;margin:0 0 16px;background:#fff;border:1px solid #dce5ef;border-radius:10px; }
+.v5-app .main > .hero { display:none!important; }
+.v5-app .tab-content > .sri-module-header {
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  border-radius:0!important;
+}
+.v5-app .sri-module-header :is(h2,h3) { font-size:22px!important;line-height:1.3!important; }
+.v5-app .sri-module-header :is(.v501-feature-icon,.v501-feature-kicker,.go-eyebrow,.v55-tag),
+.v5-app .sri-module-header > .mini-pill { display:none; }
+.v5-app .sri-module-header .hero-actions { min-width:0;flex-direction:row;align-items:center; }
+@media(max-width:760px){
+ .v5-app .sri-module-header :is(h2,h3) { font-size:20px!important; }
+ .v5-app .sri-module-header .hero-actions { width:100%; }
+}
