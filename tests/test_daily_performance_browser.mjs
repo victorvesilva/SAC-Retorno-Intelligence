@@ -36,6 +36,11 @@ try{for(const width of [1366,768,390]){
  assert.equal(await run("document.documentElement.scrollWidth<=innerWidth+2"),true);
  await run("document.getElementById('sri-daily-team').value='';document.getElementById('sri-daily-team').dispatchEvent(new Event('change'));window.goals=[{id:1,scope:'general',effective:today,target:null,percentage:60}];document.querySelector('#v20-daily-performance .sri-pack-controls button').click()");
  await page.waitFor("document.querySelector('#v20-daily-performance').textContent.includes('Abaixo da meta')");
+ const evidence=new URL('../.tmp/distribution-history/',import.meta.url);fs.mkdirSync(evidence,{recursive:true});fs.writeFileSync(new URL('desempenho-diario-'+width+'.png',evidence),await page.screenshot());
+ await run("document.getElementById('sri-daily-day').value=new Date(Date.parse(today+'T12:00Z')-86400000).toISOString().slice(0,10);document.getElementById('sri-daily-day').dispatchEvent(new Event('change'));document.querySelector('#v20-daily-performance .sri-pack-controls button').click()");
+ await page.waitFor("document.getElementById('sri-daily-message').textContent.startsWith('Nenhuma atribuição')");
+ assert.deepEqual(await run("[...document.querySelectorAll('#sri-daily-stats b')].map(b=>b.textContent)"),['0','0','0','0','0']);
+ await run("document.getElementById('sri-daily-day').value=today;document.getElementById('sri-daily-day').dispatchEvent(new Event('change'))");
  await run("window.fail=true;document.querySelector('#v20-daily-performance .sri-pack-controls button').click()");
  await page.waitFor("document.getElementById('sri-daily-message').textContent.includes('Não foi possível')");
  assert.equal(await run("document.querySelector('#sri-daily-stats b').textContent"),'—');

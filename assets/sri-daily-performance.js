@@ -17,7 +17,7 @@ function build(tasks,ancestors,treatments,movements,day){
   let status=action?.action||(legacy?t.treatment_status:null),state='unknown';
   if(known){const worked=Boolean(status&&status!=='SEM STATUS')||(!action&&t.work_status==='completed_in_tool');state=worked?(completed.has(status)||(!action&&t.work_status==='completed_in_tool')?'completed':'progress'):'untreated';}
   if(reopen&&(!action||Date.parse(reopen.at)>=Date.parse(action.created_at))){state=history.length?'progress':'untreated';status='Reaberto';}
-  return {...t,protocol:String(t.protocol_number),status:status||'Sem tratativa',state,is_special:last?.is_special??(legacy?t.is_special:null),notes:last?.notes||'',recorded_at:last?.created_at||null,actor_name:last?.event_context?.actor_name||'',gap};
+  return {...t,protocol:String(t.protocol_number),status:status||(state==='completed'?'Conclusão legada na ferramenta':'Sem tratativa'),state,is_special:last?.is_special??(legacy?t.is_special:null),notes:last?.notes||'',recorded_at:last?.created_at||null,actor_name:last?.event_context?.actor_name||'',gap};
  });
 }
 function totals(rows){const count=state=>rows.filter(r=>r.state===state).length;const assigned=rows.length,conclusions=count('completed'),progress=count('progress'),treated=conclusions+progress;
@@ -96,6 +96,6 @@ function mount(root){section=root;root.replaceChildren();const eyebrow=node('div
  options(team,[],'Todas as equipes');availableOperators();draw();root.dataset.dailyMounted='true';
  window.sriDailyPerformanceOpen=()=>{if(!loaded&&!consult.disabled)void load();};
 }
-async function refresh(){if(checking)return;checking=true;const e=epoch;try{const a=await identity();if(e!==epoch)return;if(actor!==a.id){window.sriDailyPerformanceReset();actor=a.id;}const root=$('v20-daily-performance');if(root&&section!==root)mount(root);if(root?.classList.contains('active'))window.sriDailyPerformanceOpen?.();if(!subscribed){a.c.auth.onAuthStateChange(event=>{if(['SIGNED_IN','SIGNED_OUT','USER_UPDATED'].includes(event)){window.sriDailyPerformanceReset();setTimeout(refresh,0);}});subscribed=true;}}catch(_){if(actor)window.sriDailyPerformanceReset();}finally{checking=false;}}
+async function refresh(){if(checking)return;checking=true;const e=epoch;try{const a=await identity();if(e!==epoch)return;if(actor!==a.id){window.sriDailyPerformanceReset();actor=a.id;}const root=$('v20-daily-performance');if(root&&section!==root)mount(root);if(root?.classList.contains('active'))window.sriDailyPerformanceOpen?.();if(!subscribed){a.c.auth.onAuthStateChange(event=>{if(['SIGNED_IN','SIGNED_OUT','USER_UPDATED'].includes(event)){window.sriDailyPerformanceReset();if(event!=='SIGNED_OUT')setTimeout(refresh,0);}});subscribed=true;}}catch(_){if(actor)window.sriDailyPerformanceReset();}finally{checking=false;}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>void refresh());else void refresh();setInterval(refresh,15000);
 })();
