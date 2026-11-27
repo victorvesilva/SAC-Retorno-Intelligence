@@ -39,8 +39,8 @@ async function open(protocol){
  const more=node('button','Continuar consulta do mês',dialog);more.type='button';more.className='v20-button secondary';more.hidden=true;
  const list=node('section',undefined,dialog);list.setAttribute('aria-label','Importações do dia');
  let month=dayOf(new Date()).slice(0,7),selected=dayOf(new Date()),request=0,records=[],unknown=new Set(),loading=false;
- document.body.append(dialog);dialog.showModal();
- dialog.addEventListener('close',()=>{window.sriProtocolImportHistoryReset();if(opener?.isConnected)opener.focus();});
+ const ownDialog=dialog;document.body.append(dialog);dialog.showModal();
+ dialog.addEventListener('close',()=>{if(dialog!==ownDialog)return;window.sriProtocolImportHistoryReset();if(opener?.isConnected)opener.focus();});
  const alive=seq=>epoch===generation&&seq===request&&dialog?.open;
  function draw(){
   title.textContent=new Date(month+'-01T12:00Z').toLocaleDateString('pt-BR',{month:'long',year:'numeric',timeZone:'UTC'});

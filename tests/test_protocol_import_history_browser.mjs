@@ -17,23 +17,23 @@ const browser=await startChromium(process.env.CHROME_BIN||'/usr/bin/chromium',pa
 try{for(const width of [1366,768,390]){
  const page=await browser.page('file://'+file,width,1000),run=expr=>page.evaluate(expr);
  await page.waitFor("document.querySelector('[data-sri-import-history]')");await run("document.querySelector('[data-sri-import-history]').click()");
- await page.waitFor("document.querySelectorAll('.sri-import-event').length===3&&document.querySelector('#sri-protocol-import-history [role=status]').textContent.startsWith('3 importação')");
+ await page.waitFor("document.querySelectorAll('.sri-import-event').length===3&&document.querySelector('#sri-protocol-import-history [role=status]')?.textContent?.startsWith('3 importação')");
  assert.match(await run("document.querySelector('.sri-import-calendar .has-imports').getAttribute('aria-label')"),/protocolo presente/);
  assert.match(await run("document.querySelectorAll('.sri-import-event')[1].textContent"),/Sem alteração nos campos exibidos/);
  assert.match(await run("document.querySelector('.sri-import-event').textContent"),/Alteração em status de origem/);
  await run("document.querySelector('.sri-import-event').open=true");assert.equal(await run("document.querySelector('#sri-protocol-import-history img')===null"),true);
  assert.equal(await run("document.querySelector('#sri-protocol-import-history').getBoundingClientRect().right<=innerWidth"),true);
- await run("document.querySelector('[aria-label=\"Mês anterior\"]').click()");await page.waitFor("document.querySelector('#sri-protocol-import-history [role=status]').textContent.startsWith('0 importação')");
+ await run("document.querySelector('[aria-label=\"Mês anterior\"]').click()");await page.waitFor("document.querySelector('#sri-protocol-import-history [role=status]')?.textContent?.startsWith('0 importação')");
  assert.equal(await run("document.querySelectorAll('.sri-import-event').length"),0);
- await run("window.fail=true;document.querySelector('[aria-label=\"Próximo mês\"]').click()");await page.waitFor("document.querySelector('#sri-protocol-import-history [role=status]').textContent.includes('Consulta incompleta')");
+ await run("window.fail=true;document.querySelector('[aria-label=\"Próximo mês\"]').click()");await page.waitFor("document.querySelector('#sri-protocol-import-history [role=status]')?.textContent?.includes('Consulta incompleta')");
  assert.match(await run("document.querySelector('.sri-import-event').textContent"),/Comparação indisponível/);
  await run("window.fail=false;[...document.querySelectorAll('#sri-protocol-import-history button')].find(b=>b.textContent==='Tentar novamente').click()");await page.waitFor("document.querySelectorAll('.sri-import-event').length===3");
  if(width===1366){
   await run("document.querySelector('#sri-protocol-import-history header button').click();rows.splice(0,rows.length,...Array.from({length:21},(_,i)=>({id:'many'+i,operational_day:today,shift_label:'Manhã',created_at:today+'T11:00Z'})));document.querySelector('[data-sri-import-history]').click()");
-  await page.waitFor("document.querySelector('#sri-protocol-import-history [role=status]').textContent.includes('20 de 21')");
+  await page.waitFor("document.querySelector('#sri-protocol-import-history [role=status]')?.textContent?.includes('20 de 21')");
   assert.equal(await run("document.querySelectorAll('.sri-import-event').length"),20);
   await run("[...document.querySelectorAll('#sri-protocol-import-history button')].find(b=>b.textContent==='Continuar consulta do mês').click()");
-  await page.waitFor("document.querySelector('#sri-protocol-import-history [role=status]').textContent.startsWith('21 importação')");
+  await page.waitFor("document.querySelector('#sri-protocol-import-history [role=status]')?.textContent?.startsWith('21 importação')");
  }
  await run("window.pause=true;document.querySelector('[aria-label=\"Próximo mês\"]').click();document.querySelector('[aria-label=\"Mês anterior\"]').click()");await page.waitFor('window.release');
  await run("window.authChanged('SIGNED_OUT');window.release()");assert.equal(await run("document.getElementById('sri-protocol-import-history')===null"),true);
