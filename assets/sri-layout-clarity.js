@@ -23,8 +23,54 @@ function wallet(){
  if(header){header.id='sri-wallet-header';header.classList.add('sri-module-header');$('v20-mine').prepend(header);}
  const summary=$('sri-pack-summary');
  display.before(summary);
- if(preferences)summary.before(preferences);
+ const advanced=$('sri-p03-advanced');
+ advanced.classList.add('sri-wallet-more');advanced.querySelector('summary').textContent='Mais filtros';
+ const more=element('button','Mais filtros','v20-button secondary');more.id='sri-wallet-more-button';more.type='button';
+ more.setAttribute('aria-controls',advanced.id);more.setAttribute('aria-expanded',String(advanced.open));
+ more.onclick=()=>{advanced.open=!advanced.open};basic.append(more);
+ advanced.addEventListener('toggle',()=>more.setAttribute('aria-expanded',String(advanced.open)));
+ const groups=[['Carteira',['sri-pack-base','sri-pack-area','channel','shift_label']],['Prioridade e prazo',['sri-pack-filter','sla_band','priority_reason','sri-p03-due-from','sri-p03-due-to']],['Tratativa',['treatment_status','sri-p03-state']]];
+ for(const [title,fields]of groups){
+  const box=element('fieldset',null,'sri-wallet-filter-group');box.append(element('legend',title));
+  const controls=element('div',null,'sri-pack-controls');box.append(controls);advanced.append(box);
+  for(const field of fields){const input=$(field)||root.querySelector('[data-p03-field="'+field+'"]');if(input)controls.append(input.closest('label'));}
+ }
+ state.hidden=true;
+ const legacyDue=root.querySelector('[data-p03-field="due_situation"]');if(legacyDue)legacyDue.closest('label').hidden=true;
+ const empty=advanced.querySelector(':scope > .sri-pack-controls');if(empty&&!empty.children.length)empty.remove();
+ if(preferences)advanced.append(preferences);
+ shortcuts.hidden=true;
+ const clear=$('sri-pack-clear');chips.after(clear);clear.classList.add('sri-wallet-clear');
+ root.classList.add('sri-wallet-filters');
  refreshFilters();
+}
+function compactChoices(){
+ for(const select of document.querySelectorAll('#sri-p03-advanced select[multiple]')){
+  if(select.dataset.p03Field==='due_situation')continue;
+  let choice=select.closest('.sri-wallet-choice-field')?.querySelector('.sri-wallet-choice');
+  if(!choice){
+   const label=select.closest('label'),title=label.firstChild.textContent.trim(),field=element('div',null,'v20-field sri-wallet-choice-field');
+   label.before(field);field.append(element('span',title));field.append(label);label.hidden=true;
+   choice=element('details',null,'sri-wallet-choice');choice.append(element('summary','Todos'));
+   const list=element('div',null,'sri-wallet-choice-options');list.setAttribute('role','group');list.setAttribute('aria-label',title);choice.append(list);field.append(choice);
+  }
+  const list=choice.querySelector('.sri-wallet-choice-options'),signature=JSON.stringify([...select.options].map(option=>[option.value,option.textContent]));
+  if(list.dataset.options!==signature){
+   list.dataset.options=signature;list.replaceChildren();
+   for(const option of select.options){
+    const label=element('label'),check=element('input');check.type='checkbox';check.value=option.value;
+    check.onchange=()=>{
+     if(!check.value)for(const item of select.options)item.selected=false;
+     else {for(const item of select.options){if(!item.value)item.selected=false;else if(item.value===check.value)item.selected=check.checked;}}
+     select.dispatchEvent(new Event('change',{bubbles:true}));
+    };
+    label.append(check,document.createTextNode(option.textContent));list.append(label);
+   }
+  }
+  const selected=[...select.selectedOptions].filter(option=>option.value);
+  choice.querySelector('summary').textContent=selected.length===0?'Todos':selected.length===1?selected[0].textContent:selected.length+' selecionados';
+  for(const check of list.querySelectorAll('input'))check.checked=check.value?selected.some(option=>option.value===check.value):!selected.length;
+ }
 }
 function refreshFilters(){
  const wrap=$('sri-clarity-active');if(!wrap)return;wrap.replaceChildren();
@@ -35,10 +81,14 @@ function refreshFilters(){
   if(!values.length)continue;
   const label=input.closest('label')?.firstChild?.textContent.trim()||'Filtro';
   const chip=element('button',label+': '+values.join(', ')+' ×','v20-button secondary');chip.type='button';chip.setAttribute('aria-label','Remover filtro '+label);
-  chip.onclick=()=>{if(input.multiple)for(const o of input.options)o.selected=false;else input.value=['sri-pack-filter','sri-pack-status-filter','sri-p03-state'].includes(input.id)?'all':'';if(input.type==='search')input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));};wrap.append(chip);
+  chip.onclick=()=>{if(input.multiple)for(const o of input.options)o.selected=false;else input.value=['sri-pack-filter','sri-pack-status-filter','sri-p03-state','sri-pack-due'].includes(input.id)?'all':'';if(input.type==='search')input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));};wrap.append(chip);
  }
  for(const active of document.querySelectorAll('#sri-p03-shortcuts [aria-pressed="true"]')){const chip=element('button','Atalho: '+active.textContent+' ×','v20-button secondary');chip.type='button';chip.onclick=()=>active.click();wrap.append(chip);}
- if(!wrap.children.length)wrap.append(element('span','Nenhum filtro aplicado.'));
+ const clear=$('sri-pack-clear');if(clear)clear.hidden=!wrap.children.length;
+ wrap.hidden=!wrap.children.length;
+ const count=[...document.querySelectorAll('#sri-p03-advanced select,#sri-p03-advanced input[id]')].filter(input=>!input.closest('#sri-p03-preferences')&&(input.multiple?[...input.selectedOptions].some(option=>option.value):input.value&&!['all',''].includes(input.value))).length;
+ const more=$('sri-wallet-more-button');if(more)more.textContent='Mais filtros'+(count?' ('+count+')':'');
+ compactChoices();
 }
 window.sriRefreshWalletFilters=refreshFilters;
 function resultActions(root){
@@ -233,6 +283,7 @@ function boot(){
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 document.addEventListener('click',event=>{
+ for(const choice of document.querySelectorAll('.sri-wallet-choice[open]'))if(!choice.contains(event.target))choice.open=false;
  if(event.target.closest?.('#v20-settings [data-v20^="settings"]'))delete $('v20-settings').dataset.layoutSettings;
  scheduleLayout();
 });

@@ -61,7 +61,7 @@ try{
  await page.evaluate("document.querySelector('#sri-clarity-active button[aria-label=\"Remover filtro Base\"]').click();document.getElementById('sri-pack-clear').click()");
  assert.equal(await page.evaluate("document.getElementById('sri-p03-state').value"),'all');
  assert.equal(await page.evaluate("document.querySelectorAll('#sri33-task-table tbody tr').length"),3);
- assert.equal(await page.evaluate("document.getElementById('sri-p03-state').closest('#sri-p03-wallet-state')!==null"),true);
+ assert.equal(await page.evaluate("document.getElementById('sri-p03-state').closest('#sri-p03-advanced')!==null"),true);
  assert.equal(await page.evaluate("document.getElementById('sri33-task-table').compareDocumentPosition(document.querySelector('.sri-clarity-pagination'))&Node.DOCUMENT_POSITION_FOLLOWING"),4);
  assert.equal(await page.evaluate("document.querySelectorAll('#sri-pack-summary button').length"),0,'indicadores não repetem filtros');
  await page.evaluate("document.getElementById('sri-pack-search').value='101';document.getElementById('sri-pack-search').dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('#sri-clarity-active button').click()");
