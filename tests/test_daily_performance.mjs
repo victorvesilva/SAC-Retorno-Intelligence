@@ -1,0 +1,21 @@
+import fs from 'node:fs';import vm from 'node:vm';import assert from 'node:assert/strict';
+const read=f=>fs.readFileSync(new URL('../'+f,import.meta.url),'utf8');
+const html=read('index.html'),source=read('assets/sri-daily-performance.js');
+const statuses=html.slice(html.indexOf('const DIST_STATUS_DEFS='),html.indexOf('const DIST_STATUS_CHOICES='));
+const context={window:{}};vm.runInNewContext(statuses+source.slice(0,source.indexOf('const $=id=>'))+'})();',context);const model=context.window.sriDailyPerformanceModel;
+const day='2026-11-27',task=(id,protocol=id,operator='op1',extra={})=>({id,protocol_number:protocol,operator_user_id:operator,team_id:'team',created_at:day+'T10:00:00Z',updated_at:day+'T10:00:00Z',treatment_status:null,work_status:'pending',...extra});
+const event=(id,task_id,action,time='12:00:00',extra={})=>({id,task_id,action,created_at:day+'T'+time+'Z',is_special:false,...extra});
+const finished=vm.runInNewContext(statuses+'DIST_STATUS_DEFS.find(([, ,code])=>code===3)[0]');
+const tasks=[task('old','101','op1',{active:false}),task('new','101','op2',{created_at:day+'T11:00:00Z',carried_from_task_id:'old'}),task('empty'),task('reopen','reopen','op1',{carried_from_task_id:'parent'}),task('future','future','op1',{updated_at:'2026-11-28T12:00:00Z',treatment_status:finished}),task('done')];
+const history=[event('1','old',finished),event('2','new','PENDENTE','13:00:00',{notes:'Observação',is_special:true}),event('3','parent',finished,'09:00:00'),event('4','future',finished,'12:00:00',{created_at:'2026-11-28T12:00:00Z'}),event('5','done',finished)];
+const rows=model.build(tasks,[task('parent','reopen')],history,[{protocol:'reopen',team_id:'team',action:'TASK_REOPENED',at:day+'T14:00:00Z'}],day);
+assert.equal(rows.length,5,'protocolo repetido nas rodadas conta uma vez');
+assert.equal(rows.find(r=>r.protocol==='101').operator_user_id,'op2');assert.equal(rows.find(r=>r.protocol==='101').state,'progress');assert.equal(rows.find(r=>r.protocol==='101').is_special,true);
+assert.equal(rows.find(r=>r.protocol==='empty').state,'untreated');assert.equal(rows.find(r=>r.protocol==='future').state,'unknown','tratativa posterior não altera resultado histórico');assert.equal(rows.find(r=>r.protocol==='reopen').state,'progress');
+const totals=model.totals(rows);assert.equal(totals.assigned,5);assert.equal(totals.treated,3);assert.equal(totals.conclusions,1);assert.equal(totals.untreated,1);assert.equal(totals.unknown,1);assert.equal(totals.workedRate,60);assert.equal(totals.conclusionRate,null,'histórico incompleto não gera atingimento de meta');
+assert.equal(model.group(rows).reduce((n,g)=>n+g.assigned,0),5);assert.equal(model.totals([]).workedRate,null);
+assert.equal(html.includes('data-tab="v20-daily-performance"')||html.includes("['v20-daily-performance','Desempenho diário'"),true);
+assert.equal(read('assets/sri-pacote03.js').includes('Exportar gráfico PDF'),false);
+assert.match(html,/#0B459F var\(--heat\)/);const contrast=vm.runInNewContext(html.slice(html.indexOf('function p03HeatContrast('),html.indexOf('function p03RenderHeat('))+'p03HeatContrast');
+for(let n=1;n<=100;n++){const p=Math.round(8+85*n/100)/100,rgb=[11,69,159].map(c=>(c*p+255*(1-p))/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)**2.4),lum=.2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2];assert.ok((contrast(n,100)==='#fff'?1.05/(lum+.05):(lum+.05)/.05)>=4.5,'contraste legível em toda a escala');}
+console.log('PASS carteira única, redistribuição, continuidade, corte histórico, reabertura, casos sensíveis, percentuais, metas sem base e PDFs centralizados.');

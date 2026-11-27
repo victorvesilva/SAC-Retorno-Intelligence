@@ -365,47 +365,9 @@ function makeDashboardNavigation(){
   section.prepend(nav);
  }
 }
-const graphButtons=new WeakMap();
-function makeGraphExports(){
- const ids=['chart-areas','chart-bko','chart-days','chart-eligibility','chart-filial','chart-priority','chart-sla','chart-timeline','bko-bars','dm-area-chart','dm-bko-chart','dm-channel-chart','dm-coverage-chart','dm-operators-chart','dm-sla-chart','dm-status-chart','historical-chart','sri-p03-heat','v3-agent-bars','v3-trend-chart','v47-chart','v49-bko-trend','v49-compare-chart','v52-day-chart'];
- for(const id of ids){
-  const graph=$(id);if(!graph||graphButtons.get(graph)?.isConnected)continue;
-  const exportButton=document.createElement('button');exportButton.type='button';exportButton.className='v20-button secondary sri-p03-chart-export';
-  const card=graph.closest('.card,.v3-card,.dm-card,.v49-card,.v20-panel,.v47-chartwrap');
-  const title=card?.querySelector('h3,h4,.card-title')?.textContent?.trim()||graph.getAttribute('aria-label')||'Gráfico';
-  exportButton.textContent='Exportar gráfico PDF';exportButton.setAttribute('aria-label','Exportar '+title+' em PDF');
-  exportButton.onclick=async()=>{
-   if(!graph.getClientRects().length)return;
-   const output=window.open('','_blank');
-   if(!output){window.sriPackNotify?.('Permita abrir a impressão para exportar o gráfico.','warning');return;}
-   output.opener=null;const currentEpoch=epoch;
-   try{
-    const auth=await identity();
-    if(currentEpoch!==epoch||!auth||!['admin','manager','supervisor','assistant'].includes(auth.p.role))throw Error('Acesso à exportação não autorizado.');
-    const doc=output.document;doc.title=title;
-    const style=doc.createElement('style');style.textContent='@page{size:A4 landscape;margin:14mm}body{font:13px sans-serif;color:#173858}svg{max-width:100%;height:auto}button{font:inherit}';
-    doc.head.append(style);
-    const heading=doc.createElement('h1');heading.textContent=title;doc.body.append(heading);
-    const context=doc.createElement('p');
-    const filters=[...document.querySelectorAll('#global-controls select,#global-controls input[type=date]')].map(input=>input.tagName==='SELECT'?[...input.selectedOptions].map(option=>option.textContent).join(', '):input.value).filter(Boolean);
-    context.textContent='Gerado em '+new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})+(filters.length?' · '+filters.join(' · '):'');doc.body.append(context);
-    const clone=graph.cloneNode(true),originals=[graph,...graph.querySelectorAll('*')],copies=[clone,...clone.querySelectorAll('*')];
-    const properties=['color','background-color','fill','stroke','stroke-width','font-family','font-size','font-weight','display','width','height','padding','margin','border','border-radius','grid-template-columns','gap','align-items','justify-content'];
-    originals.forEach((node,index)=>{
-     const computed=getComputedStyle(node),copy=copies[index];
-     for(const property of properties)copy.style.setProperty(property,computed.getPropertyValue(property));
-     for(const attribute of [...copy.attributes])if(attribute.name.startsWith('on'))copy.removeAttribute(attribute.name);
-    });
-    clone.style.maxWidth='100%';doc.body.append(clone);
-    await doc.fonts.ready;if(output.closed||currentEpoch!==epoch)return;output.focus();output.print();
-   }catch(error){output.close();window.sriPackNotify?.(error.message,'error');}
-  };
-  graph.before(exportButton);graphButtons.set(graph,exportButton);
- }
-}
 
 function clear(){$('sri-p03-reopen')?.remove();document.querySelectorAll('.sri-p03-chart-nav,.sri-p03-chart-export').forEach(node=>node.remove());document.getElementById('overview')?.classList.remove('sri-p03-historical');$('sri-p03-reconcile')?.remove();$('sri-p03-go-history')?.remove();epoch++;client=null;profile=null;userId=null;seen.clear();$('sri-monitor-panel')?.remove();$('sri-movement-panel')?.remove();$('sri-p03-productivity')?.remove();}
-let checking=false;async function refresh(){if(checking)return;checking=true;const e=epoch;try{const a=await identity();if(e!==epoch)return;if(!a){if(profile)clear();return;}if(userId!==a.p.id||profile?.role!==a.p.role){clear();client=a.c;profile=a.p;userId=a.p.id;log('SUCCESS','AUTH_OK','Autenticação');}if(['admin','manager'].includes(profile.role))makeReopenPanel();else $('sri-p03-reopen')?.remove();if(profile.role==='operator')makePendingPanel();else $('sri-p03-reconcile')?.remove();if(profile.role==='admin')make($('v20-settings'),'sri-monitor-panel',true);else $('sri-monitor-panel')?.remove();if(['admin','manager','supervisor','assistant'].includes(profile.role)){makeManagementHistory();makeDashboardNavigation();makeGraphExports();make($('reports'),'sri-movement-panel',false);makeProductivity($('reports'));}else {$('sri-movement-panel')?.remove();$('sri-p03-productivity')?.remove();}}catch(_){}finally{checking=false;}}
+let checking=false;async function refresh(){if(checking)return;checking=true;const e=epoch;try{const a=await identity();if(e!==epoch)return;if(!a){if(profile)clear();return;}if(userId!==a.p.id||profile?.role!==a.p.role){clear();client=a.c;profile=a.p;userId=a.p.id;log('SUCCESS','AUTH_OK','Autenticação');}if(['admin','manager'].includes(profile.role))makeReopenPanel();else $('sri-p03-reopen')?.remove();if(profile.role==='operator')makePendingPanel();else $('sri-p03-reconcile')?.remove();if(profile.role==='admin')make($('v20-settings'),'sri-monitor-panel',true);else $('sri-monitor-panel')?.remove();if(['admin','manager','supervisor','assistant'].includes(profile.role)){makeManagementHistory();makeDashboardNavigation();make($('reports'),'sri-movement-panel',false);makeProductivity($('reports'));}else {$('sri-movement-panel')?.remove();$('sri-p03-productivity')?.remove();}}catch(_){}finally{checking=false;}}
 async function checkCritical(){
  const currentEpoch=epoch;
  try{

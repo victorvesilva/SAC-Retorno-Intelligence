@@ -20,6 +20,7 @@ jobs:
           node tests/test_cloud_shared_sync.mjs
           node tests/test_carteira_conciliacao.mjs
           node tests/test_distribution_refresh.mjs
+          node tests/test_daily_performance.mjs
           node --check assets/sri-connection-status.js
           node tests/test_connection_status.mjs
           node tests/test_auto_publish.mjs
@@ -61,6 +62,7 @@ jobs:
           node tests/test_module_layout_browser.mjs
           node tests/test_distribution_history_browser.mjs
           node tests/test_protocol_import_history_browser.mjs
+          node tests/test_daily_performance_browser.mjs
       - name: Verificar layouts integrados de todos os modulos em dados sinteticos
         env:
           SRI_CAPTURE_INTEGRATED_SCREENSHOT: '1'

@@ -76,14 +76,8 @@ setTimeout(()=>{
  const before=head.getBoundingClientRect().top;wallet.scrollTop=180;
  if(getComputedStyle(head).position!=='sticky'||Math.abs(head.getBoundingClientRect().top-before)>2)throw Error('Cabeçalho não permanece visível na rolagem');
  copies.forEach(row=>row.remove());wallet.scrollTop=0;document.body.dataset.sticky='PASS';
- let printed=null;
- window.open=()=>({
-  document:(()=>{const doc=document.implementation.createHTMLDocument('');Object.defineProperty(doc,'fonts',{value:{ready:Promise.resolve()}});return doc;})(),closed:false,opener:null,
-  close(){this.closed=true;},focus(){},print(){printed=this.document;document.body.dataset.graph='PASS';}
- });
- const chart=document.querySelector('.sri-p03-chart-export');
- if(!chart)throw Error('Exportação individual ausente');
- chart.click();
+ if(document.querySelector('.sri-p03-chart-export'))throw Error('Exportação individual fora de Relatórios permanece disponível');
+ document.body.dataset.graph='PASS';
  if(!document.querySelector('.sri-p03-chart-nav')?.textContent.includes('Riscos Operacionais'))throw Error('Categorias de gráficos ausentes');
  const reopen=document.getElementById('sri-p03-reopen');
  if(!reopen)throw Error('Reabertura administrativa ausente');
