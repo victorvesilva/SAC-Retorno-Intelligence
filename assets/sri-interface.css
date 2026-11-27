@@ -50,3 +50,32 @@
     }
   }
 }
+
+
+/* Navegação de retorno alinhada ao título do módulo. */
+.v5-app .v5-top-identity > div {
+  min-width: 0;
+}
+.v5-app .v5-top-identity #sri-p03-back {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px !important;
+  padding: 6px 10px;
+  border: 1px solid #d6e2f1;
+  background: #f6f9fd;
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .v5-app .v5-top-identity #sri-p03-back {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    font-size: 20px;
+  }
+  #sri-p03-back .sri-back-label {
+    display: none;
+  }
+}

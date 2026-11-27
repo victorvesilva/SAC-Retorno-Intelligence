@@ -36,9 +36,15 @@
  const loggedOut=()=>document.body.classList.contains('v20-not-logged');
  const authKey=()=>document.body.getAttribute('data-v20-role')||document.body.getAttribute('data-role')||'';
  const btn=document.createElement('button');btn.type='button';btn.id='sri-p03-back';
- btn.textContent='← Voltar';btn.className='v20-button secondary';btn.disabled=true;
+ btn.innerHTML='<span aria-hidden="true">←</span><span class="sri-back-label">Voltar</span>';btn.className='v20-button secondary';btn.disabled=true;
  btn.setAttribute('aria-label','Voltar à última categoria visitada');
- function restoreFocus(){if(btn.isConnected)return;const mount=$('v5-active-context')?.parentElement||document.querySelector('.v5-topbar')||document.querySelector('.topbar')||document.querySelector('main');mount?.append(btn);}
+ function restoreFocus(){
+  if(btn.isConnected)return;
+  const identity=document.querySelector('.v5-top-identity');
+  if(identity){identity.prepend(btn);return;}
+  const mount=document.querySelector('.v5-topbar,.topbar,main');
+  mount?.prepend(btn);
+ }
  function clear(){stack=[];states.clear();current=null;goingBack=false;btn.disabled=true;}
  function observe(){if(loggedOut()){clear();profile='';return;}
   const role=authKey();if(profile&&role&&role!==profile)clear();if(role)profile=role;

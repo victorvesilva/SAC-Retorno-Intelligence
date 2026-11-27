@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 const source=readFileSync(new URL('../assets/sri-p03-navigation.js',import.meta.url),'utf8');
 const fixture=mkdtempSync(join(tmpdir(),'sri-p03-navigation-'));
 const file=join(fixture,'navigation.html');
-const markup='<main><button data-tab="overview">A</button><button data-tab="details">B</button><button data-tab="reports">C</button><section id="overview" class="tab-content active"><input id="filter-a" type="search"></section><section id="details" class="tab-content"><form><input id="edit"></form></section><section id="reports" class="tab-content"></section></main>';
+const markup='<header><div class="v5-top-identity"><div><div>SAC Retorno Intelligence</div><div id="v5-active-context">Carteira por Operador</div></div></div></header><main><button data-tab="overview">A</button><button data-tab="details">B</button><button data-tab="reports">C</button><section id="overview" class="tab-content active"><input id="filter-a" type="search"></section><section id="details" class="tab-content"><form><input id="edit"></form></section><section id="reports" class="tab-content"></section></main>';
 const dispatcher=String.raw`
 document.body.dataset.v20Role='admin';
 window.onerror=message=>document.body.dataset.error=message;
@@ -24,6 +24,10 @@ const wait=()=>new Promise(resolve=>setTimeout(resolve,30));
  document.getElementById('filter-a').value='consulta A';
  click('details');await wait();click('reports');await wait();
  const back=document.getElementById('sri-p03-back');
+ if(back.parentElement!==document.querySelector('.v5-top-identity'))throw Error('Voltar deve ficar ao lado do título no cabeçalho');
+ if(back.nextElementSibling!==document.getElementById('v5-active-context').parentElement)throw Error('Voltar deve preceder o título');
+ if(back.getAttribute('aria-label')!=='Voltar à última categoria visitada')throw Error('Voltar precisa de nome acessível');
+
  back.click();await wait();
  if(!document.getElementById('details').classList.contains('active'))throw Error('C não retornou a B');
  const edit=document.getElementById('edit');edit.value='alteração pendente';edit.dispatchEvent(new Event('input',{bubbles:true}));
