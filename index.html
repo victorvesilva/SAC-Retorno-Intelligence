@@ -3592,17 +3592,18 @@ initGraphHelp();
 function initPriorityScoreHelp(){
  const button=document.getElementById('sri-priority-score-help'),box=document.getElementById('sri-priority-score-info');
  if(!button||!box)return;
- let pinned=false;
+ let pinned=false,closing=false;
  const visible=()=>box.matches(':popover-open');
- const hide=()=>{if(visible())box.hidePopover();pinned=false;button.setAttribute('aria-expanded','false');};
+ const hide=()=>{closing=true;if(visible())box.hidePopover();pinned=false;button.setAttribute('aria-expanded','false');closing=false;};
  const show=()=>{
+  if(closing)return;
   if(!visible())box.showPopover();button.setAttribute('aria-expanded','true');
   const rect=button.getBoundingClientRect(),pop=box.getBoundingClientRect();
   box.style.left=Math.round(Math.max(12,Math.min(innerWidth-pop.width-12,rect.left)))+'px';
   box.style.top=Math.round(Math.max(12,Math.min(innerHeight-pop.height-12,rect.bottom+8)))+'px';
  };
  button.addEventListener('pointerenter',show);button.addEventListener('focus',show);
- button.addEventListener('click',()=>{pinned=true;show();});
+ button.addEventListener('click',()=>{pinned=true;show();box.focus({preventScroll:true});});
  const leave=event=>{if(box.contains(event.relatedTarget)||event.relatedTarget===button)return;if(!pinned&&document.activeElement!==button&&!box.contains(document.activeElement))hide();};
  button.addEventListener('pointerleave',leave);box.addEventListener('pointerleave',leave);
  const blur=()=>setTimeout(()=>{if(!pinned&&document.activeElement!==button&&!box.contains(document.activeElement))hide();},0);
