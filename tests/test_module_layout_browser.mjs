@@ -11,6 +11,8 @@ const inline=[...html.slice(0,html.indexOf('<main class="main">')).matchAll(/<st
 const files=['gestao-operacional-refinado.css','refinamento-operacional-etapa2.css','refinamento-analitico-relatorios-etapa3.css','refinamento-bases-qualidade-etapa4.css','revisao-visual-integrada.css','sri-mobile-navigation.css','sri-integrated-improvements.css','sri-p03-reporting.css','sri-layout-clarity.css','sri-interface.css'];
 const styles=inline+'\n'+files.map(file=>read('assets/'+file)).join('\n');
 const routing=html.split('\n').find(line=>line.startsWith('function v46SetPane('))+'\n'+html.split('\n').find(line=>line.startsWith('function distPane('));
+const shortcutStart=html.indexOf("document.getElementById('v55-prior-day-shortcut')?.addEventListener");
+const shortcut=html.slice(shortcutStart,html.indexOf('\nv55RefreshDays();v55RefreshView();',shortcutStart));
 const setup=`
 const ui={tab:'overview'},distState={};function dmManagerRender(){}
 window.layoutErrors=[];
@@ -32,6 +34,10 @@ for(const id of ['overview','details','reports']){
  document.getElementById(id).insertAdjacentHTML('afterbegin','<nav class="v20-module-tabs"><button>Seção</button></nav>');
 }
 window.switchTab('overview');
+const v55Elements={source:document.getElementById('v55-source'),day:document.getElementById('v55-day')},v55CloudPromise=null;
+function v55RefreshSnapshots(){}function v55RefreshView(){}
+${shortcut}
+
 `;
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),'sri-module-layout-'));
 const fixture=path.join(dir,'fixture.html');
@@ -56,6 +62,8 @@ try {
    assert.equal(await run("document.querySelectorAll('#reports [role=tabpanel]:not(.sri-layout-panel-hidden)').length"),1,'Uma consulta por vez');
    assert.equal(await run("document.documentElement.scrollWidth<=innerWidth+5"),true,'Sem overflow em relatórios '+key+' '+width);
   }
+  await run("document.getElementById('v55-prior-day-shortcut').click()");
+  assert.equal(await run("document.querySelector('#sri-report-tabs [data-layout-view=pdf]').getAttribute('aria-selected')"),'true','Atalho de dias anteriores abre PDF');
   await run("window.sriShowReportSection('period')");
   assert.equal(await run("document.getElementById('saved-period').value"),'2026-11-27','Trocar abas preserva o filtro');
   await run("document.querySelector('#sri-report-tabs [data-layout-view=period]').dispatchEvent(new KeyboardEvent('keydown',{key:'End',bubbles:true}))");
