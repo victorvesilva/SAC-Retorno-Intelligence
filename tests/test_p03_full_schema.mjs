@@ -366,4 +366,5 @@ const {verifyDistributionHistory}=await import('./helpers/distribution_history_s
 await verifyDistributionHistory(db,id,fingerprint);
 const {verifySpecialProtocol}=await import('./helpers/special_protocol_sql.mjs');
 await verifySpecialProtocol(db,id,fingerprint);
+const {verifyImportIndex}=await import('./helpers/import_index_sql.mjs');await verifyImportIndex(db,id);
 await db.close();
