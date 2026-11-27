@@ -221,3 +221,17 @@ body[data-sri-operator-view=history] #sri-operator-reviews,body[data-sri-operato
 .sri-import-event dt { font-weight:650; }.sri-import-event dd { margin:0;white-space:pre-wrap; }
 .sri-import-history button:focus-visible,.sri-import-history summary:focus-visible,.sri-import-history-trigger:focus-visible { outline:3px solid #ffb33a;outline-offset:2px; }
 @media(max-width:480px){.sri-import-history { padding:16px; }.sri-import-history h2 { font-size:18px; }}
+
+.sri-daily-stats { display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:16px 0; }
+.sri-daily-stat { display:flex;flex-direction:column;align-items:flex-start;text-align:left;cursor:pointer;font:inherit;min-height:125px; }
+.sri-daily-stat small { margin-top:6px;line-height:1.5; }
+.sri-daily-analysis { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px; }
+.sri-daily-analysis .v20-button { margin:4px;white-space:normal; }
+#v20-daily-performance .v20-table th,#v20-daily-performance .v20-table td { white-space:normal;min-width:120px; }
+#sri-daily-details .v20-field { display:grid;gap:6px;max-width:350px; }
+#v20-daily-performance .sri-treatment-note { max-width:420px; }
+.sri-p03-heat-cell:hover:not(:disabled),.sri-p03-heat-cell:focus-visible { outline:3px solid #FF6A00!important;outline-offset:1px; }
+@media(max-width:760px){.sri-daily-analysis { grid-template-columns:1fr; }}
+
+#v3-pdf { display:none!important; }
+body:not([data-sri-module="reports"]) #v194-pdf { display:none!important; }
