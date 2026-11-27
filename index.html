@@ -1898,6 +1898,7 @@ svg [tabindex="0"]:focus-visible,.v49-track[tabindex="0"]:focus-visible{outline:
 <div class="section-heading"><div><h2 class="sri-score-title">Fila inteligente de prioridades <button type="button" id="sri-priority-score-help" class="chart-help" aria-label="Como é calculado o escore de prioridade?" aria-controls="sri-priority-score-info" aria-expanded="false"><span aria-hidden="true">?</span></button></h2><p>Ranking auxiliar; fila original preservada.</p></div><button class="btn btn-ghost" id="v3-export-priority">Exportar fila CSV</button></div>
 <aside id="sri-priority-score-info" class="sri-score-info" popover="auto" role="note" aria-labelledby="sri-score-info-title" tabindex="-1">
 <h3 id="sri-score-info-title">Como o escore é calculado</h3>
+<p>A Central de Prioridades ajuda a identificar onde atuar primeiro na carteira filtrada. Use a busca, o nível de atenção e a ordenação para localizar os protocolos que precisam de análise.</p>
 <p>Quanto maior a soma de pontos, maior a atenção sugerida. O escore é orientativo e não é um percentual.</p>
 <h4>1. Pontos de prazo — apenas uma opção</h4>
 <ul><li>Prazo vencido (backlog): <b>100 pontos</b>.</li><li>Vence hoje: <b>90 pontos</b>.</li><li>SLA D6, quando não estiver vencido nem vencer hoje: <b>70 pontos</b>.</li></ul>
@@ -3589,8 +3590,7 @@ function initGraphHelp(){
 }
 
 initGraphHelp();
-function initPriorityScoreHelp(){
- const button=document.getElementById('sri-priority-score-help'),box=document.getElementById('sri-priority-score-info');
+function sriBindInfoPopover(button,box){
  if(!button||!box)return;
  let pinned=false,closing=false;
  const visible=()=>box.matches(':popover-open');
@@ -3602,16 +3602,18 @@ function initPriorityScoreHelp(){
   box.style.left=Math.round(Math.max(12,Math.min(innerWidth-pop.width-12,rect.left)))+'px';
   box.style.top=Math.round(Math.max(12,Math.min(innerHeight-pop.height-12,rect.bottom+8)))+'px';
  };
- button.addEventListener('pointerenter',show);button.addEventListener('focus',show);
- button.addEventListener('click',()=>{pinned=true;show();box.focus({preventScroll:true});});
+ const click=()=>{pinned=true;show();box.focus({preventScroll:true});};
  const leave=event=>{if(box.contains(event.relatedTarget)||event.relatedTarget===button)return;if(!pinned&&document.activeElement!==button&&!box.contains(document.activeElement))hide();};
- button.addEventListener('pointerleave',leave);box.addEventListener('pointerleave',leave);
  const blur=()=>setTimeout(()=>{if(!pinned&&document.activeElement!==button&&!box.contains(document.activeElement))hide();},0);
- button.addEventListener('blur',blur);box.addEventListener('focusout',blur);
- box.addEventListener('toggle',event=>{const open=event.newState==='open';button.setAttribute('aria-expanded',String(open));if(!open)pinned=false;});
- document.addEventListener('keydown',event=>{if(event.key==='Escape')hide();});
- window.addEventListener('scroll',event=>{if(!box.contains(event.target))hide();},true);
- window.addEventListener('resize',hide);
+ const toggle=event=>{const open=event.newState==='open';button.setAttribute('aria-expanded',String(open));if(!open)pinned=false;};
+ const escape=event=>{if(event.key==='Escape')hide();};
+ const scroll=event=>{if(!box.contains(event.target))hide();};
+ const bindings=[[button,'pointerenter',show],[button,'focus',show],[button,'click',click],[button,'pointerleave',leave],[box,'pointerleave',leave],[button,'blur',blur],[box,'focusout',blur],[box,'toggle',toggle],[document,'keydown',escape],[window,'scroll',scroll,true],[window,'resize',hide]];
+ for(const [target,event,handler,capture] of bindings)target.addEventListener(event,handler,capture);
+ return {hide,destroy(){hide();for(const [target,event,handler,capture] of bindings)target.removeEventListener(event,handler,capture);}};
+}
+function initPriorityScoreHelp(){
+ window.sriPriorityScoreHelp=sriBindInfoPopover(document.getElementById('sri-priority-score-help'),document.getElementById('sri-priority-score-info'));
 }
 initPriorityScoreHelp();
 /* SAC Retorno Intelligence 4.0 – Apresentação executiva */
@@ -8361,10 +8363,11 @@ document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.tar
 <script defer src="/assets/sri-p03-reporting.js?v=20261127-01"></script>
 <script defer src="/assets/sri-daily-performance.js?v=20261127-01"></script>
 <script defer src="/assets/sri-p03-navigation.js?v=20261127-01"></script>
-<link rel="stylesheet" href="/assets/sri-layout-clarity.css?v=20261127-07">
-<script defer src="/assets/sri-layout-clarity.js?v=20261127-02"></script>
+<link rel="stylesheet" href="/assets/sri-layout-clarity.css?v=20261127-08">
+<script defer src="/assets/sri-layout-clarity.js?v=20261127-03"></script>
 <script defer src="/assets/sri-distribution-history.js?v=20261125-01"></script>
 <script defer src="/assets/sri-import-indexing.js?v=20261127-01"></script>
 <script defer src="/assets/sri-protocol-import-history.js?v=20261127-02"></script>
+<script defer src="/assets/sri-menu-help.js?v=20261127-01"></script>
 </body>
 </html>
