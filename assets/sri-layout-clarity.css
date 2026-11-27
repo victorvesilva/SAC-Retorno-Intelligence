@@ -197,3 +197,5 @@ body[data-sri-operator-view=history] #sri-operator-reviews,body[data-sri-operato
 .sri-treatment-details button { min-height:40px; }
 .sri-treatment-details button:focus-visible,
 .sri-special-help:focus-visible { outline:3px solid #ffb33a;outline-offset:2px; }
+
+.sri-wallet-filters .sri-clarity-state[hidden] { display:none!important; }

@@ -29,12 +29,13 @@ function wallet(){
  more.setAttribute('aria-controls',advanced.id);more.setAttribute('aria-expanded',String(advanced.open));
  more.onclick=()=>{advanced.open=!advanced.open};basic.append(more);
  advanced.addEventListener('toggle',()=>more.setAttribute('aria-expanded',String(advanced.open)));
- const groups=[['Carteira',['sri-pack-base','sri-pack-area','channel','shift_label']],['Prioridade e prazo',['sri-pack-filter','sla_band','priority_reason','sri-p03-due-from','sri-p03-due-to']],['Tratativa',['treatment_status']]];
+ const groups=[['Carteira',['sri-pack-base','sri-pack-area','channel','shift_label']],['Prioridade e prazo',['sri-pack-filter','sla_band','priority_reason','sri-p03-due-from','sri-p03-due-to']],['Tratativa',['treatment_status','sri-p03-state']]];
  for(const [title,fields]of groups){
   const box=element('fieldset',null,'sri-wallet-filter-group');box.append(element('legend',title));
   const controls=element('div',null,'sri-pack-controls');box.append(controls);advanced.append(box);
   for(const field of fields){const input=$(field)||root.querySelector('[data-p03-field="'+field+'"]');if(input)controls.append(input.closest('label'));}
  }
+ state.hidden=true;
  const legacyDue=root.querySelector('[data-p03-field="due_situation"]');if(legacyDue)legacyDue.closest('label').hidden=true;
  const empty=advanced.querySelector(':scope > .sri-pack-controls');if(empty&&!empty.children.length)empty.remove();
  if(preferences)advanced.append(preferences);
