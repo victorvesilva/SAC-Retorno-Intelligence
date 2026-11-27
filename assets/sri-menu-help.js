@@ -103,10 +103,10 @@ window.sriInstallMenuHelp=()=>{
  if(!window.sriBindInfoPopover)return;
  for(const [id,base] of Object.entries(guidance)){
   if(id==='v20-mine-history'||id==='v20-operator-pending')continue;
-  const root=document.getElementById(id);if(!root)continue;
+  const root=document.getElementById(id);if(!root){const old=mounted.get(id);if(old){old.api.destroy();old.box.remove();mounted.delete(id);}continue;}
   const heading=id==='v20-mine'?(document.querySelector('#sri-wallet-header h3')||root.querySelector('h2')):root.querySelector(':scope > .sri-module-header h2,:scope > .sri-module-header h3,:scope > .section-heading h2,:scope > .go-head h2,:scope > h2');
-  if(!heading)continue;
   let state=mounted.get(id);
+  if(!heading){if(state){state.api.destroy();state.box.remove();state.button.remove();mounted.delete(id);}continue;}
   if(state&&(!state.button.isConnected||state.heading!==heading)){state.api.destroy();state.box.remove();state.button.remove();mounted.delete(id);state=null;}
   if(!state){
    const wrapper=node('div');wrapper.className='sri-menu-help-heading';heading.before(wrapper);wrapper.append(heading);
