@@ -8,7 +8,7 @@ const html=read('index.html');
 const slice=(from,to)=>html.slice(html.indexOf(from),html.indexOf(to,html.indexOf(from)));
 const panel=slice('  function operatorPanel(){','  async function safeMine(fn)');
 const functions=slice('  function p03QuickMatch','  let historySessionRequest=0;');
-const save=slice('  async function saveTreatment(advance=false){','  // Ao publicar uma nova distribuição');
+const save=slice('  async function saveTreatment(){','  // Ao publicar uma nova distribuição');
 const safe=slice('  async function safeMine(fn)','  async function loadTasks(){');
 const statuses=slice('const DIST_STATUS_DEFS=','const DIST_STATUS_CHOICES=');
 const css=read('assets/sri-layout-clarity.css')+read('assets/sri-integrated-improvements.css')+
@@ -85,6 +85,7 @@ try{
   assert.equal(await run("document.querySelectorAll('#sri33-task-table tbody tr').length"),2);
   await run("document.querySelector('[data-sri33-task=one]').click();document.querySelector('.sri-special-help').focus()");
   assert.equal(await run("getComputedStyle(document.getElementById('sri33-special-help')).display"),'block','Explicação acessível pelo teclado');
+  assert.deepEqual(await run("[...document.querySelectorAll('.sri33-actions button')].map(button=>button.textContent)"),['Cancelar','Salvar tratativa']);
   await run("document.getElementById('sri33-treatment-special').checked=true;document.getElementById('sri33-treatment-special').dispatchEvent(new Event('change',{bubbles:true}));document.getElementById('sri33-treatment-kind').value='PENDENTE';document.getElementById('sri33-treatment-kind').dispatchEvent(new Event('change',{bubbles:true}));document.getElementById('sri33-treatment-notes').value='<img src=x onerror=alert(1)> Observação sensível';window.failSave=true;document.getElementById('sri33-treatment-save').click()");
   await page.waitFor("document.getElementById('sri33-treatment-status').textContent.includes('salvamento')");
   const first=await run("window.calls.find(call=>call.name==='sri_record_treatment_v3').args.p_request");
@@ -103,6 +104,10 @@ try{
   assert.match(await run("document.querySelector('.sri-treatment-details-content').textContent"),/caso sensível.*Operador sintético.*Observação sensível/s);
   assert.equal(await run("document.querySelector('#sri-treatment-details img')===null"),true,'Observação exibida como texto');
   assert.equal(await run("document.getElementById('sri-treatment-details').getBoundingClientRect().width<=innerWidth"),true);
+  await run("Object.assign(window.fixture.rows()[0],{notes:'Observação atualizada pelo operador',is_special:false,updated_at:'new-version'});document.getElementById('sri-cloud-treatment-refresh').click()");
+  await page.waitFor("document.querySelector('.sri-treatment-note').textContent==='Observação atualizada pelo operador'");
+  assert.match(await run("document.querySelector('.sri-treatment-details-content').textContent"),/Sinalização especial desmarcada/);
+  assert.equal(await run("document.getElementById('sri-cloud-treatment-toolbar').getBoundingClientRect().right<=innerWidth"),true);
   await run("document.querySelector('#sri-treatment-details button').click();window.pauseDetails=true;document.querySelector('[data-sri-treatment-details]').click()");
   await page.waitFor('window.releaseDetails');
   await run("window.sriCloudTreatmentReset();window.releaseDetails()");
