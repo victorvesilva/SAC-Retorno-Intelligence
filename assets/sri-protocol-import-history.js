@@ -22,9 +22,9 @@ async function open(protocol){
  window.sriProtocolImportHistoryReset();const epoch=generation;
  const client=await window.sriGetSupabaseClient?.();if(!client||epoch!==generation)return;
  const auth=await client.auth.getUser();if(epoch!==generation)return;
- const user=auth.data?.user;if(auth.error||!user)return;
+ const user=auth.data?.user;if(auth.error||!user)throw Error('Entre novamente para consultar o histórico.');
  const profile=await client.from('profiles').select('role').eq('id',user.id).single();if(epoch!==generation)return;
- if(profile.error||!['admin','manager','supervisor','assistant'].includes(profile.data?.role))return;
+ if(profile.error||!['admin','manager','supervisor','assistant'].includes(profile.data?.role))throw Error('Consulta histórica indisponível para esta conta.');
  if(!window.__sriProtocolHistoryAuthWatch&&client.auth.onAuthStateChange){client.auth.onAuthStateChange(event=>{if(['SIGNED_OUT','SIGNED_IN','USER_UPDATED'].includes(event))window.sriProtocolImportHistoryReset();});window.__sriProtocolHistoryAuthWatch=true;}
  const opener=document.activeElement;dialog=node('dialog');dialog.id='sri-protocol-import-history';dialog.className='sri-import-history';dialog.setAttribute('aria-labelledby','sri-import-history-title');
  const header=node('header',undefined,dialog);node('h2','Histórico de importações',header).id='sri-import-history-title';
@@ -92,5 +92,5 @@ async function open(protocol){
  prev.onclick=()=>{month=monthShift(month,-1);selected=month+'-01';void load();};next.onclick=()=>{month=monthShift(month,1);selected=month+'-01';void load();};retry.onclick=()=>void load();
  void load();
 }
-document.addEventListener('click',event=>{const button=event.target.closest?.('[data-sri-import-history]');if(button)void open(button.dataset.sriImportHistory);});
+document.addEventListener('click',event=>{const button=event.target.closest?.('[data-sri-import-history]');if(button)void open(button.dataset.sriImportHistory).catch(()=>window.sriToast?.('Não foi possível abrir o histórico. Confira sua conexão e tente novamente.','error'));});
 })();
