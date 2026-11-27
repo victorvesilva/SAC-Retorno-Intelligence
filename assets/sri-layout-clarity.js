@@ -102,7 +102,7 @@ function reportCatalog(){
 window.sriShowReportSection=key=>{const root=$('reports');if(root){root.dataset.layoutView=key;reportCatalog();}};
 function headers(){
  for(const section of document.querySelectorAll('.tab-content')){
-  let header=section.querySelector(':scope > .go-head,:scope > .section-heading,:scope > .v55-header,:scope > .v20-between:not(.sri-clarity-legacy-header),:scope > .sri-module-header:not(.sri-clarity-legacy-header)');
+  let header=section.querySelector(':scope > .go-head,:scope > .section-heading,:scope > .v49-main-head,:scope > .v55-header,:scope > .v20-between:not(.sri-clarity-legacy-header),:scope > .sri-module-header:not(.sri-clarity-legacy-header)');
   if(!header){
    const heading=section.querySelector(':scope > h2');
    if(heading){
@@ -115,7 +115,7 @@ function headers(){
   if(!header)continue;
   header.classList.add('sri-module-header');
   if(section.firstElementChild!==header)section.prepend(header);
-  const nav=section.querySelector(':scope > .v20-module-tabs');
+  const nav=section.querySelector(':scope > .v20-module-tabs,:scope > .v49-tabs');
   if(nav&&header.nextElementSibling!==nav)header.after(nav);
  }
  const operatorHeader=$('sri-wallet-header');
@@ -127,7 +127,7 @@ function headers(){
  }
  const active=document.querySelector('.tab-content.active'),controls=$('global-controls');
  if(active&&controls&&['overview','priorities','intelligence','agents','details'].includes(active.id)){
-  const anchor=active.querySelector(':scope > .v46-subtabs,:scope > .v49-tabs,:scope > .v20-module-tabs,:scope > .sri-module-header');
+  const anchor=active.querySelector(':scope > .v46-subtabs,:scope > .v49-tabs,:scope > .v20-module-tabs')||active.querySelector(':scope > .sri-module-header');
   if(anchor&&anchor.nextElementSibling!==controls)anchor.after(controls);
  }
 }
@@ -158,7 +158,12 @@ function distributionLayout(){
  const shortcut=$('v194-from-distribution');
  if(shortcut&&shortcut.parentElement===nav)header.append(shortcut);
  for(const [key,label,target]of [['followup','Acompanhamento','sri33-progress'],['history','Histórico de atribuições','sri-distribution-history']]){
-  const content=$(target);if(!content)continue;
+  const content=$(target),existing=nav.querySelector('[data-dist-pane="'+key+'"]');
+  if(existing){
+   existing.hidden=!content;
+   if(!content&&$('dist-pane-'+key)?.classList.contains('active'))window.distPane?.('protocols');
+  }
+  if(!content)continue;
   let pane=$('dist-pane-'+key);
   if(!pane){
    pane=element('div',null,'dist-pane');pane.id='dist-pane-'+key;root.append(pane);
@@ -167,6 +172,8 @@ function distributionLayout(){
   }
   if(content.parentElement!==pane)pane.append(content);
  }
+ const filters=$('dist-query')?.closest('.dist-controls'),metrics=root.querySelector(':scope > .dist-kpis');
+ if(filters&&metrics)filters.after(metrics);
  const exports=nav.querySelector('[data-dist-pane="exports"]');if(exports)exports.textContent='Exportações e backup';
  const active=root.querySelector('.dist-pane.active');
  for(const button of nav.querySelectorAll('[data-dist-pane]'))button.setAttribute('aria-current',String('dist-pane-'+button.dataset.distPane===active?.id));
