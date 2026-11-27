@@ -103,5 +103,14 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.sri_protocol_import_calendar(text,date),public.sri_protocol_import_day(text,date,uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.sri_protocol_import_calendar(text,date),public.sri_protocol_import_day(text,date,uuid) TO authenticated;
+CREATE OR REPLACE FUNCTION public.sri_import_index_backfill_snapshot(p_token text,p_snapshot uuid,p_payload boolean DEFAULT false)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $$
+BEGIN
+ IF NOT public.sri_import_index_backfill_authorized(p_token,p_snapshot) THEN RAISE EXCEPTION 'Preparação não autorizada'; END IF;
+ RETURN (SELECT jsonb_build_object('payload_sha256',s.payload_sha256,'created_at',s.created_at)||CASE WHEN p_payload THEN jsonb_build_object('payload_gzip',s.payload_gzip) ELSE '{}'::jsonb END FROM public.daily_result_snapshots s WHERE s.id=p_snapshot);
+END $$;
+REVOKE ALL ON FUNCTION public.sri_import_index_backfill_snapshot(text,uuid,boolean) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.sri_import_index_backfill_snapshot(text,uuid,boolean) TO service_role;
 NOTIFY pgrst,'reload schema';
+
 COMMIT;

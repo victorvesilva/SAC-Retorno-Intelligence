@@ -13,21 +13,21 @@ Deno.serve(async request=>{
  try{
   const input=await request.json();snapshot=input.snapshot_id;
   if(typeof snapshot!=='string'||!/^[-a-f0-9]{36}$/i.test(snapshot))return reply(400,{error:'Apuração inválida'});
-  let authorizedReader=reader;
+  const backfill=typeof input.backfill_token==='string';
   if(typeof input.backfill_token==='string'){
    const allowed=await admin.rpc('sri_import_index_backfill_authorized',{p_token:input.backfill_token,p_snapshot:snapshot});
    if(allowed.error||allowed.data!==true)return reply(403,{error:'Preparação não autorizada'});
-   authorizedReader=admin; // Short-lived, database-scoped maintenance capability.
+   // Short-lived capability is verified again by the dedicated maintenance reader.
   }else{
    const auth=await reader.auth.getUser(authorization.replace(/^Bearer\s+/i,''));if(auth.error||!auth.data.user)return reply(401,{error:'Sessão indisponível'});
    const p=await reader.from('profiles').select('role').eq('id',auth.data.user.id).single();if(p.error||!['admin','manager','supervisor','assistant'].includes(p.data?.role))return reply(403,{error:'Acesso indisponível'});
   }
-  const metadata=await authorizedReader.from('daily_result_snapshots').select('payload_sha256,created_at').eq('id',snapshot).single();
+  const metadata=backfill?await admin.rpc('sri_import_index_backfill_snapshot',{p_token:input.backfill_token,p_snapshot:snapshot,p_payload:false}):await reader.from('daily_result_snapshots').select('payload_sha256,created_at').eq('id',snapshot).single();
   if(metadata.error||!metadata.data)return reply(404,{error:'Apuração indisponível'});
   const begin=await admin.rpc('sri_import_index_start',{p_snapshot:snapshot,p_hash:metadata.data.payload_sha256});if(begin.error)throw Error('index');
   if(begin.data.ready||begin.data.busy)return reply(200,begin.data);
   job=begin.data.job;
-  const q=await authorizedReader.from('daily_result_snapshots').select('payload_gzip').eq('id',snapshot).single();if(q.error||!q.data)throw Error('snapshot');
+  const q=backfill?await admin.rpc('sri_import_index_backfill_snapshot',{p_token:input.backfill_token,p_snapshot:snapshot,p_payload:true}):await reader.from('daily_result_snapshots').select('payload_gzip').eq('id',snapshot).single();if(q.error||!q.data)throw Error('snapshot');
   const bytes=Uint8Array.from(atob(q.data.payload_gzip),c=>c.charCodeAt(0));
   const payload=await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).json();
   const {rows,imported}=normalizeImport(payload,metadata.data.created_at);

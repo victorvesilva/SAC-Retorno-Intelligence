@@ -6,7 +6,12 @@ export async function verifyImportIndex(db,id){
  (${id(3000)},${id(6)},'2032-01-15','Manhã',1,${id(10)},repeat('c',64),repeat('x',20),1),
  (${id(3001)},${id(7)},'2032-01-15','Tarde',2,${id(10)},repeat('d',64),repeat('x',20),1);`);
  await actor(10);await assert.rejects(db.query("SELECT sri_import_index_start($1,repeat('c',64))",[raw(3000)]),/permission denied/);
- await db.exec('RESET ROLE;SET ROLE service_role');
+ await db.exec("RESET ROLE;INSERT INTO private.sri_import_index_backfill_keys VALUES(encode(sha256(convert_to('temporary-test-token','UTF8')),'hex'),now()+interval '1 minute',ARRAY["+id(3000)+"]::uuid[]);SET ROLE service_role");
+ assert.equal((await db.query('SELECT sri_import_index_backfill_authorized($1,$2) allowed',['temporary-test-token',raw(3000)])).rows[0].allowed,true);
+ assert.equal((await db.query('SELECT sri_import_index_backfill_authorized($1,$2) allowed',['temporary-test-token',raw(3001)])).rows[0].allowed,false);
+ assert.equal((await db.query('SELECT sri_import_index_backfill_snapshot($1,$2,true) value',['temporary-test-token',raw(3000)])).rows[0].value.payload_gzip,'x'.repeat(20));
+ await assert.rejects(db.query('SELECT sri_import_index_backfill_snapshot($1,$2,true)',['invalid',raw(3000)]),/não autorizada/);
+
  const first=(await db.query("SELECT sri_import_index_start($1,repeat('c',64)) value",[raw(3000)])).rows[0].value;
  assert.ok(first.job);assert.equal((await db.query("SELECT sri_import_index_start($1,repeat('c',64)) value",[raw(3000)])).rows[0].value.busy,true);
  const rows=[{protocol:'INDEXED',rows:[{status:'12',area:'A'}]}];

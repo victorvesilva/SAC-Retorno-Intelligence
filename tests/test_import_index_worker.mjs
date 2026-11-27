@@ -6,6 +6,6 @@ assert.equal(normalized.rows.length,2);assert.equal(normalized.rows[0].rows.leng
 assert.equal(normalizeImport({source:[]},'2026-11-27T12:00Z').rows.length,0);
 assert.throws(()=>normalizeImport({},''));assert.throws(()=>normalizeImport({source:[{}]},'2026-11-27'));
 const worker=readFileSync(new URL('../supabase/functions/sri-index-import/index.ts',import.meta.url),'utf8');
-assert.match(worker,/reader\.auth\.getUser\(authorization/);assert.match(worker,/authorizedReader\.from\('daily_result_snapshots'\)/);assert.match(worker,/sri_import_index_backfill_authorized/);
+assert.match(worker,/reader\.auth\.getUser\(authorization/);assert.match(worker,/reader\.from\('daily_result_snapshots'\)/);assert.match(worker,/sri_import_index_backfill_authorized/);
 const frontend=readFileSync(new URL('../assets/sri-protocol-import-history.js',import.meta.url),'utf8');assert.doesNotMatch(frontend,/payload_gzip|v42Uncompress|daily_result_snapshots/);assert.match(frontend,/sri_protocol_import_calendar/);assert.match(frontend,/sri_protocol_import_day/);
 console.log('PASS preparação canônica, duplicatas, campos mínimos, consulta sem download de apurações e autenticação do worker.');
