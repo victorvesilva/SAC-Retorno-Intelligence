@@ -16,5 +16,6 @@ const totals=model.totals(rows);assert.equal(totals.assigned,5);assert.equal(tot
 assert.equal(model.group(rows).reduce((n,g)=>n+g.assigned,0),5);assert.equal(model.totals([]).workedRate,null);
 assert.equal(html.includes('data-tab="v20-daily-performance"')||html.includes("['v20-daily-performance','Desempenho diário'"),true);
 assert.equal(read('assets/sri-pacote03.js').includes('Exportar gráfico PDF'),false);
-assert.match(html,/#0B459F var\(--heat\)/);assert.match(html,/n\/max>\.5\?'#fff'/);
+assert.match(html,/#0B459F var\(--heat\)/);const contrast=vm.runInNewContext(html.slice(html.indexOf('function p03HeatContrast('),html.indexOf('function p03RenderHeat('))+'p03HeatContrast');
+for(let n=1;n<=100;n++){const p=Math.round(8+85*n/100)/100,rgb=[11,69,159].map(c=>(c*p+255*(1-p))/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)**2.4),lum=.2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2];assert.ok((contrast(n,100)==='#fff'?1.05/(lum+.05):(lum+.05)/.05)>=4.5,'contraste legível em toda a escala');}
 console.log('PASS carteira única, redistribuição, continuidade, corte histórico, reabertura, casos sensíveis, percentuais, metas sem base e PDFs centralizados.');
