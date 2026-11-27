@@ -115,7 +115,7 @@ function headers(){
   if(!header)continue;
   header.classList.add('sri-module-header');
   if(section.firstElementChild!==header)section.prepend(header);
-  const nav=section.querySelector(':scope > .v20-module-tabs,:scope > .v49-tabs');
+  const nav=section.querySelector(':scope > .sri-layout-tabs,:scope > .v46-subtabs,:scope > .v49-tabs')||section.querySelector(':scope > .v20-module-tabs');
   if(nav&&header.nextElementSibling!==nav)header.after(nav);
  }
  const operatorHeader=$('sri-wallet-header');
@@ -173,7 +173,7 @@ function distributionLayout(){
   if(content.parentElement!==pane)pane.append(content);
  }
  const filters=$('dist-query')?.closest('.dist-controls'),metrics=root.querySelector(':scope > .dist-kpis');
- if(filters&&metrics)filters.after(metrics);
+ if(filters&&metrics&&filters.nextElementSibling!==metrics)filters.after(metrics);
  const exports=nav.querySelector('[data-dist-pane="exports"]');if(exports)exports.textContent='Exportações e backup';
  const active=root.querySelector('.dist-pane.active');
  for(const button of nav.querySelectorAll('[data-dist-pane]'))button.setAttribute('aria-current',String('dist-pane-'+button.dataset.distPane===active?.id));
