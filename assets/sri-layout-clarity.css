@@ -138,3 +138,7 @@ body[data-sri-operator-view=history] #sri-operator-reviews,body[data-sri-operato
  .v5-app .sri-module-header :is(h2,h3) { font-size:20px!important; }
  .v5-app .sri-module-header .hero-actions { width:100%; }
 }
+.sri-layout-header-actions { display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px; }
+@media(max-width:760px){
+ .sri-layout-header-actions { width:100%;justify-content:flex-start; }
+}

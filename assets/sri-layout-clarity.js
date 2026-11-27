@@ -126,7 +126,13 @@ function headers(){
   const refresh=$('sri33-mine-refresh');if(refresh)refresh.hidden=mode!=='active';
  }
  const overview=$('overview')?.querySelector(':scope > .sri-module-header'),upload=$('hero-actions');
- if(overview&&upload&&upload.parentElement!==overview)overview.append(upload);
+ if(overview&&upload){
+  let actions=$('sri-overview-actions');
+  if(!actions){actions=element('div',null,'sri-layout-header-actions');actions.id='sri-overview-actions';overview.append(actions);}
+  const previous=$('v55-prior-day-shortcut');
+  if(previous&&previous.parentElement!==actions)actions.prepend(previous);
+  if(upload.parentElement!==actions)actions.append(upload);
+ }
  const active=document.querySelector('.tab-content.active'),controls=$('global-controls');
  if(active&&controls&&['overview','priorities','intelligence','agents','details'].includes(active.id)){
   const anchor=active.querySelector(':scope > .v46-subtabs,:scope > .v49-tabs,:scope > .v20-module-tabs')||active.querySelector(':scope > .sri-module-header');
