@@ -86,7 +86,7 @@ function tabs(root,id,label,items,selected,choose){
 }
 function reportCatalog(){
  const root=$('reports');if(!root)return;
- root.classList.add('sri-organized-reports');
+ if(!root.classList.contains('sri-organized-reports'))root.classList.add('sri-organized-reports');
  const pdf=root.querySelector(':scope > .v55-shell');if(pdf)pdf.id='sri-layout-pdf';
  const items=[['period','Resultados por período',$('sri-p03-integrated-reports')],['pdf','Relatórios em PDF',pdf],['productivity','Carga e produtividade',$('sri-p03-productivity')],['movements','Movimentações',$('sri-movement-panel')]];
  const selected=root.dataset.layoutView||'period';
@@ -133,7 +133,8 @@ function headers(){
 }
 function qualityNavigation(){
  const root=$('details'),alerts=$('v20-alerts');if(!root||!alerts)return;
- root.classList.add('sri-organized-quality');alerts.classList.add('sri-organized-quality');
+ if(!root.classList.contains('sri-organized-quality'))root.classList.add('sri-organized-quality');
+ if(!alerts.classList.contains('sri-organized-quality'))alerts.classList.add('sri-organized-quality');
  const nav=root.querySelector('.v46-subtabs');
  if(nav&&!$('sri-quality-alerts-link')){
   const link=element('button','Conciliação e alertas','v46-subtab');link.id='sri-quality-alerts-link';link.type='button';
@@ -211,10 +212,21 @@ function install(){
  const notice=$('notice-upload'),duplicate=document.querySelector('[data-v114-tab="import"]');
  if(notice&&duplicate)duplicate.hidden=notice.getClientRects().length>0;
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
+let layoutQueued=false;
+function scheduleLayout(){
+ if(layoutQueued)return;
+ layoutQueued=true;
+ requestAnimationFrame(()=>{layoutQueued=false;install();});
+}
+function boot(){
+ install();
+ const observer=new MutationObserver(scheduleLayout);
+ for(const section of document.querySelectorAll('.tab-content'))observer.observe(section,{attributes:true,attributeFilter:['class']});
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 document.addEventListener('click',event=>{
  if(event.target.closest?.('#v20-settings [data-v20^="settings"]'))delete $('v20-settings').dataset.layoutSettings;
- requestAnimationFrame(install);
+ scheduleLayout();
 });
 // Modules are mounted after authentication and rebuilt when the account changes.
 setInterval(install,1000);

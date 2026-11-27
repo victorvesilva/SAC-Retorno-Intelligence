@@ -12,8 +12,11 @@ const files=['gestao-operacional-refinado.css','refinamento-operacional-etapa2.c
 const styles=inline+'\n'+files.map(file=>read('assets/'+file)).join('\n');
 const routing=html.split('\n').find(line=>line.startsWith('function v46SetPane('))+'\n'+html.split('\n').find(line=>line.startsWith('function distPane('));
 const setup=`
-const distState={};function dmManagerRender(){}
+const ui={tab:'overview'},distState={};function dmManagerRender(){}
+window.layoutErrors=[];
+window.addEventListener('error',event=>window.layoutErrors.push(event.message));
 window.switchTab=id=>{
+ ui.tab=id;
  document.querySelectorAll('.tab-content').forEach(el=>el.classList.toggle('active',el.id===id));
  document.getElementById('global-controls').hidden=!['overview','details','agents','intelligence','priorities'].includes(id);
 };
@@ -72,6 +75,7 @@ try {
   await new Promise(resolve=>setTimeout(resolve,1100));
   assert.equal(await run("document.querySelectorAll('[data-layout-catalog]').length"),1,'Sem duplicação em remontagens');
   assert.equal(await run("document.querySelectorAll('#sri-report-tabs').length"),1);
+  assert.deepEqual(await run('window.layoutErrors'),[],'Sem erros de interface');
   await page.close();
   console.log('PASS organização dos módulos '+width+'px, navegação e preservação dos filtros.');
  }
