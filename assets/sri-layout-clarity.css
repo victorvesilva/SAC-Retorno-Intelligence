@@ -199,3 +199,7 @@ body[data-sri-operator-view=history] #sri-operator-reviews,body[data-sri-operato
 .sri-special-help:focus-visible { outline:3px solid #ffb33a;outline-offset:2px; }
 
 .sri-wallet-filters .sri-clarity-state[hidden] { display:none!important; }
+
+#sri-cloud-treatment-toolbar { display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px; }
+#sri-cloud-treatment-toolbar p { flex:1 1 280px;margin:0; }
+#sri-cloud-treatment-refresh { flex:0 0 auto; }

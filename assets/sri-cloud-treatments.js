@@ -2,10 +2,10 @@
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),h=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let mutationVersion=0,epoch=0,busy=false,map=new Map(),scope='',actor=null,actorRole=null,client=null,reviewRows=[],reviewBusy=false,editBusy=false,request=null;
+let mutationVersion=0,epoch=0,busy=false,refreshQueued=false,map=new Map(),scope='',actor=null,actorRole=null,client=null,reviewRows=[],reviewBusy=false,editBusy=false,request=null;
 const roles=['admin','manager','supervisor'];
 window.sriCloudTreatment=(id)=>{const snapshot=window.sriGetSavedDistributionContext?.()?.snapshotId;return snapshot&&scope===snapshot?map.get(String(id)):undefined};
-window.sriCloudTreatmentReset=()=>{epoch++;map.clear();scope='';actor=null;actorRole=null;client=null;request=null;reviewRows=[];$('sri-reconcile-panel')?.remove();$('sri-reconcile-overview')?.remove();$('sri-cloud-treatment-info')?.remove();$('sri-treatment-details')?.remove();};
+window.sriCloudTreatmentReset=()=>{epoch++;refreshQueued=false;map.clear();scope='';actor=null;actorRole=null;client=null;request=null;reviewRows=[];$('sri-reconcile-panel')?.remove();$('sri-reconcile-overview')?.remove();$('sri-cloud-treatment-toolbar')?.remove();$('sri-treatment-details')?.remove();};
 async function auth(){const c=await window.sriGetSupabaseClient?.();if(!c)return null;const {data,error}=await c.auth.getUser();if(error||!data?.user)return null;const p=await c.from('profiles').select('role').eq('id',data.user.id).single();if(p.error||!roles.includes(p.data?.role))return null;return {client:c,id:data.user.id,role:p.data.role}}
 window.sriTreatmentDetailsCell=id=>{
  const task=window.sriCloudTreatment(id);if(!task)return '—';
@@ -13,7 +13,7 @@ window.sriTreatmentDetailsCell=id=>{
  return '<button type="button" class="v20-button secondary sri-treatment-details-button" data-sri-treatment-details="'+h(id)+'">'+(task.is_special?'<span class="sri-special-badge">Caso sensível</span>':'Ver observação')+'</button>';
 };
 let detailsRequest=0;
-async function showDetails(protocol){
+async function showDetails(protocol,background=false){
  const task=window.sriCloudTreatment(protocol);if(!task)return;
  const token=epoch,version=++detailsRequest,snapshot=scope;
  let dialog=$('sri-treatment-details');
@@ -26,8 +26,9 @@ async function showDetails(protocol){
   dialog.addEventListener('close',()=>{detailsRequest++;dialog.querySelector('.sri-treatment-details-content').replaceChildren();});
   document.body.append(dialog);
  }
+ dialog.dataset.protocol=String(protocol);
  dialog.querySelector('h2').textContent='Tratativa · '+protocol;
- const content=dialog.querySelector('.sri-treatment-details-content');content.textContent='Consultando a última tratativa...';
+ const content=dialog.querySelector('.sri-treatment-details-content');if(!background)content.textContent='Consultando a última tratativa...';
  if(!dialog.open)dialog.showModal();
  const current=()=>version===detailsRequest&&token===epoch&&scope===snapshot&&dialog.isConnected&&dialog.open;
  try{
@@ -52,15 +53,48 @@ document.addEventListener('click',event=>{
  if(button)void showDetails(button.dataset.sriTreatmentDetails);
 });
 async function refresh(){
- if(busy||document.hidden||!actor||!client||editBusy)return;const snapshot=window.sriGetSavedDistributionContext?.()?.snapshotId;if(!snapshot)return;const token=epoch,version=mutationVersion;busy=true;
- try{const rows=[];for(let from=0;;from+=500){const q=await client.from('daily_operator_tasks').select('id,protocol_number,treatment_status,updated_at,operator_user_id,source_status,is_special').eq('snapshot_id',snapshot).eq('active',true).order('id').range(from,from+499);if(q.error)throw Error(q.error.message);rows.push(...(q.data||[]));if((q.data||[]).length<500)break;if(from>=19500)throw Error('Volume acima do limite de sincronização');}
- if(token!==epoch||version!==mutationVersion||snapshot!==window.sriGetSavedDistributionContext?.()?.snapshotId)return;
- if(editBusy)return;const next=new Map(rows.map(r=>[String(r.protocol_number),r]));const changed=scope!==snapshot||JSON.stringify([...map])!==JSON.stringify([...next]);map=next;scope=snapshot;
- if(changed){window.sriRefreshStatusViews?.();}const info=$('sri-cloud-treatment-info');if(info)info.textContent='Tratativas sincronizadas · '+new Date().toLocaleTimeString('pt-BR');
- }catch(e){const info=$('sri-cloud-treatment-info');if(info)info.textContent='Não foi possível sincronizar agora; os status podem estar desatualizados.';}finally{busy=false}
+ if(document.hidden||!actor||!client)return;
+ if(busy||editBusy){refreshQueued=true;return;}
+ const snapshot=window.sriGetSavedDistributionContext?.()?.snapshotId;if(!snapshot)return;
+ const token=epoch,version=mutationVersion,queryClient=client;busy=true;
+ const button=$('sri-cloud-treatment-refresh');if(button){button.disabled=true;button.textContent='Atualizando...';}
+ const current=()=>token===epoch&&version===mutationVersion&&snapshot===window.sriGetSavedDistributionContext?.()?.snapshotId;
+ try{
+  const rows=[];
+  for(let from=0;;from+=500){
+   const q=await queryClient.from('daily_operator_tasks').select('id,protocol_number,treatment_status,updated_at,operator_user_id,source_status,is_special').eq('snapshot_id',snapshot).eq('active',true).order('id').range(from,from+499);
+   if(!current()){refreshQueued=Boolean(actor);return;}
+   if(q.error)throw Error(q.error.message);
+   rows.push(...(q.data||[]));if((q.data||[]).length<500)break;
+   if(from>=19500)throw Error('Volume acima do limite de sincronização');
+  }
+  if(editBusy){refreshQueued=true;return;}
+  const next=new Map(rows.map(r=>[String(r.protocol_number),r]));
+  const changed=scope!==snapshot||JSON.stringify([...map])!==JSON.stringify([...next]);
+  const dialog=$('sri-treatment-details'),protocol=dialog?.open?dialog.dataset.protocol:null;
+  const detailsChanged=protocol&&JSON.stringify(map.get(protocol))!==JSON.stringify(next.get(protocol));
+  map=next;scope=snapshot;
+  if(changed)window.sriRefreshStatusViews?.();
+  if(detailsChanged){if(next.has(protocol))void showDetails(protocol,true);else dialog.close();}
+  const info=$('sri-cloud-treatment-info');if(info)info.textContent='Atualizado às '+new Date().toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo'})+' · atualização automática a cada 15 s';
+ }catch(e){
+  if(current()){const info=$('sri-cloud-treatment-info');if(info)info.textContent='Não foi possível atualizar. Os dados podem estar desatualizados. Tente novamente.';}
+ }finally{
+  busy=false;
+  const activeButton=$('sri-cloud-treatment-refresh');if(activeButton){activeButton.disabled=false;activeButton.textContent='Atualizar protocolos';}
+  if(refreshQueued&&!editBusy){refreshQueued=false;void refresh();}
+ }
 }
 window.sriCloudTreatmentRefresh=refresh;
-window.sriCloudTreatmentInit=async()=>{const token=epoch;const a=await auth();if(token!==epoch||!a)return;actor=a.id;actorRole=a.role;client=a.client;const root=$('dist-pane-protocols');if(root&&!$('sri-cloud-treatment-info'))root.insertAdjacentHTML('afterbegin','<p id="sri-cloud-treatment-info" class="v20-muted" role="status">Aguardando a distribuição publicada.</p>');await refresh();void counts();if($('sri-reconcile-panel')){void loadReview();if(['admin','manager'].includes(actorRole))void matrix()}};
+window.sriCloudTreatmentInit=async()=>{
+ const token=epoch;const a=await auth();if(token!==epoch||!a)return;actor=a.id;actorRole=a.role;client=a.client;
+ const root=$('dist-pane-protocols');
+ if(root&&!$('sri-cloud-treatment-toolbar')){
+  root.insertAdjacentHTML('afterbegin','<div id="sri-cloud-treatment-toolbar"><p id="sri-cloud-treatment-info" class="v20-muted" role="status">Aguardando a distribuição publicada.</p><button type="button" class="v20-button secondary" id="sri-cloud-treatment-refresh">Atualizar protocolos</button></div>');
+  $('sri-cloud-treatment-refresh').onclick=()=>{void refresh();};
+ }
+ await refresh();void counts();if($('sri-reconcile-panel')){void loadReview();if(['admin','manager'].includes(actorRole))void matrix()}
+};
 window.sriCloudTreatmentSave=async(id,status,notes)=>{if(editBusy)throw Error('Aguarde o salvamento atual.');if(!client||!actor)throw Error('Entre novamente para registrar a tratativa.');const r=window.sriCloudTreatment(id);if(!r)throw Error('A carteira precisa estar publicada e disponível à sua equipe.');const key=JSON.stringify([r.id,status,notes,r.updated_at]);if(!request||request.key!==key)request={key,id:crypto.randomUUID()};editBusy=true;mutationVersion++;const token=epoch;
  try{const {data,error}=await client.rpc('sri_record_treatment_v2',{p_task:r.id,p_action:status,p_notes:notes,p_expected:r.updated_at,p_request:request.id});if(error){if(/atualizada em outra sessão|demanda indisponível/i.test(error.message||'')){request=null;throw Error('A tratativa mudou em outra sessão. Feche o modal e confira o status atualizado antes de confirmar novamente.')}throw Error(error.message)}if(token!==epoch)return;map.set(String(id),{...r,...data});mutationVersion++;request=null;window.sriRefreshStatusViews?.();return data;}finally{editBusy=false;void refresh()}
 };
@@ -86,5 +120,6 @@ setInterval(()=>{if(opId)void window.sriOperatorReviewRefresh()},30000);
 
 setInterval(()=>{if(actor){void refresh();void counts();if($('v20-alerts')?.classList.contains('active')&&!$('sri-reconcile-review')?.querySelector('form'))void loadReview()}},15000);
 window.addEventListener('focus',()=>{if(actor)void refresh()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&actor)void refresh()});
 window.addEventListener('sri-cloud-saved',()=>{if(actor)void refresh()});
 })();
