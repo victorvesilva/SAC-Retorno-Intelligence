@@ -7197,6 +7197,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         snapshotId=existing.data.id;alreadyPresent=true;
       }else snapshotId=data.id;
     }
+    void window.sriPrepareImportIndex?.(client,snapshotId);
     if(ctx.snapshotId!==snapshotId)ctx.revision=0;
     ctx.snapshotId=snapshotId;ctx.teamId=team;ctx.pendingSnapshot={key,id:snapshotId};
     // Quando outra sessão já publicou a mesma apuração, nunca substituir sua distribuição.
@@ -8325,6 +8326,7 @@ document.addEventListener('change',e=>{if(e.target?.id==='sri-daily-team'||e.tar
 <link rel="stylesheet" href="/assets/sri-layout-clarity.css?v=20261127-06">
 <script defer src="/assets/sri-layout-clarity.js?v=20261127-02"></script>
 <script defer src="/assets/sri-distribution-history.js?v=20261125-01"></script>
-<script defer src="/assets/sri-protocol-import-history.js?v=20261127-01"></script>
+<script defer src="/assets/sri-import-indexing.js?v=20261127-01"></script>
+<script defer src="/assets/sri-protocol-import-history.js?v=20261127-02"></script>
 </body>
 </html>

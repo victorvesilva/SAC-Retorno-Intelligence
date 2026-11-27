@@ -1,25 +1,22 @@
 /* Read-only protocol history from authorized, immutable consolidated imports. */
 (()=>{'use strict';
 const $=id=>document.getElementById(id),zone='America/Sao_Paulo';
-let generation=0,dialog,controller;
+let generation=0,dialog,controller,reload;const cache=new Map();
+function remember(key,value){cache.set(key,{at:Date.now(),value});if(cache.size>32)cache.delete(cache.keys().next().value);}
+function cached(key){const hit=cache.get(key);return hit&&Date.now()-hit.at<60000?hit.value:null;}
+function closeView(){generation++;controller?.abort();dialog?.remove();dialog=null;reload=null;}
 function node(tag,text,parent){const el=document.createElement(tag);if(text!==undefined)el.textContent=text;parent?.append(el);return el;}
 function dayOf(date){return new Date(date).toLocaleDateString('sv-SE',{timeZone:zone});}
 function monthShift(month,delta){const [y,m]=month.split('-').map(Number);return new Date(Date.UTC(y,m-1+delta,1)).toISOString().slice(0,7);}
-function summarize(payload,protocol){
- if(!Array.isArray(payload?.source))throw Error('Importação sem dados consolidados disponíveis.');
- const fields=['status','statusDesc','bko','area','agente','limite','envio','filial'];
- const rows=payload.source.filter(r=>String(r.id)===protocol).map(r=>Object.fromEntries(fields.map(k=>[k,r[k]??null])));
- return rows.length?[...new Map(rows.map(r=>[JSON.stringify(r),r])).values()].sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))):null;
-}
 function differences(previous,current){
  if(!previous)return 'Primeiro registro disponível neste dia.';
  if(JSON.stringify(previous)===JSON.stringify(current))return 'Sem alteração nos campos exibidos em relação à importação anterior deste dia.';
  const labels={status:'status de origem',statusDesc:'descrição do status',bko:'base',area:'área',agente:'agente',limite:'prazo',envio:'data de envio',filial:'filial'};
  return 'Alteração em '+Object.entries(labels).filter(([key])=>JSON.stringify(previous.map(r=>r[key]))!==JSON.stringify(current.map(r=>r[key]))).map(([,label])=>label).join(', ')+'.';
 }
-window.sriProtocolImportHistoryReset=()=>{generation++;controller?.abort();dialog?.remove();dialog=null;};
+window.sriProtocolImportHistoryReset=()=>{cache.clear();closeView();};
 async function open(protocol){
- window.sriProtocolImportHistoryReset();const epoch=generation;
+ closeView();const epoch=generation;
  const client=await window.sriGetSupabaseClient?.();if(!client||epoch!==generation)return;
  const auth=await client.auth.getUser();if(epoch!==generation)return;
  const user=auth.data?.user;if(auth.error||!user)throw Error('Entre novamente para consultar o histórico.');
@@ -36,11 +33,11 @@ async function open(protocol){
  node('p','● Dia com presença confirmada do protocolo · ? consulta incompleta',dialog).className='v20-muted';
  const status=node('p','',dialog);status.setAttribute('role','status');status.setAttribute('aria-live','polite');
  const retry=node('button','Tentar novamente',dialog);retry.type='button';retry.className='v20-button secondary';retry.hidden=true;
- const more=node('button','Continuar consulta do mês',dialog);more.type='button';more.className='v20-button secondary';more.hidden=true;
+ const update=node('button','Atualizar histórico',dialog);update.type='button';update.className='v20-button secondary';
  const list=node('section',undefined,dialog);list.setAttribute('aria-label','Importações do dia');
- let month=dayOf(new Date()).slice(0,7),selected=dayOf(new Date()),request=0,records=[],unknown=new Set(),loading=false;
+ let month=dayOf(new Date()).slice(0,7),selected=dayOf(new Date()),request=0,records=[],days=[],revision='',unknown=new Set(),loading=false;
  const ownDialog=dialog;document.body.append(dialog);dialog.showModal();
- dialog.addEventListener('close',()=>{if(dialog!==ownDialog)return;window.sriProtocolImportHistoryReset();if(opener?.isConnected)opener.focus();});
+ dialog.addEventListener('close',()=>{if(dialog!==ownDialog)return;closeView();if(opener?.isConnected)opener.focus();});
  const alive=seq=>epoch===generation&&seq===request&&dialog?.open;
  function draw(){
   title.textContent=new Date(month+'-01T12:00Z').toLocaleDateString('pt-BR',{month:'long',year:'numeric',timeZone:'UTC'});
@@ -48,11 +45,11 @@ async function open(protocol){
   const first=new Date(month+'-01T12:00Z'),count=new Date(Date.UTC(first.getUTCFullYear(),first.getUTCMonth()+1,0)).getUTCDate();
   for(let n=0;n<first.getUTCDay();n++)node('span','',calendar);
   for(let n=1;n<=count;n++){
-   const day=month+'-'+String(n).padStart(2,'0'),found=records.some(r=>r.day===day),b=node('button',String(n)+(found?' ●':unknown.has(day)?' ?':''),calendar);b.type='button';b.dataset.day=day;b.setAttribute('aria-label',day+(found?', protocolo presente':unknown.has(day)?', consulta incompleta':', sem registro confirmado'));b.setAttribute('aria-pressed',String(selected===day));if(found)b.classList.add('has-imports');b.onclick=()=>{selected=day;draw();};
+   const day=month+'-'+String(n).padStart(2,'0'),found=days.some(r=>r.day===day),b=node('button',String(n)+(found?' ●':unknown.has(day)?' ?':''),calendar);b.type='button';b.dataset.day=day;b.setAttribute('aria-label',day+(found?', protocolo presente':unknown.has(day)?', consulta incompleta':', sem registro confirmado'));b.setAttribute('aria-pressed',String(selected===day));if(found)b.classList.add('has-imports');b.onclick=()=>{selected=day;void loadDay();};
   }
   list.replaceChildren();node('h3',selected.split('-').reverse().join('/'),list);
   const dayRows=records.filter(r=>r.day===selected).sort((a,b)=>a.at.localeCompare(b.at)||a.id.localeCompare(b.id));
-  if(!dayRows.length)node('p',loading?'Consultando os registros deste mês…':unknown.has(selected)?'Não foi possível conferir todas as importações deste dia. Tente novamente.':'Nenhuma presença do protocolo encontrada nas importações disponíveis deste dia.',list);
+  if(!dayRows.length)node('p',loading?'Consultando as importações deste dia…':unknown.has(selected)?'Não foi possível conferir todas as importações deste dia. Tente novamente.':'Nenhuma presença do protocolo encontrada nas importações disponíveis deste dia.',list);
   dayRows.map((r,i)=>({...r,change:unknown.has(selected)?'Comparação indisponível: consulta incompleta neste dia.':differences(dayRows[i-1]?.rows,r.rows)})).reverse().forEach(r=>{
    const details=node('details',undefined,list);details.className='sri-import-event';const summary=node('summary',undefined,details);
    node('strong',new Date(r.at).toLocaleTimeString('pt-BR',{timeZone:zone})+' · '+(r.shift||'Sem turno'),summary);node('span',r.change,summary);
@@ -60,37 +57,38 @@ async function open(protocol){
    for(const row of r.rows){const dl=node('dl',undefined,details);for(const [label,value] of [['Status de origem',[row.status,row.statusDesc].filter(Boolean).join(' · ')],['Base',row.bko],['Área',row.area],['Agente',row.agente],['Prazo da origem',Number.isFinite(row.limite)?new Date(row.limite*86400000).toLocaleDateString('pt-BR',{timeZone:'UTC'}):null],['Filial',row.filial]]){node('dt',label,dl);node('dd',value==null||value===''?'Não registrado':String(value),dl);}}
   });
  }
- async function load(){
-  controller?.abort();controller=new AbortController();const signal=controller.signal,seq=++request;records=[];unknown=new Set();loading=true;retry.hidden=true;more.hidden=true;status.textContent='Buscando importações do mês…';draw();
-  try{
-   const snapshots=[];
-   for(let offset=0;;offset+=200){
-    const q=await client.from('daily_result_snapshots').select('id,operational_day,shift_label,created_at').gte('operational_day',month+'-01').lt('operational_day',monthShift(month,1)+'-01').order('created_at').order('id').range(offset,offset+199).abortSignal(signal);
-    if(!alive(seq))return;if(q.error)throw Error('Não foi possível consultar as importações.');snapshots.push(...(q.data||[]));if((q.data||[]).length<200)break;
-   }
-   let done=0;
-   for(const snapshot of snapshots){
-    if(!alive(seq))return;
-    try{
-     const q=await client.from('daily_result_snapshots').select('payload_gzip').eq('id',snapshot.id).abortSignal(signal).single();if(!alive(seq))return;if(q.error||!q.data?.payload_gzip)throw Error('Importação indisponível');
-     const payload=await v42Uncompress(q.data.payload_gzip);if(!alive(seq))return;
-     const rows=summarize(payload,protocol);if(rows)records.push({id:snapshot.id,day:snapshot.operational_day,shift:snapshot.shift_label,at:payload.importedAt||payload.savedAt||snapshot.created_at,created:snapshot.created_at,rows});
-    }catch(e){if(!alive(seq))return;unknown.add(snapshot.operational_day);}
-    done++;status.textContent='Consultando '+done+' de '+snapshots.length+' importações…';draw();
-    if(done%20===0&&done<snapshots.length){
-     status.textContent=done+' de '+snapshots.length+' importações consultadas. Continue para completar o calendário do mês.';more.hidden=false;
-     await new Promise(resolve=>{const resume=()=>{signal.removeEventListener('abort',resume);resolve();};more.onclick=resume;signal.addEventListener('abort',resume,{once:true});});
-     if(!alive(seq))return;more.hidden=true;
-    }
-   }
-   if(!alive(seq))return;loading=false;
-   if(!records.some(r=>r.day===selected)&&records.length)selected=records.map(r=>r.day).sort().at(-1);
-   status.textContent=unknown.size?'Consulta incompleta em '+unknown.size+' dia(s). Tente novamente para completar o histórico.':records.length+' importação(ões) com este protocolo no mês consultado.';
-   retry.hidden=!unknown.size;draw();
-  }catch(e){if(alive(seq)){loading=false;status.textContent=e.message;retry.hidden=false;list.replaceChildren();node('p','Histórico indisponível. Tente novamente.',list);}}
+ async function rpc(name,args,seq,signal){
+  const q=await client.rpc(name,args).abortSignal(signal);if(!alive(seq))return null;
+  if(q.error)throw Error('Não foi possível consultar o histórico. Tente novamente.');return q.data;
  }
- prev.onclick=()=>{month=monthShift(month,-1);selected=month+'-01';void load();};next.onclick=()=>{month=monthShift(month,1);selected=month+'-01';void load();};retry.onclick=()=>void load();
+ async function loadDay(force=false){
+  controller?.abort();controller=new AbortController();const signal=controller.signal,seq=++request;
+  records=[];loading=true;retry.hidden=true;draw();
+  status.textContent='Consultando importações de '+selected.split('-').reverse().join('/')+'…';
+  try{
+   const key=[user.id,protocol,selected,revision].join('|');let result=force?null:cached(key);
+   if(!result){result=[];if(days.some(d=>d.day===selected)){
+    let cursor=null;for(;;){const batch=await rpc('sri_protocol_import_day',{p_protocol:protocol,p_day:selected,p_after:cursor},seq,signal);if(!alive(seq))return;if(!Array.isArray(batch))throw Error('Histórico indisponível.');result.push(...batch);if(batch.length<200)break;const next=batch.at(-1).id;if(!next||next===cursor)throw Error('A consulta não avançou.');cursor=next;}
+   }if(!alive(seq))return;remember(key,result);}
+   records=result;loading=false;status.textContent=unknown.has(selected)?'Algumas importações deste dia ainda estão sendo preparadas. Atualize o histórico em instantes.':records.length+' importação(ões) com este protocolo no dia selecionado.';draw();
+  }catch(e){if(alive(seq)){loading=false;records=[];retry.hidden=false;status.textContent=e.message;list.replaceChildren();node('p','Histórico indisponível. Tente novamente.',list);}}
+ }
+ async function load(force=false){
+  controller?.abort();controller=new AbortController();const signal=controller.signal,seq=++request;
+  records=[];days=[];unknown=new Set();loading=true;retry.hidden=true;status.textContent='Consultando calendário…';draw();
+  try{
+   const key=[user.id,protocol,month,'calendar'].join('|');let result=force?null:cached(key);
+   if(!result){result=await rpc('sri_protocol_import_calendar',{p_protocol:protocol,p_month:month+'-01'},seq,signal);if(!alive(seq))return;if(!result||!Array.isArray(result.days)||!Array.isArray(result.pending_days))throw Error('Calendário indisponível.');remember(key,result);}
+   if(!alive(seq))return;days=result.days;revision=result.revision||JSON.stringify(result.days);unknown=new Set(result.pending_days);
+   if(!days.some(d=>d.day===selected)&&days.length)selected=days.map(d=>d.day).sort().at(-1);
+   draw();await loadDay(force);
+  }catch(e){if(alive(seq)){loading=false;retry.hidden=false;status.textContent=e.message;list.replaceChildren();node('p','Calendário indisponível. Tente novamente.',list);}}
+ }
+
+ prev.onclick=()=>{month=monthShift(month,-1);selected=month+'-01';void load();};next.onclick=()=>{month=monthShift(month,1);selected=month+'-01';void load();};retry.onclick=()=>void load(true);update.onclick=()=>{cache.clear();void load(true);};reload=()=>{cache.clear();void load(true);};
  void load();
 }
+window.addEventListener('sri-import-index-ready',()=>{cache.clear();reload?.();});
+window.addEventListener('sri-cloud-saved',()=>cache.clear());
 document.addEventListener('click',event=>{const button=event.target.closest?.('[data-sri-import-history]');if(button)void open(button.dataset.sriImportHistory).catch(()=>window.sriToast?.('Não foi possível abrir o histórico. Confira sua conexão e tente novamente.','error'));});
 })();
